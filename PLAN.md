@@ -887,13 +887,20 @@ CI on every PR: lint → tsc --noEmit → prisma validate → jest → jest:e2e
 | :- |
 ---
 ## **Stage 1 — Foundation (Weeks 1–2)**
-- nest new colosseum-api --strict; "module": "commonjs" in tsconfig
+[x] nest new colosseum-api --strict; "module": "commonjs" in tsconfig
+
 - Zod env schema (fail at startup); Docker Compose (pg15 + redis7)
-- Full Prisma schema with ALL models including DeveloperSnapshot, CareerTimeline, PlatformPrior, RoiSnapshot, FairnessReport, AuditLog, BenchmarkCohort, Organisation + multi-tenant fields
-- PostgreSQL RLS policies + Prisma middleware (SET LOCAL app.tenant\_id)
-- PrismaService, RedisService singletons
+
+[x] Full Prisma schema with ALL models including DeveloperSnapshot, CareerTimeline, PlatformPrior, RoiSnapshot, FairnessReport, AuditLog, BenchmarkCohort, Organisation + multi-tenant fields
+
+[?] PostgreSQL RLS policies + Prisma middleware (SET LOCAL app.tenant\_id)
+
+[?] PrismaService, RedisService singletons
+
 - Global: helmet, nestjs-pino, @nestjs/throttler, ZodValidationPipe, CORS
+
 - AuthModule: passport-github2 → upsert User (ACTIVE) → Candidate → DeveloperCandidate → GithubProfile (AES-256-GCM); JWT 15m + refresh 7d Redis
+
 - GET /health; GitHub Actions CI
 
 **Deliverable: OAuth → full user chain created; JWT issued; RLS enforced.**

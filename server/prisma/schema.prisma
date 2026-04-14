@@ -4,12 +4,12 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 
@@ -41,14 +41,45 @@ enum AccountStatus {
 
 model User {
   id            String        @id @default(uuid())
-  tenantId      String?       // null for CANDIDATE; set for HR/ADMIN
-  email         String        @unique
+  email         String?        @unique
+  username      String?       @unique
+
+  firstName     String?
+  lastName      String?
+
   role          UserRole      @default(CANDIDATE)
   accountStatus AccountStatus @default(ACTIVE)
+
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  
+  authAccounts  AuthAccount[]
   candidate     Candidate?
 }
+
+// ─── User AUTH  ──────────────────────────────────────────
+enum AuthProvider {
+  LOCAL
+  GITHUB
+  GOOGLE
+}
+
+model AuthAccount {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider    AuthProvider
+  providerId  String
+
+  passwordHash String?
+
+  createdAt   DateTime @default(now())
+  @@unique([provider, providerId])
+}
+
+// ─── User Type: CANDIDATE  ──────────────────────────────────────────
+
 
 model Candidate {
   id           String             @id @default(uuid())

@@ -6,9 +6,19 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { AtsModule } from './modules/ats/ats.module';
 import { FairnessModule } from './modules/fairness/fairness.module';
 import { RoiModule } from './modules/roi/roi.module';
+import { RedisModule } from './redis/redis.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
-  imports: [GithubSyncModule, JobsModule, AtsModule, FairnessModule, RoiModule],
+  imports: [
+    GithubSyncModule, 
+    JobsModule, 
+    AtsModule, 
+    FairnessModule, 
+    RoiModule,
+    RedisModule,
+    AuthModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
