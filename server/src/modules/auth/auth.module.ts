@@ -2,8 +2,6 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { GithubStrategy } from './strategies/github.strategy';
-import { PrismaModule } from '../../prisma/prisma.module';
-import { RedisModule } from '../../redis/redis.module';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshStrategy } from './strategies/refresh.strategy';
@@ -15,8 +13,6 @@ import authConfig from './auth.config';
 
 @Module({
   imports: [
-    PrismaModule,
-    RedisModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '15m' },
@@ -24,7 +20,7 @@ import authConfig from './auth.config';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [authConfig]
-    })
+    }),
   ],
   controllers: [
     AuthController

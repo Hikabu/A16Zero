@@ -23,6 +23,7 @@ constructor(private config: ConfigService) {
     return {
       id: profile.id,
       email: profile.emails?.[0]?.value,
+      email_verified: profile.emails?.[0]?.verified || profile._json?.email_verified,
       username: profile.displayName,
       firstName: profile.name?.givenName,
       lastName: profile.name?.familyName,

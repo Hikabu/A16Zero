@@ -16,10 +16,16 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
   }
 
   async validate(accessToken: string, refreshToken: string, profile: any) {
+    // GitHub primary email is usually verified if it's the primary one, 
+    // but we check the profile emails array if available.
+    const emailObj = profile.emails?.find((e: any) => e.primary) || profile.emails?.[0];
+    
     return {
       githubId: profile.id,
       username: profile.username,
-      email: profile.emails?.[0]?.value,
+      email: emailObj?.value,
+      email_verified: emailObj?.verified ?? true, // GitHub verified status
+      accessToken,
     };
   }
 }

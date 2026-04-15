@@ -1,8 +1,12 @@
-import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Inject, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+import { encrypt, decrypt } from '../../shared/crypto.utils';
+import * as QRCode from 'qrcode';
 
 type Provider = 'LOCAL' | 'GITHUB' | 'GOOGLE';
 
@@ -11,30 +15,77 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private config: ConfigService,
     @Inject('REDIS') private readonly redis: Redis
   ) {}
 
-  async register(dto: any) {
-    const hash = await bcrypt.hash(dto.password, 10);
+  private readonly logger = new Logger(AuthService.name);
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        username: dto.username,
-        authAccounts: {
-          create: {
-            provider: 'LOCAL',
-            providerId: dto.email,
-            passwordHash: hash,
-          },
-        },
-      },
+  private async checkRateLimit(identifier: string) {
+    const key = `rl_login:${identifier}`;
+    const attempts = await this.redis.incr(key);
+    if (attempts === 1) {
+      await this.redis.expire(key, 900); // 15 mins block
+    }
+    if (attempts > 5) {
+      this.logger.warn(`LOGIN_FAILURE: Rate limit exceeded for ${identifier}`);
+      throw new UnauthorizedException('Too many login attempts. Please try again later.');
+    }
+  }
+
+  private async resetRateLimit(identifier: string) {
+    await this.redis.del(`rl_login:${identifier}`);
+  }
+
+  private getAuthenticator() {
+    // Dynamic require to handle ESM/CJS compatibility in test environments
+    const { TOTP, NobleCryptoPlugin, ScureBase32Plugin } = require('otplib');
+    return new TOTP({
+      crypto: new NobleCryptoPlugin(),
+      base32: new ScureBase32Plugin(),
     });
+  }
 
-    return this.issueTokens(user.id);
+  private getEncryptionKey(): string {
+    const key = this.config.get<string>('AUTH_ENCRYPTION_KEY');
+    if (!key) throw new Error('AUTH_ENCRYPTION_KEY is not defined in environment');
+    return key;
+  }
+
+  async register(dto: any) {
+    try {
+      const hash = await bcrypt.hash(dto.password, 10);
+
+      const user = await this.prisma.user.create({
+        data: {
+          email: dto.email,
+          username: dto.username,
+          isEmailVerified: false,
+          authAccounts: {
+            create: {
+              provider: 'LOCAL',
+              providerId: dto.email,
+              passwordHash: hash,
+            },
+          },
+        } as any,
+      });
+
+      this.logger.log(`REGISTRATION_SUCCESS: User ${user.email} registered locally`);
+      await this.initiateEmailVerification(user.id, user.email!);
+      return this.handleLoginResponse(user);
+    } catch (error) {
+      if (error.code === 'P2002') {
+        const target = error.meta?.target?.[0];
+        throw new ConflictException(`${target ? target.charAt(0).toUpperCase() + target.slice(1) : 'Account'} already exists`);
+      }
+      throw error;
+    }
   }
 
   async login(dto: any) {
+    await this.checkRateLimit(dto.identifier);
+
     const user = await this.prisma.user.findFirst({
       where: {
         OR: [
@@ -45,196 +96,289 @@ export class AuthService {
       include: { authAccounts: true },
     });
 
-    if (!user) throw new UnauthorizedException();
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const account = user.authAccounts.find(
-      (a) => a.provider === 'LOCAL'
-    );
+    const account = user.authAccounts.find((a) => a.provider === 'LOCAL');
+    if (!account || !account.passwordHash) throw new UnauthorizedException('Invalid credentials');
 
-    if (!account || !account.passwordHash)
-      throw new UnauthorizedException();
+    const isValid = await bcrypt.compare(dto.password, account.passwordHash);
+    if (!isValid) {
+      this.logger.warn(`LOGIN_FAILURE: Invalid credentials for ${dto.identifier}`);
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    const isValid = await bcrypt.compare(
-      dto.password,
-      account.passwordHash
-    );
+    await this.resetRateLimit(dto.identifier);
+    this.logger.log(`LOGIN_SUCCESS: User ${user.email} logged in locally`);
 
-    if (!isValid) throw new UnauthorizedException();
+    return this.handleLoginResponse(user);
+  }
 
-    return this.issueTokens(user.id);
+  private async handleLoginResponse(user: any) {
+    if (!user.isEmailVerified) {
+      return { needsVerification: true, email: user.email };
+    }
+
+    if (user.mfaEnabled) {
+      const mfaToken = this.jwt.sign({ sub: user.id, type: 'mfa' }, { expiresIn: '5m' });
+      return { mfaRequired: true, mfaToken };
+    }
+
+    return this.issueTokens(user.id, (user as any).isEmailVerified);
+  }
+
+  async verifyMfa(userId: string, code: string, mfaToken: string) {
+    try {
+      const payload: any = this.jwt.verify(mfaToken);
+      if (payload.sub !== userId || payload.type !== 'mfa') throw new UnauthorizedException();
+    } catch {
+      throw new UnauthorizedException('Invalid MFA session');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !(user as any).mfaSecret) throw new UnauthorizedException();
+
+    const secret = decrypt((user as any).mfaSecret, this.getEncryptionKey());
+    const isValid = this.getAuthenticator().verify({ token: code, secret });
+    if (!isValid) throw new UnauthorizedException('Invalid MFA code');
+
+    return this.issueTokens(user.id, (user as any).isEmailVerified);
   }
 
   async refresh(user: any) {
-    const stored = await this.redis.get(`refresh:${user.id}`);
+    const userId = user.id;
+    const providedToken = user.refreshToken;
+    const stored = await this.redis.get(`refresh:${userId}`);
 
-    if (!stored) throw new UnauthorizedException();
+    if (!stored || stored !== providedToken) {
+      if (stored) {
+        // Token reuse detected. Hijack scenario! Revoke all sessions.
+        await this.redis.del(`refresh:${userId}`);
+        this.logger.warn(`MFA_BYPASS_ATTEMPT / TOKEN REUSE DETECTED: Revoked sessions for user ${userId}`);
+      }
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
-    return this.issueTokens(user.id);
+    const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!dbUser) throw new UnauthorizedException('User not found');
+
+    return this.issueTokens(userId, (dbUser as any).isEmailVerified);
   }
-
 
   async logout(user: any) {
     await this.redis.del(`refresh:${user.id}`);
     return { message: 'Logged out' };
   }
 
-  private async issueTokens(userId: string) {
-    const accessToken = this.jwt.sign(
-      { sub: userId },
-      { expiresIn: '15m' }
-    );
+  private async issueTokens(userId: string, isEmailVerified: boolean) {
+    const accessToken = this.jwt.sign({ sub: userId, isEmailVerified }, { expiresIn: '15m' });
+    const refreshToken = this.jwt.sign({ sub: userId }, { expiresIn: '7d' });
 
-    const refreshToken = this.jwt.sign(
-      { sub: userId },
-      { expiresIn: '7d' }
-    );
-
-    await this.redis.set(
-      `refresh:${userId}`,
-      refreshToken,
-      'EX',
-      60 * 60 * 24 * 7
-    );
-
-    return {
-      accessToken,
-      refreshToken,
-    };
+    await this.redis.set(`refresh:${userId}`, refreshToken, 'EX', 60 * 60 * 24 * 7);
+    return { accessToken, refreshToken };
   }
 
-async oauthLogin(profile: any, provider: Provider) {
-  if (!profile) throw new UnauthorizedException();
+  // --- OAuth & Linking ---
 
-  // 1. Try find by provider
-  let account = await this.prisma.authAccount.findUnique({
-    where: {
-      provider_providerId: {
-        provider,
-        providerId: profile.id,
-      },
-    },
-    include: { user: true },
-  });
+  async oauthLogin(profile: any, provider: Provider) {
+    if (!profile) throw new UnauthorizedException();
 
-  // CASE 1: provider exists → login
-  if (account) {
-    return this.issueTokens(account.user.id);
-  }
-
-  // 2. Try find user by email
-  const user = await this.prisma.user.findUnique({
-    where: { email: profile.email },
-    include: { authAccounts: true },
-  });
-
-  // CASE 2: user exists → LINK automatically
-  if (user) {
-    await this.prisma.authAccount.create({
-      data: {
-        userId: user.id,
-        provider,
-        providerId: profile.id,
-      },
+    let account = await this.prisma.authAccount.findUnique({
+      where: { provider_providerId: { provider, providerId: profile.id } },
+      include: { user: true },
     });
 
-    return this.issueTokens(user.id);
-  }
+    if (account) return this.handleLoginResponse(account.user);
 
-  // CASE 3: totally new → onboarding
-  const tempToken = this.jwt.sign(
-    {
-      oauth: {
+    const user = await this.prisma.user.findUnique({
+      where: { email: profile.email },
+      include: { authAccounts: true },
+    });
+
+    if (user) {
+      // SECURITY: Only auto-link if BOTH the local account AND the OAuth provider affirm verification.
+      if (!user.isEmailVerified) {
+        this.logger.warn(`LINKING_FAILURE: Attempted auto-link to unverified local account ${user.email}`);
+        throw new UnauthorizedException('Email is already registered but not verified. Please verify locally first.');
+      }
+
+      if (profile.email_verified === false) {
+        this.logger.warn(`LINKING_FAILURE: OAuth provider ${provider} email not verified for ${profile.email}`);
+        throw new UnauthorizedException('OAuth email not verified. Please verify your social account or log in locally.');
+      }
+
+      const existingAccount = user.authAccounts.find(a => a.provider === provider);
+      if (!existingAccount) {
+        await this.prisma.authAccount.create({
+          data: { userId: user.id, provider, providerId: profile.id },
+        });
+        this.logger.log(`ACCOUNT_LINKED: User ${user.id} auto-linked to ${provider}`);
+      }
+      return this.handleLoginResponse(user);
+    }
+
+    const claimId = crypto.randomBytes(32).toString('hex');
+    await this.redis.set(
+      `onboarding_claim:${claimId}`,
+      JSON.stringify({
         provider,
         providerId: profile.id,
         email: profile.email,
-        username: profile.username,
         firstName: profile.firstName,
         lastName: profile.lastName,
-      },
-      type: 'onboarding',
-    },
-    { expiresIn: '15m' }
-  );
+      }),
+      'EX',
+      900
+    );
 
-  return {
-    needsOnboarding: true,
-    tempToken,
-  };
-}
-async linkOAuth(user: any, profile: any, provider: Provider) {
-  if (!user) throw new UnauthorizedException();
-
-  // 1. Check if already linked
-  const existing = await this.prisma.authAccount.findUnique({
-    where: {
-      provider_providerId: {
-        provider,
-        providerId: profile.id,
-      },
-    },
-  });
-
-  if (existing) {
-    throw new UnauthorizedException('Account already linked');
+    const tempToken = this.jwt.sign({ claimId, type: 'onboarding' }, { expiresIn: '15m' });
+    return { needsOnboarding: true, tempToken };
   }
 
-  // 2. Attach to current user
-  await this.prisma.authAccount.create({
-    data: {
-      userId: user.id,
-      provider,
-      providerId: profile.id,
-    },
-  });
-
-  return { message: `${provider} linked successfully` };
-}
-
-async completeOnboarding(dto: any, authHeader: string) {
-  if (!authHeader) throw new UnauthorizedException();
-
-  const token = authHeader.split(' ')[1];
-
-  let payload: any;
-
-  try {
-    payload = this.jwt.verify(token);
-  } catch {
-    throw new UnauthorizedException();
+  async generateLinkState(userId: string): Promise<string> {
+    const state = crypto.randomBytes(16).toString('hex');
+    await this.redis.set(`link_state:${state}`, userId, 'EX', 300);
+    return state;
   }
 
-  if (payload.type !== 'onboarding') {
-    throw new UnauthorizedException();
+  async linkOAuth(userId: string, profile: any, provider: Provider, state: string) {
+    const storedUserId = await this.redis.get(`link_state:${state}`);
+    if (!storedUserId || storedUserId !== userId) throw new UnauthorizedException('Invalid link state');
+    await this.redis.del(`link_state:${state}`);
+
+    const existing = await this.prisma.authAccount.findUnique({
+      where: { provider_providerId: { provider, providerId: profile.id } },
+    });
+    if (existing) throw new ConflictException('Account already linked');
+
+    await this.prisma.authAccount.create({
+      data: { userId, provider, providerId: profile.id },
+    });
+
+    this.logger.log(`ACCOUNT_LINKED: User ${userId} successfully linked ${provider}`);
+
+    return { message: `${provider} linked successfully` };
   }
 
-  const oauth = payload.oauth;
+  async completeOnboarding(dto: any, authHeader: string) {
+    if (!authHeader) throw new UnauthorizedException();
+    const token = authHeader.split(' ')[1];
 
-  // Prevent duplicate username
-  const exists = await this.prisma.user.findUnique({
-    where: { username: dto.username },
-  });
+    let payload: any;
+    try { payload = this.jwt.verify(token); } catch { throw new UnauthorizedException('Invalid token'); }
+    if (payload.type !== 'onboarding') throw new UnauthorizedException();
 
-  if (exists) {
-    throw new Error('Username already taken');
+    const raw = await this.redis.get(`onboarding_claim:${payload.claimId}`);
+    if (!raw) throw new UnauthorizedException('Session expired');
+    const oauth = JSON.parse(raw);
+
+    const usernameExists = await this.prisma.user.findUnique({ where: { username: dto.username } });
+    if (usernameExists) throw new ConflictException('Username taken');
+
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          email: oauth.email,
+          username: dto.username,
+          firstName: oauth.firstName,
+          lastName: oauth.lastName,
+          isEmailVerified: true,
+          authAccounts: { 
+            create: { provider: oauth.provider as Provider, providerId: oauth.providerId as string } 
+          },
+        } as any,
+      });
+
+      await this.redis.del(`onboarding_claim:${payload.claimId}`);
+      
+      this.logger.log(`LOGIN_SUCCESS: User ${user.email} logged in via OAuth (Onboarding Complete)`);
+      
+      return this.handleLoginResponse(user);
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('Username or email already taken');
+      }
+      throw error;
+    }
   }
 
-  // Create full user
-  const user = await this.prisma.user.create({
-    data: {
-      email: oauth.email,
-      username: dto.username,
-      firstName: oauth.firstName,
-      lastName: oauth.lastName,
-      authAccounts: {
-        create: {
-          provider: oauth.provider,
-          providerId: oauth.providerId,
-        },
-      },
-    },
-  });
+  // --- Email Verification ---
 
-  return this.issueTokens(user.id);
-}
+  async initiateEmailVerification(userId: string, email: string) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.redis.set(`verify_email:${code}`, userId, 'EX', 3600);
+    console.log(`[MAIL STUB] To: ${email}, Code: ${code}`);
+  }
 
+  async verifyEmail(code: string) {
+    const userId = await this.redis.get(`verify_email:${code}`);
+    if (!userId) throw new BadRequestException('Invalid code');
+
+    await this.prisma.user.update({ where: { id: userId }, data: { isEmailVerified: true } as any });
+    await this.redis.del(`verify_email:${code}`);
+    return { message: 'Verified' };
+  }
+
+  // --- MFA Setup ---
+
+  async setupMfa(userId: string) {
+    const auth = this.getAuthenticator();
+    const secret = auth.generateSecret();
+    const otpauthUrl = auth.keyuri(userId, 'Colosseeum', secret);
+    const qrCode = await QRCode.toDataURL(otpauthUrl);
+    
+    await this.redis.set(`mfa_setup:${userId}`, secret, 'EX', 300);
+    return { qrCode, secret };
+  }
+
+  async activateMfa(userId: string, code: string) {
+    const secret = await this.redis.get(`mfa_setup:${userId}`);
+    if (!secret) throw new BadRequestException('MFA session expired');
+
+    const isValid = this.getAuthenticator().verify({ token: code, secret });
+    if (!isValid) throw new BadRequestException('Invalid MFA code');
+
+    const encryptedSecret = encrypt(secret, this.getEncryptionKey());
+    const backupCodes = Array.from({ length: 10 }, () => crypto.randomBytes(4).toString('hex'));
+    const encryptedBackupCodes = backupCodes.map(c => encrypt(c, this.getEncryptionKey()));
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        mfaEnabled: true,
+        mfaSecret: encryptedSecret,
+        mfaBackupCodes: encryptedBackupCodes
+      } as any
+    });
+    await this.redis.del(`mfa_setup:${userId}`);
+    return { message: 'MFA activated', backupCodes };
+  }
+
+  async verifyMfaRecovery(userId: string, backupCode: string, mfaToken: string) {
+    try {
+      const payload: any = this.jwt.verify(mfaToken);
+      if (payload.sub !== userId || payload.type !== 'mfa') throw new UnauthorizedException();
+    } catch {
+      throw new UnauthorizedException('Invalid MFA session');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !(user as any).mfaEnabled || !(user as any).mfaBackupCodes.length) throw new UnauthorizedException();
+
+    const encryptionKey = this.getEncryptionKey();
+    const decryptedCodes = (user as any).mfaBackupCodes.map((c: string) => decrypt(c, encryptionKey));
+    
+    const codeIndex = decryptedCodes.indexOf(backupCode);
+    if (codeIndex === -1) throw new UnauthorizedException('Invalid backup code');
+
+    // Use-once: remove the code
+    const updatedCodes = [...(user as any).mfaBackupCodes];
+    updatedCodes.splice(codeIndex, 1);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { mfaBackupCodes: updatedCodes } as any
+    });
+
+    return this.issueTokens(user.id, (user as any).isEmailVerified);
+  }
 }

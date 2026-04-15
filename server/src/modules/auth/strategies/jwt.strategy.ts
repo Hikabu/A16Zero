@@ -16,6 +16,6 @@ if (!secret) throw new Error('JWT_SECRET missing');
   }
 
   async validate(payload: any) {
-    return { id: payload.sub };
+    return { id: payload.sub, isEmailVerified: payload.isEmailVerified };
   }
 }

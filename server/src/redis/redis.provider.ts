@@ -1,4 +1,3 @@
-// src/redis/redis.provider.ts
 import Redis from 'ioredis';
 
 export const RedisProvider = {

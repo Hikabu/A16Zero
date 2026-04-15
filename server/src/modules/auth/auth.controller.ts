@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Req, Body, UseGuards, UnauthorizedException, Query, Redirect } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ZodValidationPipe } from '../../shared/pipes/zod.pipe';
@@ -6,13 +6,16 @@ import { loginSchema } from './schemas/login.schema';
 import type { LoginDto } from './schemas/login.schema';
 import { registerSchema } from './schemas/register.schema';
 import type { RegisterDto } from './schemas/register.schema';
-import { GithubLinkGuard } from './guards/github.link.guard';
-import { GoogleLinkGuard } from './guards/google.link.guard';
 import { ConfigService } from '@nestjs/config';
 import type { OnboardingDto } from './schemas/onboarding.schema';
 import { onboardingSchema } from './schemas/onboarding.schema';
+import { activateMfaSchema, verifyMfaSchema, verifyMfaRecoverySchema } from './schemas/mfa.schema';
+import type { ActivateMfaDto, VerifyMfaDto, VerifyMfaRecoveryDto } from './schemas/mfa.schema';
+import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
 
 
+@Throttle({ default: { limit: 5, ttl: 60000 } })
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -34,85 +37,16 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
-  //jwt refresh
   @UseGuards(AuthGuard('refresh'))
   @Post('refresh')
   refresh(@Req() req: any) {
     return this.authService.refresh(req.user);
   }
 
-  //logout 
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   logout(@Req() req: any) {
     return this.authService.logout(req.user);
-  }
-
-  //----GITHUB----------
-
-  //github login
-  @UseGuards(AuthGuard('github'))
-  @Get('github')
-  githubLogin() {} //if this si nto called why is it here? shoudli tnot  be empty or no ft?
-
-  //DO NOT USE - callback by github
-  @UseGuards(AuthGuard('github'))
-  @Get('github/callback')
-  githubCallback(@Req() req: any) {
-    return this.authService.oauthLogin(req.user, 'GITHUB');
-  }
-
-  // start linking
-  @UseGuards(AuthGuard('jwt'))
-  @Get('github/link')
-  linkGithub(@Req() req: any) {
-    const base = this.config.get('app.url');
-    const path = this.config.get('auth.githubLinkCallback');
-    return {
-      url: `${base}${path}?state=${req.user.id}`,
-    };
-  }
-
-  //DO NOT USE  
-  @UseGuards(GithubLinkGuard)
-  @Get('github/link/callback')
-  linkGithubCallback(@Req() req: any) {
-    return this.authService.linkOAuth({id: req.query.state}, req.user, 'GITHUB');
-  }
-
-
-  //----GOOGLE----------
-
-  //google login
-  @UseGuards(AuthGuard('google'))
-  @Get('google')
-  googleLogin() {}//if this si nto called why is it here? shoudli tnot  be empty or no ft?
-
-  //DO NOT USE
-  @UseGuards(AuthGuard('google'))
-  @Get('google/callback')
-  googleCallback(@Req() req: any) {
-    return this.authService.oauthLogin(req.user, 'GOOGLE');
-  }
-
-  
-  // start linking
-  @UseGuards(AuthGuard('jwt'))
-  @Get('google/link')
-  linkGoogle(@Req() req: any) {
-    const base = this.config.get('app.url');
-    const path = this.config.get('auth.googleLinkCallback');
-
-    return {
-     url: `${base}${path}?state=${req.user.id}`,
-    };
-  }
-
-  //DO NOT USE
-  @UseGuards(GoogleLinkGuard)
-  @Get('google/link/callback')
-  linkGoogleCallback(@Req() req: any) {
-    return this.authService.linkOAuth({id: req.query.state}, req.user, 'GOOGLE');
   }
 
   @Post('onboarding')
@@ -120,7 +54,101 @@ export class AuthController {
     @Body(new ZodValidationPipe(onboardingSchema)) dto: OnboardingDto,
     @Req() req: any
   ) {
+    // The onboarding token is in the Authorization header.
     return this.authService.completeOnboarding(dto, req.headers.authorization);
   }
 
+  // --- OAuth Login ---
+
+  @UseGuards(AuthGuard('github'))
+  @Get('github')
+  githubLogin() {} 
+
+  @UseGuards(AuthGuard('google'))
+  @Get('google')
+  googleLogin() {}
+
+  @UseGuards(AuthGuard('github'))
+  @Get('github/callback')
+  @SkipThrottle()
+  githubCallback(@Req() req: any) {
+    return this.authService.oauthLogin(req.user, 'GITHUB');
+  }
+
+  @UseGuards(AuthGuard('google'))
+  @Get('google/callback')
+  @SkipThrottle() 
+  googleCallback(@Req() req: any) {
+    return this.authService.oauthLogin(req.user, 'GOOGLE');
+  }
+
+  // --- Secure Account Linking ---
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('github/link')
+  async linkGithub(@Req() req: any) {
+    const state = await this.authService.generateLinkState(req.user.id);
+    const base = this.config.get('github.authorizationURL') || 'https://github.com/login/oauth/authorize';
+    const clientId = this.config.get('github.clientID');
+    const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
+    
+    return {
+      url: `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`,
+    };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('google/link')
+  async linkGoogle(@Req() req: any) {
+    const state = await this.authService.generateLinkState(req.user.id);
+    // Google linking would follow similar pattern
+    return { state, message: 'Redirect to Google OAuth with this state' };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('github/link/callback')
+  @SkipThrottle()
+  async linkGithubCallback(@Req() req: any, @Query('state') state: string) {
+    // Use the social profile from the request (attached by Passport)
+    // and the userId from our session JWT.
+    return this.authService.linkOAuth(req.user.id, req.user, 'GITHUB', state);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('google/link/callback')
+  @SkipThrottle()
+  async linkGoogleCallback(@Req() req: any, @Query('state') state: string) {
+    return this.authService.linkOAuth(req.user.id, req.user, 'GOOGLE', state);
+  }
+
+  // --- Email Verification ---
+
+  @Post('verify-email')
+  verifyEmail(@Body('code') code: string) {
+    return this.authService.verifyEmail(code);
+  }
+
+  // --- MFA ---
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('mfa/setup')
+  setupMfa(@Req() req: any) {
+    return this.authService.setupMfa(req.user.id);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('mfa/activate')
+  activateMfa(@Req() req: any, @Body(new ZodValidationPipe(activateMfaSchema)) dto: ActivateMfaDto) {
+    return this.authService.activateMfa(req.user.id, dto.code);
+  }
+
+  @Post('mfa/verify')
+  verifyMfa(@Body(new ZodValidationPipe(verifyMfaSchema)) dto: VerifyMfaDto) {
+    return this.authService.verifyMfa(dto.userId, dto.code, dto.mfaToken);
+  }
+
+  @Post('mfa/verify-recovery')
+  verifyMfaRecovery(@Body(new ZodValidationPipe(verifyMfaRecoverySchema)) dto: VerifyMfaRecoveryDto) {
+    return this.authService.verifyMfaRecovery(dto.userId, dto.backupCode, dto.mfaToken);
+  }
 }
