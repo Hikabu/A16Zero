@@ -11,6 +11,8 @@ import type { OnboardingDto } from './schemas/onboarding.schema';
 import { onboardingSchema } from './schemas/onboarding.schema';
 import { activateMfaSchema, verifyMfaSchema, verifyMfaRecoverySchema } from './schemas/mfa.schema';
 import type { ActivateMfaDto, VerifyMfaDto, VerifyMfaRecoveryDto } from './schemas/mfa.schema';
+import { requestPasswordResetSchema, resetPasswordSchema } from './schemas/password-reset.schema';
+import type { RequestPasswordResetDto, ResetPasswordDto } from './schemas/password-reset.schema';
 import { Throttle } from '@nestjs/throttler';
 import { SkipThrottle } from '@nestjs/throttler';
 
@@ -41,6 +43,17 @@ export class AuthController {
   @Post('refresh')
   refresh(@Req() req: any) {
     return this.authService.refresh(req.user);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 3600000 } })
+  @Post('password-reset/request')
+  requestPasswordReset(@Body(new ZodValidationPipe(requestPasswordResetSchema)) dto: RequestPasswordResetDto) {
+    return this.authService.requestPasswordReset(dto);
+  }
+
+  @Post('password-reset/reset')
+  resetPassword(@Body(new ZodValidationPipe(resetPasswordSchema)) dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @UseGuards(AuthGuard('jwt'))

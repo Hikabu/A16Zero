@@ -72,4 +72,37 @@ describe('Auth Lifecycle (e2e)', () => {
       .set('Authorization', `Bearer ${loginResponse.body.accessToken}`)
       .expect(201);
   });
+
+  it('should handle full password reset flow', async () => {
+    const email = `reset-lifecycle-${Date.now()}@example.com`;
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' });
+
+    // 1. Request reset
+    await request(app.getHttpServer())
+      .post('/auth/password-reset/request')
+      .send({ email });
+    
+    // 2. Get token from Redis (simulating email retrieval)
+    const redis = app.get('REDIS');
+    const keys = await redis.keys('password_reset:*');
+    // We need to find the one for this specific test if multiple are running, 
+    // but here we are inBand.
+    const token = keys[0].split(':')[1];
+
+    // 3. Reset password
+    const resetRes = await request(app.getHttpServer())
+      .post('/auth/password-reset/reset')
+      .send({ token, newPassword: 'NewStrongPassword123!' });
+    
+    expect(resetRes.status).toBe(201);
+
+    // 4. Verify login with NEW password
+    const loginRes = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ identifier: email, password: 'NewStrongPassword123!' });
+    
+    expect(loginRes.status).toBe(201);
+  });
 });

@@ -39,7 +39,13 @@ export class AuthService {
 
   private getAuthenticator() {
     // Dynamic require to handle ESM/CJS compatibility in test environments
-    const { TOTP, NobleCryptoPlugin, ScureBase32Plugin } = require('otplib');
+    const otplib = require('otplib');
+    const { TOTP, NobleCryptoPlugin, ScureBase32Plugin } = otplib.TOTP ? otplib : otplib.default || {};
+    
+    if (!TOTP) {
+      throw new Error(`Failed to load otplib components. Available keys: ${Object.keys(otplib)}`);
+    }
+
     return new TOTP({
       crypto: new NobleCryptoPlugin(),
       base32: new ScureBase32Plugin(),
@@ -380,5 +386,55 @@ export class AuthService {
     });
 
     return this.issueTokens(user.id, (user as any).isEmailVerified);
+  }
+
+  // --- Password Reset ---
+
+  async requestPasswordReset(dto: any) {
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    
+    // SECURITY: Always return success to prevent email enumeration
+    if (!user) {
+      this.logger.warn(`RESET_REQUEST: Non-existent email ${dto.email}`);
+      return { message: 'If an account with that email exists, a reset link has been sent.' };
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await this.redis.set(`password_reset:${token}`, user.id, 'EX', 3600); // 1 hour
+
+    // In a real app, send an email here. For now, log it.
+    this.logger.log(`RESET_TOKEN: Generated for ${user.email}: ${token}`);
+    
+    return { message: 'If an account with that email exists, a reset link has been sent.' };
+  }
+
+  async resetPassword(dto: any) {
+    const userId = await this.redis.get(`password_reset:${dto.token}`);
+    if (!userId) {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    const hash = await bcrypt.hash(dto.newPassword, 10);
+    
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          authAccounts: {
+            updateMany: {
+              where: { provider: 'LOCAL' },
+              data: { passwordHash: hash },
+            },
+          },
+        },
+      }),
+    ]);
+
+    await this.redis.del(`password_reset:${dto.token}`);
+    await this.redis.del(`refresh:${userId}`); // Global logout/session invalidation
+    
+    this.logger.log(`PASSWORD_RESET_SUCCESS: User ${userId} reset their password`);
+    
+    return { message: 'Password reset successfully' };
   }
 }
