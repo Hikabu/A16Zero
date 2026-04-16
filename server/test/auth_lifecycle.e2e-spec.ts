@@ -77,12 +77,14 @@ describe('Auth Lifecycle (e2e)', () => {
     const email = `reset-lifecycle-${Date.now()}@example.com`;
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' });
+      .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
+      .expect(201);
 
     // 1. Request reset
     await request(app.getHttpServer())
       .post('/auth/password-reset/request')
-      .send({ email });
+      .send({ email })
+      .expect(201);
     
     // 2. Get token from Redis (simulating email retrieval)
     const redis = app.get('REDIS');
@@ -101,7 +103,8 @@ describe('Auth Lifecycle (e2e)', () => {
     // 4. Verify login with NEW password
     const loginRes = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ identifier: email, password: 'NewStrongPassword123!' });
+      .send({ identifier: email, password: 'NewStrongPassword123!' })
+      .expect(201);
     
     expect(loginRes.status).toBe(201);
   });

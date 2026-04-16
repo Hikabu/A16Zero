@@ -18,14 +18,16 @@ describe('Auth MFA (e2e)', () => {
     const email = `mfa-e2e-${testId}@example.com`;
     const regRes = await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' });
+      .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
+      .expect(201);
     
     userId = await setup.prisma.user.findUnique({ where: { email } }).then(u => u!.id);
     await setup.prisma.user.update({ where: { id: userId }, data: { isEmailVerified: true } as any });
     
     const loginRes = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ identifier: email, password: 'StrongPassword123!' });
+      .send({ identifier: email, password: 'StrongPassword123!' })
+      .expect(201);
     
     accessToken = loginRes.body.accessToken;
   });
@@ -38,9 +40,9 @@ describe('Auth MFA (e2e)', () => {
     // 1. Setup MFA
     const setupRes = await request(app.getHttpServer())
       .get('/auth/mfa/setup')
-      .set('Authorization', `Bearer ${accessToken}`);
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
     
-    expect(setupRes.status).toBe(200);
     expect(setupRes.body.qrCode).toBeDefined();
     const secret = setupRes.body.secret;
 
@@ -51,16 +53,17 @@ describe('Auth MFA (e2e)', () => {
     const activateRes = await request(app.getHttpServer())
       .post('/auth/mfa/activate')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ code });
+      .send({ code })
+      .expect(201);
     
-    expect(activateRes.status).toBe(201);
     expect(activateRes.body.backupCodes).toHaveLength(10);
     const backupCode = activateRes.body.backupCodes[0];
 
     // 3. Login with MFA
     const loginRes = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ identifier: `mfa-e2e-${testId}@example.com`, password: 'StrongPassword123!' });
+      .send({ identifier: `mfa-e2e-${testId}@example.com`, password: 'StrongPassword123!' })
+      .expect(201);
     
     expect(loginRes.body.mfaRequired).toBe(true);
     const mfaToken = loginRes.body.mfaToken;
@@ -69,24 +72,24 @@ describe('Auth MFA (e2e)', () => {
     const verifyCode = authenticator.generate(secret);
     const verifyRes = await request(app.getHttpServer())
       .post('/auth/mfa/verify')
-      .send({ code: verifyCode, mfaToken, userId });
+      .send({ code: verifyCode, mfaToken, userId })
+      .expect(201);
     
-    expect(verifyRes.status).toBe(201);
     expect(verifyRes.body.accessToken).toBeDefined();
 
     // 5. Recovery with backup code
     const recoveryRes = await request(app.getHttpServer())
       .post('/auth/mfa/verify-recovery')
-      .send({ backupCode, mfaToken, userId });
+      .send({ backupCode, mfaToken, userId })
+      .expect(201);
     
-    expect(recoveryRes.status).toBe(201);
     expect(recoveryRes.body.accessToken).toBeDefined();
 
     // 6. Backup code should be one-time use
     const reuseRes = await request(app.getHttpServer())
       .post('/auth/mfa/verify-recovery')
-      .send({ backupCode, mfaToken, userId });
+      .send({ backupCode, mfaToken, userId })
+      .expect(401);
     
-    expect(reuseRes.status).toBe(401);
   });
 });

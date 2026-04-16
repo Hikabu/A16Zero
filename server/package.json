@@ -18,8 +18,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand",    "worker": "node dist/worker.js",
-
+    "test:e2e": "NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand",
     "worker": "node dist/worker.js",
     "worker:dev": "ts-node src/worker.ts",
     "env:sync": "ts-node scripts/sync-env.ts"
@@ -32,6 +31,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.19",
     "@nestjs/throttler": "^6.5.0",
+    "@octokit/request": "^10.0.8",
     "@otplib/plugin-base32-scure": "^13.4.0",
     "@otplib/plugin-crypto-noble": "^13.4.0",
     "@prisma/client": "^5.22.0",
@@ -39,6 +39,7 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.10.1",
     "nestjs-pino": "^4.6.1",
+    "octokit": "^2.1.0",
     "otplib": "^13.4.0",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
@@ -96,7 +97,7 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "transformIgnorePatterns": [
-      "node_modules/(?!(@scure|@noble|otplib)/)"
+      "node_modules/(?!(@scure|@noble|otplib|octokit|@octokit|universal-user-agent|before-after-hook)/)"
     ]
   }
 }

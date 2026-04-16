@@ -74,11 +74,11 @@ export class AuthController {
   // --- OAuth Login ---
 
   @UseGuards(AuthGuard('github'))
-  @Get('github')
+  @Post('github')
   githubLogin() {} 
 
   @UseGuards(AuthGuard('google'))
-  @Get('google')
+  @Post('google')
   googleLogin() {}
 
   @UseGuards(AuthGuard('github'))
