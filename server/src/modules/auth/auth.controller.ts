@@ -44,8 +44,6 @@ export class AuthController {
   @UseGuards(AuthGuard('refresh'))
   @Post('refresh')
   refresh(@Req() req: any) {
-      console.log("RAW HEADER:", req.headers.authorization);
-  console.log("USER TOKEN:", req.user.refreshToken);
     return this.authService.refresh(req.user);
   }
 

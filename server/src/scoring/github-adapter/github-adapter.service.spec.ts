@@ -132,13 +132,24 @@ MockOctokit.mockImplementation(() => mockOctokitInstance);
 
       await service.syncProfile('p1');
 
-      expect(mockPrisma.githubProfile.update).toHaveBeenCalledWith({
-        where: { id: 'p1' },
-        data: expect.objectContaining({
-          syncStatus: SyncStatus.DONE,
-          syncProgress: 100,
-        }),
-      });
+      expect(mockPrisma.githubProfile.update).toHaveBeenNthCalledWith(
+  1,
+  expect.objectContaining({
+    where: { id: 'p1' },
+    data: { syncStatus: 'RUNNING' },
+  })
+);
+
+expect(mockPrisma.githubProfile.update).toHaveBeenNthCalledWith(
+  2,
+  expect.objectContaining({
+    where: { id: 'p1' },
+    data: expect.objectContaining({
+      syncStatus: SyncStatus.DONE,
+      syncProgress: 'COMPLETE',
+    }),
+  })
+);
       
       expect(cryptoUtils.decrypt).toHaveBeenCalled();
     });

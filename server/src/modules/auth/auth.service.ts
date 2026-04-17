@@ -8,6 +8,9 @@ import * as crypto from 'crypto';
 import { encrypt, decrypt } from '../../shared/crypto.utils';
 import * as QRCode from 'qrcode';
 
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+
 type Provider = 'LOCAL' | 'GITHUB' | 'GOOGLE';
 
 @Injectable()
@@ -16,7 +19,8 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private config: ConfigService,
-    @Inject('REDIS') private readonly redis: Redis
+    @Inject('REDIS') private readonly redis: Redis,
+    @InjectQueue('email') private readonly emailQueue: Queue,
   ) {}
 
   private readonly logger = new Logger(AuthService.name);
@@ -184,9 +188,14 @@ export class AuthService {
   }
 
   private async issueTokens(userId: string, isEmailVerified: boolean) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found');
+
     const accessToken = this.jwt.sign(
       { 
-        sub: userId, isEmailVerified,
+        sub: userId, 
+        isEmailVerified,
+        role: user.role,
         jti: crypto.randomUUID(), 
        }, 
       { 
@@ -346,8 +355,12 @@ export class AuthService {
   async initiateEmailVerification(userId: string, email: string) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     await this.redis.set(`verify_email:${code}`, userId, 'EX', 3600);
-    //TODO
-    console.log(`[MAIL STUB] To: ${email}, Code: ${code}`);
+    
+    await this.emailQueue.add('send-verification', {
+      to: email,
+      subject: 'Verify your Colosseum account',
+      html: `<p>Your verification code is: <b>${code}</b></p>`,
+    });
   }
 
   async verifyEmail(code: string) {
@@ -439,8 +452,11 @@ export class AuthService {
     const token = crypto.randomBytes(32).toString('hex');
     await this.redis.set(`password_reset:${token}`, user.id, 'EX', 3600); // 1 hour
 
-    // In a real app, send an email here. For now, log it.
-    this.logger.log(`RESET_TOKEN: Generated for ${user.email}: ${token}`);
+    await this.emailQueue.add('send-reset', {
+      to: user.email,
+      subject: 'Reset your Colosseum password',
+      html: `<p>Click <a href="${this.config.get('app.url')}/reset-password?token=${token}">here</a> to reset your password.</p>`,
+    });
     
     return { message: 'If an account with that email exists, a reset link has been sent.' };
   }

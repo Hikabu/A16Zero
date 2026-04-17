@@ -113,6 +113,7 @@ model DeveloperCandidate {
 // ─── GitHub Profile ──────────────────────────────────────────
 enum SyncStatus { 
   PENDING  
+  IN_PROGRESS
   RUNNING  
   DONE  
   FAILED 
@@ -126,9 +127,10 @@ model GithubProfile {
   githubUserId     String             @unique
   encryptedToken   String             // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
   scopes           String[]
-  lastSyncedAt     DateTime?
+  lastSyncAt       DateTime?
   syncStatus       SyncStatus         @default(PENDING)
-  syncProgress     Int                @default(0)
+  syncProgress     String             @default("0")
+  syncError        String?
   rawDataSnapshot  Json?
   createdAt        DateTime           @default(now())
 }

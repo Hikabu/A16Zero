@@ -13,6 +13,9 @@ import { FairnessModule } from './modules/fairness/fairness.module';
 import { RoiModule } from './modules/roi/roi.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { QueuesModule } from './queues/queues.module';
+import { ScoringModule } from './scoring/scoring.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
   providers: [
@@ -49,6 +52,9 @@ import { HealthModule } from './modules/health/health.module';
     RoiModule,
     AuthModule,
     HealthModule,
+    QueuesModule,
+    ScoringModule,
+    EmailModule,
     
   ],
 

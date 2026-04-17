@@ -1,13 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GithubSyncController } from './github-sync.controller';
+import { GithubSyncService } from './github-sync.service';
+
+const mockGithubSyncService = {
+  triggerSync: jest.fn(),
+  getSyncStatus: jest.fn(),
+};
 
 describe('GithubSyncController', () => {
   let controller: GithubSyncController;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [GithubSyncController],
-    }).compile();
+   const module: TestingModule = await Test.createTestingModule({
+  controllers: [GithubSyncController],
+  providers: [
+    {
+      provide: GithubSyncService,
+      useValue: mockGithubSyncService,
+    },
+  ],
+}).compile();
 
     controller = module.get<GithubSyncController>(GithubSyncController);
   });

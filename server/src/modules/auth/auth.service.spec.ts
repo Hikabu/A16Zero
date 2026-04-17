@@ -6,6 +6,11 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
+const mockEmailQueue = {
+  add: jest.fn(),
+  process: jest.fn(),
+};
+
 const mockPrismaService = {
   user: {
     create: jest.fn(),
@@ -69,6 +74,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: 'REDIS', useValue: mockRedis },
+        { provide: 'BullQueue_email', useValue: mockEmailQueue },
       ],
     }).compile();
 

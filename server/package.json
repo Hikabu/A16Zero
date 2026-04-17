@@ -19,11 +19,13 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand",
+    "test:e2e:stage2a": "NODE_ENV=test jest --config ./test/jest-e2e.json --testPathPatterns=github-sync --runInBand",
     "worker": "node dist/worker.js",
     "worker:dev": "ts-node src/worker.ts",
     "env:sync": "ts-node scripts/sync-env.ts"
   },
   "dependencies": {
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.19",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.19",
@@ -36,6 +38,9 @@
     "@otplib/plugin-crypto-noble": "^13.4.0",
     "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.74.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "helmet": "^8.1.0",
     "ioredis": "^5.10.1",
     "nestjs-pino": "^4.6.1",
@@ -50,6 +55,7 @@
     "prisma": "^5.22.0",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.12.0",
     "rxjs": "^7.8.1",
     "zod": "^4.3.6"
   },

@@ -58,8 +58,8 @@ export class GithubAdapterService {
         data: {
           rawDataSnapshot: snapshot as any,
           syncStatus: SyncStatus.DONE,
-          syncProgress: 100,
-          lastSyncedAt: new Date(),
+          syncProgress: 'COMPLETE',
+          lastSyncAt: new Date(),
         },
       });
     } catch (error) {
@@ -191,7 +191,7 @@ export class GithubAdapterService {
     });
   }
 
-  private decryptToken(encryptedToken: string): string {
+  public decryptToken(encryptedToken: string): string {
     const key = process.env.AUTH_ENCRYPTION_KEY;
     if (!key) throw new Error('AUTH_ENCRYPTION_KEY not set');
     
