@@ -14,8 +14,8 @@ export class PrivacyAdjustmentEngineService {
     const privateOrgPushEvents = events.filter((event) => {
       return (
         event.type === 'PushEvent' &&
-        event.repo?.private === true &&
-        event.repo?.owner?.type === 'Organization'
+        event.public === false &&
+        !!event.org
       );
     });
 

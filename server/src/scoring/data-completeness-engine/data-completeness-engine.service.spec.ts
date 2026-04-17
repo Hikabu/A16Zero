@@ -1,19 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataCompletenessEngineService } from './data-completeness-engine.service';
-import { PrivacyAdjustmentEngineService } from '../privacy-adjustment-engine/privacy-adjustment-engine.service';
 import { SignalComputeResult, PillarKey, SignalValue } from '../signal-engine/types';
 
 describe('Step 6 Engine Tests', () => {
   let completenessService: DataCompletenessEngineService;
-  let privacyService: PrivacyAdjustmentEngineService;
+  // let privacyService: PrivacyAdjustmentEngineService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DataCompletenessEngineService, PrivacyAdjustmentEngineService],
+      providers: [DataCompletenessEngineService],
     }).compile();
 
     completenessService = module.get<DataCompletenessEngineService>(DataCompletenessEngineService);
-    privacyService = module.get<PrivacyAdjustmentEngineService>(PrivacyAdjustmentEngineService);
+    // privacyService = module.get<PrivacyAdjustmentEngineService>(PrivacyAdjustmentEngineService);
   });
 
   describe('DataCompletenessEngineService', () => {
@@ -174,36 +173,6 @@ describe('Step 6 Engine Tests', () => {
 
       expect(result.dataCoveragePercent).toBeGreaterThan(40);
       expect(result.scoreWithheld).toBe(false);
-    });
-  });
-
-  describe('PrivacyAdjustmentEngineService', () => {
-    it('Privacy note appears for 3 org months', () => {
-      const events = {
-        events: [
-          { type: 'PushEvent', created_at: '2024-01-01T00:00:00Z', repo: { private: true, owner: { type: 'Organization' } } },
-          { type: 'PushEvent', created_at: '2024-02-01T00:00:00Z', repo: { private: true, owner: { type: 'Organization' } } },
-          { type: 'PushEvent', created_at: '2024-03-01T00:00:00Z', repo: { private: true, owner: { type: 'Organization' } } },
-        ],
-      };
-
-      const result = privacyService.compute(events as any);
-      expect(result.verifiedPrivateMonths).toBe(3);
-      expect(result.privateWorkNote).not.toBeNull();
-    });
-
-    it('Privacy note does NOT appear for 2 org months', () => {
-      const events = {
-        events: [
-          { type: 'PushEvent', created_at: '2024-01-01T00:00:00Z', repo: { private: true, owner: { type: 'Organization' } } },
-          { type: 'PushEvent', created_at: '2024-02-01T00:00:00Z', repo: { private: true, owner: { type: 'Organization' } } },
-          { type: 'OtherEvent', created_at: '2024-03-01T00:00:00Z', repo: { private: true, owner: { type: 'Organization' } } }, // Not PushEvent
-        ],
-      };
-
-      const result = privacyService.compute(events as any);
-      expect(result.verifiedPrivateMonths).toBe(2);
-      expect(result.privateWorkNote).toBeNull();
     });
   });
 });

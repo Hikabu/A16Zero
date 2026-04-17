@@ -110,12 +110,19 @@ export class SignalEngineService {
 
   private runConsistencyChecks(signals: Record<string, SignalValue>): string[] {
     const notes: string[] = [];
-    const acceptance = signals.prAcceptanceRate;
-    const depth = signals.reviewDepth;
+    const acceptance = signals['prAcceptanceRate'];
+    const depth = signals['reviewDepth'];
 
-    if (!acceptance.excluded && !depth.excluded) {
+    if (acceptance && depth && !acceptance.excluded && !depth.excluded) {
       if ((acceptance.value as number) > 0.95 && (depth.value as number) < 0.2) {
         notes.push('Anomaly: High acceptance rate with very low collaboration depth.');
+      }
+    }
+
+    const crFreq = signals['changeRequestFrequency'];
+    if (acceptance && crFreq && !acceptance.excluded && !crFreq.excluded) {
+      if ((acceptance.value as number) > 0.90 && (crFreq.value as number) > 0.5) {
+        notes.push('Anomaly: Unusual acceptance pattern given change request frequency.');
       }
     }
     return notes;
