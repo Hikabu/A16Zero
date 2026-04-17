@@ -2,6 +2,7 @@ export interface GithubRestData {
   repos: any[];
   languages: Record<string, any>; // repoId -> languages
   commits: Record<string, any>;   // repoId -> commits
+  fileTrees?: Record<string, string[]>; // repoId -> filenames in root
 }
 
 export interface GithubGraphQLData {
