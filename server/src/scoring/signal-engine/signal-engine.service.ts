@@ -98,7 +98,7 @@ export class SignalEngineService {
       'activeWeeksRatio', 'commitConsistencyScore', 'prThroughput90d',
       'reviewDepth', 'prReviewCount12m', 'externalPrRatio',
       'prAcceptanceRate', 'changeRequestFrequency', 'reworkRatio',
-      'testFilePresence', 'cicdConfigDetection', 'starsOnOriginalRepos',
+      'activeMonths', 'avgWeeklyCommits', 'testFilePresence', 'cicdConfigDetection', 'starsOnOriginalRepos',
       'highPrestigeRepoContributions', 'newLanguagesAdopted1yr', 'seniorityTrajectory',
       'privateOrgActivity', 'coreProtocolPrMerges', 'securityKeywordReviewDepth',
       'prestigeForkToPrRatio', 'languageEvolutionTrajectory'
@@ -180,7 +180,14 @@ export class SignalEngineService {
       this.setSignal(signals, 'activeWeeksRatio', activeWeeksCount / 52, {
         sampleSize: activeWeeksCount
       });
+      // Always set activeMonths relative to lifetime history
+      this.setSignal(signals, 'activeMonths', Number(totalActiveMonths.toFixed(1)), {
+        sampleSize: Math.floor(totalActiveMonths)
+      });
     } else {
+      this.setSignal(signals, 'activeMonths', Number(totalActiveMonths.toFixed(1)), {
+        sampleSize: Math.floor(totalActiveMonths)
+      });
       this.excludeSignal(signals, excluded, 'activeWeeksRatio', {
         reason: accountAgeMonths < 6 ? 'Account age < 6 months' : 'Less than 6 active months in history',
         sampleSize: Math.floor(totalActiveMonths),
@@ -210,6 +217,10 @@ export class SignalEngineService {
       const stdDev = this.calculateStdDev(counts52);
       const score = Math.max(0, Math.min(1, 1 - (stdDev / (median + 0.001))));
       this.setSignal(signals, 'commitConsistencyScore', score, {
+        sampleSize: weeksWithCommits
+      });
+      // Set avgWeeklyCommits based on median of last 52 weeks
+      this.setSignal(signals, 'avgWeeklyCommits', median, {
         sampleSize: weeksWithCommits
       });
     } else {

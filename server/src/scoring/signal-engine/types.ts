@@ -24,10 +24,12 @@ export type SignalKey =
   | 'coreProtocolPrMerges'
   | 'securityKeywordReviewDepth'
   | 'prestigeForkToPrRatio'
-  | 'languageEvolutionTrajectory';
+  | 'languageEvolutionTrajectory'
+  | 'activeMonths'
+  | 'avgWeeklyCommits';
 
 export interface SignalValue {
-  value: number | boolean | null;
+  value: number | boolean | string | null;
   confidence: number;
   excluded: boolean;
   exclusionReason?: string;

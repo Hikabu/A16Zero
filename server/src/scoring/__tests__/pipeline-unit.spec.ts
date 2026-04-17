@@ -4,7 +4,6 @@ import { SignalEngineService } from '../signal-engine/signal-engine.service';
 import { DataCompletenessEngineService } from '../data-completeness-engine/data-completeness-engine.service';
 import { PrivacyAdjustmentEngineService } from '../privacy-adjustment-engine/privacy-adjustment-engine.service';
 import { FraudTier } from '../firewall/types';
-import { VisibilityTier } from '../data-completeness-engine/types';
 import { PillarKey } from '../signal-engine/types';
 
 describe('Pipeline Checkpoint B', () => {
