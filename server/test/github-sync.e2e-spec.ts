@@ -14,6 +14,12 @@ import { encrypt } from '../src/shared/crypto.utils';
 import { execSync } from 'child_process';
 import { getQueueToken } from '@nestjs/bullmq';
 
+const expectedGraphQL = {
+  pullRequests: GITHUB_GRAPHQL_FIXTURE.pullRequests.length,
+  reviewsGiven: GITHUB_GRAPHQL_FIXTURE.reviewsGiven.length,
+  contributions: GITHUB_GRAPHQL_FIXTURE.contributionCalendar.totalContributions,
+};
+
 describe('GithubSync (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -138,41 +144,57 @@ await redis.quit();
   });
 
   it('Step 4-5: Invoke processor and verify state', async () => {
-    // Manually invoke processor
-    const mockJob: any = {
-      id: 'job-1',
-      data: { 
-        candidateId: testCandidate.id, 
-        githubProfileId: testGithubProfile.id 
-      },
-    };
+  const mockJob: any = {
+    id: 'job-1',
+    data: {
+      candidateId: testCandidate.id,
+      githubProfileId: testGithubProfile.id,
+    },
+  };
 
-    await processor.process(mockJob);
+  await processor.process(mockJob);
 
-    // Assert after processing
-    const updatedProfile = await prisma.githubProfile.findUnique({
-      where: { id: testGithubProfile.id },
-    });
-
-    expect(updatedProfile?.syncStatus).toBe(SyncStatus.DONE);
-    expect(updatedProfile?.syncProgress).toBe('COMPLETE');
-    expect(updatedProfile?.rawDataSnapshot).toBeDefined();
-    
-    const snapshot = updatedProfile?.rawDataSnapshot as any;
-    expect(snapshot.rest.repos).toHaveLength(5);
-    expect(snapshot.graphql.pullRequests.length).toBeGreaterThanOrEqual(12);
-    expect(snapshot.graphql.reviewsGiven.length).toBeGreaterThanOrEqual(6);
-    expect(snapshot.events.events.length).toBeGreaterThanOrEqual(15);
-
-    expect(new Date(updatedProfile!.lastSyncAt!).getTime()).toBeGreaterThan(Date.now() - 5000);
-
-    // Verify signal-compute queue
-    expect(signalQueueMock.add).toHaveBeenCalledWith(
-      'compute-signals',
-      expect.objectContaining({ githubProfileId: testGithubProfile.id })
-    );
+  const updatedProfile = await prisma.githubProfile.findUnique({
+    where: { id: testGithubProfile.id },
   });
 
+  expect(updatedProfile?.syncStatus).toBe(SyncStatus.DONE);
+  expect(updatedProfile?.syncProgress).toBe('COMPLETE');
+  expect(updatedProfile?.rawDataSnapshot).toBeDefined();
+
+  const snapshot = updatedProfile!.rawDataSnapshot as any;
+
+  // REST layer
+  expect(snapshot.rest.repos.length).toBe(
+    GITHUB_REST_FIXTURE.repos.length ?? 5
+  );
+
+  // GRAPHQL layer (deterministic)
+  expect(snapshot.graphql.pullRequests.length).toBe(
+    expectedGraphQL.pullRequests
+  );
+
+  expect(snapshot.graphql.reviewsGiven.length).toBe(
+    expectedGraphQL.reviewsGiven
+  );
+
+  expect(snapshot.graphql.contributionCalendar.totalContributions).toBe(
+    expectedGraphQL.contributions
+  );
+
+  // EVENTS (make it fixture-driven if possible)
+  expect(snapshot.events.events.length).toBe(
+    GITHUB_EVENTS_FIXTURE.events.length
+  );
+
+  expect(new Date(updatedProfile!.lastSyncAt!).getTime())
+    .toBeGreaterThan(Date.now() - 5000);
+
+  expect(signalQueueMock.add).toHaveBeenCalledWith(
+    'compute-signals',
+    expect.objectContaining({ githubProfileId: testGithubProfile.id })
+  );
+});
   it('Step 6: POST /api/me/github/sync again (Rate Limit)', async () => {
     const response = await supertest(app.getHttpServer())
       .post('/me/github/sync')

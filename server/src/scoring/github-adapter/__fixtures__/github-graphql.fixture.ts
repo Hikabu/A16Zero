@@ -2,26 +2,50 @@ import { GithubGraphQLData } from '../types';
 
 export const GITHUB_GRAPHQL_FIXTURE: GithubGraphQLData = {
   pullRequests: [
-    { id: 'pr1', state: 'MERGED', title: 'Feature: Authentication', createdAt: '2023-01-01T10:00:00Z', mergedAt: '2023-01-02T10:00:00Z' },
-    { id: 'pr2', state: 'MERGED', title: 'Bugfix: Session leak', createdAt: '2023-01-05T10:00:00Z', mergedAt: '2023-01-06T10:00:00Z' },
-    { id: 'pr3', state: 'MERGED', title: 'Docs: API Reference', createdAt: '2023-02-01T10:00:00Z', mergedAt: '2023-02-02T10:00:00Z' },
-    { id: 'pr4', state: 'MERGED', title: 'Refactor: Database', createdAt: '2023-03-01T10:00:00Z', mergedAt: '2023-03-02T10:00:00Z' },
-    { id: 'pr5', state: 'MERGED', title: 'Feat: Multi-tenancy', createdAt: '2023-04-01T10:00:00Z', mergedAt: '2023-04-02T10:00:00Z' },
-    { id: 'pr6', state: 'MERGED', title: 'Fix: Race condition', createdAt: '2023-05-01T10:00:00Z', mergedAt: '2023-05-02T10:00:00Z' },
-    { id: 'pr7', state: 'MERGED', title: 'Feat: Webhooks', createdAt: '2023-06-01T10:00:00Z', mergedAt: '2023-06-02T10:00:00Z' },
-    { id: 'pr8', state: 'MERGED', title: 'Fix: Memory leak', createdAt: '2023-07-01T10:00:00Z', mergedAt: '2023-07-02T10:00:00Z' },
-    { id: 'pr9', state: 'OPEN', title: 'WIP: Dashboard', createdAt: '2024-01-01T10:00:00Z' },
-    { id: 'pr10', state: 'OPEN', title: 'Feat: Analytics', createdAt: '2024-01-05T10:00:00Z' },
-    { id: 'pr11', state: 'OPEN', title: 'Fix: CSS alignment', createdAt: '2024-01-10T10:00:00Z' },
-    { id: 'pr12', state: 'CLOSED', title: 'Old Feature Draft', createdAt: '2022-12-01T10:00:00Z', closedAt: '2022-12-05T10:00:00Z' },
+    { 
+      id: 'pr1', state: 'MERGED', title: 'Feature: Authentication', createdAt: '2023-01-01T10:00:00Z', mergedAt: '2023-01-02T10:00:00Z',
+      repository: { name: 'colossseum', owner: { login: 'arturo' }, stargazerCount: 10 }
+    },
+    { 
+      id: 'pr2', state: 'MERGED', title: 'Security: Fix reentrancy', createdAt: '2023-01-05T10:00:00Z', mergedAt: '2023-01-06T10:00:00Z',
+      repository: { name: 'solana', owner: { login: 'solana-labs' }, stargazerCount: 15000 }
+    },
+    { 
+      id: 'pr3', state: 'MERGED', title: 'Improvement: Anchor IDL', createdAt: '2023-02-01T10:00:00Z', mergedAt: '2023-02-02T10:00:00Z',
+      repository: { name: 'anchor', owner: { login: 'coral-xyz' }, stargazerCount: 8000 }
+    },
+    { 
+      id: 'pr4', state: 'MERGED', title: 'Refactor: Database', createdAt: '2023-03-01T10:00:00Z', mergedAt: '2023-03-02T10:00:00Z',
+      repository: { name: 'postgres', owner: { login: 'postgres' }, stargazerCount: 12000 }
+    },
+    { id: 'pr_other_1', state: 'MERGED', title: 'Fix: Typo', repository: { name: 'other', owner: { login: 'random' }, stargazerCount: 5 } }
   ],
   reviewsGiven: [
-    { name: 'repo-1', owner: { login: 'other' } },
-    { name: 'repo-2', owner: { login: 'other' } },
-    { name: 'repo-3', owner: { login: 'other' } },
-    { name: 'repo-4', owner: { login: 'other' } },
-    { name: 'repo-5', owner: { login: 'other' } },
-    { name: 'repo-6', owner: { login: 'other' } },
+    { 
+      body: 'Great PR. We should check for reentrancy here though.', 
+      createdAt: '2023-05-01T10:00:00Z',
+      pullRequest: { repository: { name: 'solana', owner: { login: 'solana-labs' }, stargazerCount: 15000 } }
+    },
+    { 
+      body: 'Nit: naming could be better.', 
+      createdAt: '2023-06-01T10:00:00Z',
+      pullRequest: { repository: { name: 'react', owner: { login: 'facebook' }, stargazerCount: 200000 } }
+    },
+    { 
+      body: 'This bottleneck in the loop should be optimized. Maybe use memoization?', 
+      createdAt: '2023-07-01T10:00:00Z',
+      pullRequest: { repository: { name: 'nest', owner: { login: 'nestjs' }, stargazerCount: 60000 } }
+    },
+    { 
+      body: 'Check for overflow in this arithmetic operation.', 
+      createdAt: '2023-08-01T10:00:00Z',
+      pullRequest: { repository: { name: 'go-ethereum', owner: { login: 'ethereum' }, stargazerCount: 45000 } }
+    },
+    { 
+      body: 'Simple approval.', 
+      createdAt: '2023-09-01T10:00:00Z',
+      pullRequest: { repository: { name: 'other', owner: { login: 'random' }, stargazerCount: 10 } }
+    }
   ],
   contributionCalendar: {
     totalContributions: 1500,

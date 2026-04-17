@@ -7,6 +7,35 @@ import { SyncStatus } from '@prisma/client';
 
 const MockOctokit = Octokit as unknown as jest.Mock;
 
+const mockOctokitInstance = {
+  rest: {
+    repos: {
+      listForAuthenticatedUser: jest.fn().mockResolvedValue({ data: [] }),
+      listLanguages: jest.fn().mockResolvedValue({ data: {} }),
+      listCommits: jest.fn().mockResolvedValue({ data: [] }),
+    },
+    activity: {
+      listEventsForAuthenticatedUser: jest.fn().mockResolvedValue({ data: [] }),
+    },
+  },
+  graphql: jest.fn().mockResolvedValue({
+    user: {
+      pullRequests: {
+        nodes: [],
+      },
+      pullRequestReviewContributions: {
+        nodes: [],
+      },
+      contributionsCollection: {
+        contributionCalendar: {
+          totalContributions: 0,
+          weeks: [],
+        },
+      },
+    },
+  }),
+};
+
 jest.mock('octokit');
 jest.mock('../../shared/crypto.utils');
 
@@ -29,6 +58,7 @@ describe('GithubAdapterService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    (MockOctokit as jest.Mock).mockImplementation(() => mockOctokitInstance);
     
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -107,26 +137,7 @@ describe('GithubAdapterService', () => {
       
       redis.get.mockResolvedValue(null); // Force fetch
       
-      // Mock Octokit instance
-      const mockOctokitInstance = {
-        rest: {
-          repos: {
-            listForAuthenticatedUser: jest.fn().mockResolvedValue({ data: [] }),
-            listLanguages: jest.fn().mockResolvedValue({ data: {} }),
-            listCommits: jest.fn().mockResolvedValue({ data: [] }),
-          },
-          activity: {
-            listPublicEventsForUser: jest.fn().mockResolvedValue({ data: [] }),
-          },
-        },
-        graphql: jest.fn().mockResolvedValue({
-          user: {
-            pullRequests: { nodes: [] },
-            reviewsGiven: { nodes: [] },
-            contributionsCollection: { contributionCalendar: {} },
-          },
-        }),
-      };
+      
       // (Octokit as unknown as jest.Mock)
 MockOctokit.mockImplementation(() => mockOctokitInstance);
 

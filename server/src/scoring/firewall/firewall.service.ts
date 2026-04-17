@@ -40,6 +40,9 @@ export class FirewallService {
     // Filter 5: HackathonDetector
     this.applyHackathonDetector(result);
 
+    // Filter 6: AirdropFarmerFilter
+    this.applyAirdropFarmerFilter(result);
+
     // Calculate final fraud score and tier
     result.fraudScore = Math.min(1, result.flaggedRepos.reduce((acc, f) => acc + f.fraudScoreIncrement, 0));
     
@@ -289,6 +292,60 @@ export class FirewallService {
         });
       }
     }
+  }
+
+  private applyAirdropFarmerFilter(result: FirewallResult) {
+    const repos = result.cleanedData.rest.repos;
+    const fileTrees = result.cleanedData.rest.fileTrees || {};
+
+    // Common file signatures in airdrop farm/sybil scripts
+    const airdropSignatures = [
+      ['check_eligibility.js', 'wallets.csv', 'proxies.txt'],
+      ['mass_claim.py', 'config.yaml', 'addresses.json'],
+      ['sybil_checker.ts', 'contract_abi.json', 'sender.ts'],
+      ['points_script.js', 'env_example', 'accounts.txt'],
+      ['airdrop_checker.js', 'index.js', 'package.json', 'node_modules'] // Basic structural similarity
+    ];
+
+    const airdropKeywords = ['airdrop', 'claim', 'sybil', 'mass-mint', 'points-farm', 'checker'];
+
+    for (const repo of repos) {
+      const files = fileTrees[repo.id.toString()] || [];
+      if (files.length === 0) continue;
+
+      let maxJaccard = 0;
+      for (const sig of airdropSignatures) {
+        const j = this.jaccardSimilarity(files, sig);
+        if (j > maxJaccard) maxJaccard = j;
+      }
+
+      const nameMatch = airdropKeywords.some(kw => repo.name.toLowerCase().includes(kw));
+
+      // If > 80% file match or (name match + > 50% file match)
+      if (maxJaccard > 0.8 || (nameMatch && maxJaccard > 0.5)) {
+        repo.excludeFromSignals = true;
+        result.flaggedRepos.push({
+          repoId: repo.id.toString(),
+          repoName: repo.name,
+          flag: 'AIRDROP_FARMER',
+          fraudScoreIncrement: 0.4, // Significant penalty
+        });
+        result.firewallLog.push({
+          filter: 'AirdropFarmerFilter',
+          action: 'FLAGGED',
+          repoId: repo.id.toString(),
+          reason: `Detected as airdrop farming script (Jaccard: ${maxJaccard.toFixed(2)})`,
+        });
+      }
+    }
+  }
+
+  private jaccardSimilarity(a: string[], b: string[]): number {
+    const s1 = new Set(a.map(x => x.toLowerCase()));
+    const s2 = new Set(b.map(x => x.toLowerCase()));
+    const intersection = new Set([...s1].filter(x => s2.has(x)));
+    const union = new Set([...s1, ...s2]);
+    return intersection.size / union.size;
   }
 
   private levenshtein(s1: string, s2: string): number {

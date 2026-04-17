@@ -116,15 +116,46 @@ export class GithubAdapterService {
                 createdAt
                 closedAt
                 mergedAt
+                repository {
+                  name
+                  owner { login }
+                  stargazerCount
+                }
                 reviewRequests { totalCount }
-                reviews { totalCount }
-                commits { totalCount }
+                reviews(last: 10) { 
+                  nodes {
+                    state
+                    createdAt
+                    author { login }
+                  }
+                }
+                commits(last: 100) {
+                  nodes {
+                    commit {
+                      pushedDate
+                      committedDate
+                    }
+                  }
+                }
               }
             }
-            reviewsGiven: contributedRepositories(last: 100) {
+            pullRequestReviewContributions(last: 100) {
               nodes {
-                name
-                owner { login }
+                pullRequest {
+                  id
+                  repository {
+                    name
+                    owner { login }
+                    stargazerCount
+                  }
+                }
+                body
+                createdAt
+                comments(last: 10) {
+                  nodes {
+                    body
+                  }
+                }
               }
             }
             contributionsCollection {
@@ -151,7 +182,7 @@ export class GithubAdapterService {
 
       return {
         pullRequests: result.user.pullRequests.nodes,
-        reviewsGiven: result.user.reviewsGiven.nodes,
+        reviewsGiven: result.user.pullRequestReviewContributions.nodes,
         contributionCalendar: result.user.contributionsCollection.contributionCalendar,
       };
     });
@@ -166,7 +197,7 @@ export class GithubAdapterService {
 
       for (let page = 1; page <= 10; page++) {
         const res = await this.withRetry(() => 
-          octokit.rest.activity.listPublicEventsForUser({
+          octokit.rest.activity.listEventsForAuthenticatedUser({
             username: githubUsername,
             per_page: 100,
             page,
@@ -178,6 +209,7 @@ export class GithubAdapterService {
         const filtered = res.data.filter(event => {
           const createdAt = new Date(event.created_at!);
           if (createdAt < ninetyDaysAgo) return false;
+          // We now include private events (listEventsForAuthenticatedUser returns them if scoped)
           return event.type === 'PushEvent' || event.type === 'PullRequestEvent';
         });
 
