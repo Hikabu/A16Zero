@@ -125,16 +125,24 @@ export class AuthService {
     }
 
     if (user.mfaEnabled) {
-      const mfaToken = this.jwt.sign({ sub: user.id, type: 'mfa' }, { expiresIn: '5m' });
+      const mfaToken = this.jwt.sign(
+        { sub: user.id, type: 'mfa', jti: crypto.randomUUID() },
+        { 
+          secret: this.config.get('jwt_secret.mfa'),
+          expiresIn: '5m' 
+        }
+      );
       return { mfaRequired: true, mfaToken };
     }
 
-    return this.issueTokens(user.id, (user as any).isEmailVerified);
+    return await this.issueTokens(user.id, (user as any).isEmailVerified);
   }
 
   async verifyMfa(userId: string, code: string, mfaToken: string) {
     try {
-      const payload: any = this.jwt.verify(mfaToken);
+      const payload: any = this.jwt.verify(mfaToken, {
+        secret: this.config.get('jwt_secret.mfa')
+      });
       if (payload.sub !== userId || payload.type !== 'mfa') throw new UnauthorizedException();
     } catch {
       throw new UnauthorizedException('Invalid MFA session');
@@ -147,16 +155,16 @@ export class AuthService {
     const isValid = this.getAuthenticator().verify({ token: code, secret });
     if (!isValid) throw new UnauthorizedException('Invalid MFA code');
 
-    return this.issueTokens(user.id, (user as any).isEmailVerified);
+    return await this.issueTokens(user.id, (user as any).isEmailVerified);
   }
 
   async refresh(user: any) {
     const userId = user.id;
-    const providedToken = user.refreshToken;
-    const stored = await this.redis.get(`refresh:${userId}`);
+    const storedJti = await this.redis.get(`refresh:${userId}`);
+    const decodedJti = this.jwt.decode(user.refreshToken)?.jti;
 
-    if (!stored || stored !== providedToken) {
-      if (stored) {
+    if (!storedJti || storedJti !== decodedJti) {
+      if (storedJti) {
         // Token reuse detected. Hijack scenario! Revoke all sessions.
         await this.redis.del(`refresh:${userId}`);
         this.logger.warn(`MFA_BYPASS_ATTEMPT / TOKEN REUSE DETECTED: Revoked sessions for user ${userId}`);
@@ -167,7 +175,7 @@ export class AuthService {
     const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!dbUser) throw new UnauthorizedException('User not found');
 
-    return this.issueTokens(userId, (dbUser as any).isEmailVerified);
+    return await this.issueTokens(userId, (dbUser as any).isEmailVerified);
   }
 
   async logout(user: any) {
@@ -176,10 +184,27 @@ export class AuthService {
   }
 
   private async issueTokens(userId: string, isEmailVerified: boolean) {
-    const accessToken = this.jwt.sign({ sub: userId, isEmailVerified }, { expiresIn: '15m' });
-    const refreshToken = this.jwt.sign({ sub: userId }, { expiresIn: '7d' });
-
-    await this.redis.set(`refresh:${userId}`, refreshToken, 'EX', 60 * 60 * 24 * 7);
+    const accessToken = this.jwt.sign(
+      { 
+        sub: userId, isEmailVerified,
+        jti: crypto.randomUUID(), 
+       }, 
+      { 
+        secret: this.config.get('jwt_secret.access'),
+        expiresIn: '15m' 
+      }
+    );
+    const refreshJti = crypto.randomUUID();
+    const refreshToken = this.jwt.sign(
+      { sub: userId,
+        jti: refreshJti
+       }, 
+      { 
+        secret: this.config.get('jwt_secret.refresh'),
+        expiresIn: '7d',
+       }
+    );
+    await this.redis.set(`refresh:${userId}`, refreshJti, 'EX', 60 * 60 * 24 * 7);
     return { accessToken, refreshToken };
   }
 
@@ -236,7 +261,12 @@ export class AuthService {
       900
     );
 
-    const tempToken = this.jwt.sign({ claimId, type: 'onboarding' }, { expiresIn: '15m' });
+    const tempToken = this.jwt.sign({ 
+      claimId, type: 'onboarding', jti: crypto.randomUUID() 
+    }, { 
+      secret: this.config.get("jwt_secret.onboarding"),
+      expiresIn: '15m' 
+    });
     return { needsOnboarding: true, tempToken };
   }
 
@@ -270,7 +300,11 @@ export class AuthService {
     const token = authHeader.split(' ')[1];
 
     let payload: any;
-    try { payload = this.jwt.verify(token); } catch { throw new UnauthorizedException('Invalid token'); }
+    try { 
+      payload = this.jwt.verify(token, {
+        secret: this.config.get('jwt_secret.onboarding'),
+      }); 
+    } catch { throw new UnauthorizedException('Invalid token'); }
     if (payload.type !== 'onboarding') throw new UnauthorizedException();
 
     const raw = await this.redis.get(`onboarding_claim:${payload.claimId}`);
@@ -312,6 +346,7 @@ export class AuthService {
   async initiateEmailVerification(userId: string, email: string) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     await this.redis.set(`verify_email:${code}`, userId, 'EX', 3600);
+    //TODO
     console.log(`[MAIL STUB] To: ${email}, Code: ${code}`);
   }
 
@@ -361,7 +396,9 @@ export class AuthService {
 
   async verifyMfaRecovery(userId: string, backupCode: string, mfaToken: string) {
     try {
-      const payload: any = this.jwt.verify(mfaToken);
+      const payload: any = this.jwt.verify(mfaToken, {
+        secret: this.config.get('jwt_secret.mfa'),
+      });
       if (payload.sub !== userId || payload.type !== 'mfa') throw new UnauthorizedException();
     } catch {
       throw new UnauthorizedException('Invalid MFA session');
@@ -385,7 +422,7 @@ export class AuthService {
       data: { mfaBackupCodes: updatedCodes } as any
     });
 
-    return this.issueTokens(user.id, (user as any).isEmailVerified);
+    return await this.issueTokens(user.id, (user as any).isEmailVerified);
   }
 
   // --- Password Reset ---
@@ -436,5 +473,22 @@ export class AuthService {
     this.logger.log(`PASSWORD_RESET_SUCCESS: User ${userId} reset their password`);
     
     return { message: 'Password reset successfully' };
+  }
+
+  async githubLink(userId){
+    const state = await this.generateLinkState(userId);
+        const base = this.config.get('github.authorizationURL') || 'https://github.com/login/oauth/authorize';
+        const clientId = this.config.get('github.clientID');
+        const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
+        
+        return {
+          url: `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`,
+        };
+  }
+
+  async googleLink(userId){
+    const state = await this.generateLinkState(userId);
+        // Google linking would follow similar pattern
+      return { state, message: 'Redirect to Google OAuth with this state' };
   }
 }

@@ -1,8 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { resetBefore, resetAfter } from './shared';
+import { resetBefore, resetAfter, resetBeforeNoThrottle } from './shared';
 import { AuthService } from '../src/modules/auth/auth.service';
-import { ThrottlerGuard } from '@nestjs/throttler';
 
 describe('Auth Security (e2e)', () => {
   let app: INestApplication;
@@ -20,23 +19,29 @@ describe('Auth Security (e2e)', () => {
 
   describe('Rate Limiting', () => {
     it('should trigger internal rate limit on login after 5 failures', async () => {
-  app.get(ThrottlerGuard).canActivate = () => true;
+      const setup = await resetBeforeNoThrottle();
       const email = `fail-${testId}@example.com`;
       
+      let res;
+      for (let i = 0; i < 6; i++) {
+        res = await request(setup.app.getHttpServer())
+          .post('/auth/login')
+          .send({ identifier: email, password: 'wrong-password' });
+        if (i < 5){
+          expect(res.status).toBe(401);
+           expect(res.body.message).toContain('Invalid credentials');
+        }
+      }
 
-
-      // 6th attempt should be blocked by AuthService internal logic
-      const res = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ identifier: email, password: 'wrong-password' });
       
       expect(res.status).toBe(401);
-      expect(res.body.message).toContain('Too many login attempts');
+     expect(res.body.message).toContain('Too many login attempts');
+      await resetAfter(setup.app);
     });
 
     it('should trigger ThrottlerGuard on registration', async () => {
-      // Limit is 10 per minute globally, but let's just spam it
-      for (let i = 0; i < 10; i++) {
+      // Limit is 5 per minute globally, but let's just spam it
+      for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
           .post('/auth/register')
           .send({ 
@@ -69,7 +74,7 @@ describe('Auth Security (e2e)', () => {
       
       const authService = app.get(AuthService);
 
-      const prisma =  await authService.prisma;
+      const prisma = authService.prisma;
       await prisma.user.update({ where: { email }, data: { isEmailVerified: true } as any });
 
       // 1. First login
@@ -86,14 +91,15 @@ describe('Auth Security (e2e)', () => {
         .expect(201);
       const rt2 = res2.body.refreshToken;
 
-      // 3. Attempt to reuse RT1 (Simulated attacker!)
+
+      // // 3. Attempt to reuse RT1 (Simulated attacker!)
       const res3 = await request(app.getHttpServer())
         .post('/auth/refresh')
         .set('Authorization', `Bearer ${rt1}`);
       
       expect(res3.status).toBe(401);
 
-      // 4. RT2 should now also be invalid because of reuse detection
+      // // 4. RT2 should now also be invalid because of reuse detection
       const res4 = await request(app.getHttpServer())
         .post('/auth/refresh')
         .set('Authorization', `Bearer ${rt2}`)

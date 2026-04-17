@@ -20,6 +20,8 @@ describe('AuthController', () => {
     setupMfa: jest.fn(),
     activateMfa: jest.fn(),
     verifyMfa: jest.fn(),
+    githubLink: jest.fn(),
+    googleLink: jest.fn()
   };
 
   const mockConfigService = {
@@ -45,20 +47,30 @@ describe('AuthController', () => {
   });
 
   describe('Secure Linking', () => {
-    it('should generate secure state for link', async () => {
-      const req = { user: { id: 'user_1' } };
-      const result = await controller.linkGithub(req);
-      
-      expect(authService.generateLinkState).toHaveBeenCalledWith('user_1');
-      expect(result.url).toContain('state=mock_state');
-    });
+  it('should generate secure state for link', async () => {
+  const req = { user: { id: 'user_1' } };
 
-    it('should verify state in callback', async () => {
-      const req = { user: { id: 'user_1' } };
-      await controller.linkGithubCallback(req, 'mock_state');
-      expect(authService.linkOAuth).toHaveBeenCalledWith('user_1', req.user, 'GITHUB', 'mock_state');
-    });
+  const result = await controller.linkGithub(req);
+
+  expect(mockAuthService.githubLink).toHaveBeenCalledWith('user_1');
+});
+
+  it('should verify state in callback', async () => {
+    const req = {
+      authUser: { id: 'user_1' },
+      user: { id: 'user_1' }, // IMPORTANT: callback uses BOTH
+    };
+
+    await controller.linkGithubCallback(req, 'mock_state');
+
+    expect(authService.linkOAuth).toHaveBeenCalledWith(
+      'user_1',        // authUser.id
+      req.user,        // profile
+      'GITHUB',
+      'mock_state',
+    );
   });
+});
 
   describe('MFA & Verification', () => {
     it('should call verifyEmail', async () => {

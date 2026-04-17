@@ -15,7 +15,9 @@ import { requestPasswordResetSchema, resetPasswordSchema } from './schemas/passw
 import type { RequestPasswordResetDto, ResetPasswordDto } from './schemas/password-reset.schema';
 import { Throttle } from '@nestjs/throttler';
 import { SkipThrottle } from '@nestjs/throttler';
-
+import { GithubLinkGuard } from './guards/github.link.guard';
+import { GoogleLinkGuard } from './guards/google.link.guard';
+import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
 
 @Throttle({ default: { limit: 5, ttl: 60000 } })
 @Controller('auth')
@@ -42,6 +44,8 @@ export class AuthController {
   @UseGuards(AuthGuard('refresh'))
   @Post('refresh')
   refresh(@Req() req: any) {
+      console.log("RAW HEADER:", req.headers.authorization);
+  console.log("USER TOKEN:", req.user.refreshToken);
     return this.authService.refresh(req.user);
   }
 
@@ -56,7 +60,7 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @VerifiedAuth()
   @Post('logout')
   logout(@Req() req: any) {
     return this.authService.logout(req.user);
@@ -92,46 +96,39 @@ export class AuthController {
   @Get('google/callback')
   @SkipThrottle() 
   googleCallback(@Req() req: any) {
+    
     return this.authService.oauthLogin(req.user, 'GOOGLE');
   }
 
   // --- Secure Account Linking ---
 
-  @UseGuards(AuthGuard('jwt'))
+  @VerifiedAuth()
   @Get('github/link')
   async linkGithub(@Req() req: any) {
-    const state = await this.authService.generateLinkState(req.user.id);
-    const base = this.config.get('github.authorizationURL') || 'https://github.com/login/oauth/authorize';
-    const clientId = this.config.get('github.clientID');
-    const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
+    return this.authService.githubLink(req.user.id);
     
-    return {
-      url: `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`,
-    };
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @VerifiedAuth()
   @Get('google/link')
   async linkGoogle(@Req() req: any) {
-    const state = await this.authService.generateLinkState(req.user.id);
-    // Google linking would follow similar pattern
-    return { state, message: 'Redirect to Google OAuth with this state' };
+    return this.authService.googleLink(req.user.id);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @VerifiedAuth()
+  @UseGuards(GithubLinkGuard)  
   @Get('github/link/callback')
   @SkipThrottle()
   async linkGithubCallback(@Req() req: any, @Query('state') state: string) {
-    // Use the social profile from the request (attached by Passport)
-    // and the userId from our session JWT.
-    return this.authService.linkOAuth(req.user.id, req.user, 'GITHUB', state);
+    return this.authService.linkOAuth(req.authUser.id, req.user, 'GITHUB', state);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @VerifiedAuth()
+  @UseGuards(GoogleLinkGuard)  
   @Get('google/link/callback')
   @SkipThrottle()
   async linkGoogleCallback(@Req() req: any, @Query('state') state: string) {
-    return this.authService.linkOAuth(req.user.id, req.user, 'GOOGLE', state);
+    return this.authService.linkOAuth(req.authUser.id, req.user, 'GOOGLE', state);
   }
 
   // --- Email Verification ---
@@ -143,13 +140,13 @@ export class AuthController {
 
   // --- MFA ---
 
-  @UseGuards(AuthGuard('jwt'))
+  @VerifiedAuth()
   @Get('mfa/setup')
   setupMfa(@Req() req: any) {
     return this.authService.setupMfa(req.user.id);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @VerifiedAuth()
   @Post('mfa/activate')
   activateMfa(@Req() req: any, @Body(new ZodValidationPipe(activateMfaSchema)) dto: ActivateMfaDto) {
     return this.authService.activateMfa(req.user.id, dto.code);

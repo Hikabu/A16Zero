@@ -26,7 +26,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-      JWT_SECRET: test_secret
+      JWT_ACCESS_SECRET: test_secret
       NODE_ENV: test
 
     steps:

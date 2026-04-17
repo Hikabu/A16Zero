@@ -1,7 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { resetBefore, resetAfter } from './shared';
+import { Test } from '@nestjs/testing';
+import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import * as crypto from 'crypto';
+import { GithubLinkGuard } from '../src/modules/auth/guards/github.link.guard';
+import { MockGithubGuard } from './shared';
 
 
 describe('Auth Hijacking Prevention (e2e)', () => {
@@ -10,7 +15,20 @@ describe('Auth Hijacking Prevention (e2e)', () => {
   let id: String;
 
   beforeEach(async () => {
-     ({ app, prisma, id } = await resetBefore());
+     const moduleFixture = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideGuard(GithubLinkGuard)
+      .useClass(MockGithubGuard)
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+
+    prisma = app.get(PrismaService);
+    await prisma.$connect();
+
+    id = crypto.randomBytes(16).toString('hex');
   });
 
   afterEach(async () => {

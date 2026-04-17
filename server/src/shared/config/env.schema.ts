@@ -21,7 +21,7 @@ export const envSchema = z.object({
     GOOGLE_CLIENT_SECRET: z.string(),
 
 
-    JWT_SECRET: z.string(),
+    JWT_ACCESS_SECRET: z.string(),
     JWT_REFRESH_SECRET: z.string(),
     JWT_EXPIRY: z.string(),
     JWT_REFRESH_EXPIRY: z.string(),

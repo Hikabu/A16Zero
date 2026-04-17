@@ -5,16 +5,17 @@ import { AppModule } from './../src/app.module';
 import { App } from 'supertest/types';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as crypto from 'crypto';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 export const resetBefore = async()=>{
-    execSync('npx prisma migrate reset --force', {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      DATABASE_URL: 'postgresql://user:password@localhost:5432/a16zero_test'
-    }
-  });
+  //   execSync('npx prisma migrate reset --force', {
+  //   stdio: 'inherit',
+  //   env: {
+  //     ...process.env,
+  //     DATABASE_URL: 'postgresql://user:password@localhost:5432/a16zero_test'
+  //   }
+  // });
   const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -24,6 +25,7 @@ export const resetBefore = async()=>{
     await app.init();
 
     const prisma: PrismaService = app.get(PrismaService);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "User" CASCADE;`);
       await prisma.$connect();
     const id = crypto.randomBytes(16).toString('hex');
 const shortId = crypto
@@ -53,15 +55,45 @@ export const resetAfter = async(app: INestApplication<App>)=>{
 
 }    
 
+@Injectable()
+export class MockGithubGuard {
+  canActivate(context: ExecutionContext) {
+    const req = context.switchToHttp().getRequest();
 
+    // simulate JWT user (VERY IMPORTANT)
+    req.authUser = {
+      id: 'test-user-id',
+      isEmailVerified: true,
+    };
 
+    // simulate GitHub user
+    req.user = {
+      githubId: 'mock-id',
+      email: 'mock@example.com',
+    };
 
-// export const getTestUser = (id: String)=>{
-//   return {
-//       email: `test-${Date.now()}-${id}-@example.com`,
-//       username: `user-${Date.now()}=${id}`,
-//       password: 'Password123!',
-//       role: "CANDIDATE"
-//     };
-// }
+    return true;
+  }
+}
 
+export const resetBeforeNoThrottle = async () => {
+  const moduleFixture = await Test.createTestingModule({
+  imports: [
+    ThrottlerModule.forRoot({
+      throttlers: [], // 🚨 disables it completely
+    }),
+    AppModule,
+  ],
+}).compile();
+  // const moduleFixture = await Test.createTestingModule({
+  //   imports: [AppModule],
+  // })
+  //   .overrideProvider(APP_GUARD)
+  //   .useValue({ canActivate: () => true })
+  //   .compile();
+
+  const app = moduleFixture.createNestApplication();
+  await app.init();
+
+  return { app };
+};
