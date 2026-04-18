@@ -46,13 +46,26 @@ const shortId = crypto
 
 export const resetAfter = async(app: INestApplication<App>)=>{
    const prisma = app.get(PrismaService);
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } catch (err) {
+      console.error('Error disconnecting Prisma:', err);
+    }
 
-  const redis = app.get('REDIS');
-  await redis.quit();
+    const redis = app.get('REDIS');
+    try {
+      if (redis && typeof redis.quit === 'function') {
+        await redis.quit();
+      }
+    } catch (err) {
+      console.error('Error quitting Redis:', err);
+    }
 
-  await app.close(); 
-
+    try {
+      await app.close(); 
+    } catch (err) {
+      console.error('Error closing app:', err);
+    }
 }    
 
 @Injectable()

@@ -6,9 +6,10 @@ import { ALEX_BACKEND, SARAH_FULLSTACK, MAYA_DEVOPS, NEW_DEV, GHOST_PROFILE } fr
 
 describe('Scoring Pipeline Integration (Checkpoint B)', () => {
   let scoringService: ScoringService;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         ScoringService,
         SignalExtractorService,
@@ -17,6 +18,12 @@ describe('Scoring Pipeline Integration (Checkpoint B)', () => {
     }).compile();
 
     scoringService = module.get<ScoringService>(ScoringService);
+  });
+
+  afterEach(async () => {
+    if (module) {
+      await module.close();
+    }
   });
 
   const fixtures = [

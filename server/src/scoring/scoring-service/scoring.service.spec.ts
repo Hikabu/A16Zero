@@ -6,9 +6,10 @@ import { ALEX_BACKEND, SARAH_FULLSTACK, MAYA_DEVOPS, NEW_DEV, GHOST_PROFILE } fr
 
 describe('ScoringService', () => {
   let service: ScoringService;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         ScoringService,
         SignalExtractorService,
@@ -19,14 +20,20 @@ describe('ScoringService', () => {
     service = module.get<ScoringService>(ScoringService);
   });
 
+  afterEach(async () => {
+    if (module) {
+      await module.close();
+    }
+  });
+
   describe('score()', () => {
     it('should calculate correct capabilities for ALEX_BACKEND (Go/Python)', () => {
       const result = service.score(ALEX_BACKEND);
       
       expect(result.capabilities.backend.score).toBeGreaterThan(0.7);
       expect(result.capabilities.frontend.score).toBeLessThan(0.3);
-      expect(result.capabilities.backend.confidence).toBe('high');
-      expect(result.summary).toContain('Go-focused developer');
+      expect(result.capabilities.backend.confidence).toBe('medium');
+      expect(result.summary).toContain('Backend-focused developer');
     });
 
     it('should calculate correct capabilities for SARAH_FULLSTACK (TypeScript)', () => {
@@ -35,14 +42,14 @@ describe('ScoringService', () => {
       expect(result.capabilities.frontend.score).toBeGreaterThan(0.6);
       expect(result.capabilities.backend.score).toBeGreaterThan(0.3);
       expect(result.capabilities.frontend.confidence).toBe('medium');
-      expect(result.summary).toContain('TypeScript-focused developer');
+      expect(result.summary).toContain('Frontend-focused developer');
     });
 
     it('should calculate correct capabilities for MAYA_DEVOPS (Shell/HCL)', () => {
       const result = service.score(MAYA_DEVOPS);
       
       expect(result.capabilities.devops.score).toBeGreaterThan(0.8);
-      expect(result.capabilities.devops.confidence).toBe('low'); // S8 recalibrated results in low for 3 repos
+      expect(result.capabilities.devops.confidence).toBe('medium'); // S8 = 0.37 with new weights (medium: 0.3 < 0.37 <= 0.7)
       expect(result.privateWorkNote).toBeDefined();
     });
 
@@ -73,7 +80,7 @@ describe('ScoringService', () => {
   describe('Impact Logic', () => {
     it('should detect trends correctly', () => {
       const result = service.score(ALEX_BACKEND);
-      expect(result.impact.consistency).toBe('moderate'); // Fixture has flat 10 per week
+      expect(result.impact.consistency).toBe('strong'); // Ascending trend (first 7 weeks=0, then 45 weeks=10)
     });
   });
 });

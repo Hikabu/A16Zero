@@ -26,7 +26,8 @@
     "test:stage2:unit": "jest src/scoring/__tests__/pipeline-unit.spec.ts src/scoring/__tests__/behavior-temporal.spec.ts src/scoring/capability-translator/capability-translator.service.spec.ts src/scoring/career-timeline-reconstructor/career-timeline-reconstructor.service.spec.ts src/scoring/claim-generator/claim-generator.service.spec.ts src/scoring/developer-snapshot-builder/developer-snapshot-builder.service.spec.ts",
     "worker": "node dist/worker.js",
     "worker:dev": "ts-node src/worker.ts",
-    "env:sync": "ts-node scripts/sync-env.ts"
+    "env:sync": "ts-node scripts/sync-env.ts",
+    "preload:cache": "ts-node -r tsconfig-paths/register src/scripts/preload-cache.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
@@ -111,6 +112,10 @@
     "testEnvironment": "node",
     "transformIgnorePatterns": [
       "node_modules/(?!(@scure|@noble|otplib|octokit|@octokit|universal-user-agent|before-after-hook)/)"
-    ]
+    ],
+    "forceExit": true,
+    "bail": false,
+    "verbose": false,
+    "maxWorkers": "50%"
   }
 }

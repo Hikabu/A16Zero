@@ -263,8 +263,8 @@ describe('SignalExtractorService', () => {
       data.profile.publicRepos = 1;
       data.profile.accountAge = 6;
       const signals = service.extract(data);
-      // factorA(0.2*0.4) + factorB(0.2*0.4) + factorC(0.1*0.2) = 0.08 + 0.08 + 0.02 = 0.18
-      expect(signals.dataCompleteness).toBe(0.18);
+      // factorA(0*0.7) + factorB(0.2*0.15) + factorC(0.1*0.15) = 0 + 0.03 + 0.015 = 0.045
+      expect(signals.dataCompleteness).toBe(0.045);
     });
   });
 

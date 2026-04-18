@@ -287,3 +287,12 @@ model AuditLog {
   timestamp  DateTime @default(now())
   @@index([tenantId, entityId, timestamp])
 }
+
+// ─── Cache Layer ──────────────────────────────────────────────
+model CachedResult {
+  id         String   @id @default(cuid())
+  cacheKey   String   @unique  // format: 'analysis:{username}' or 'analysis:{username}:{walletAddress}'
+  result     Json
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
