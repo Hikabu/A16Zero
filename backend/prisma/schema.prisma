@@ -4,9 +4,8 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  moduleFormat    = "cjs"
+  provider = "prisma-client-js"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -49,6 +48,9 @@ model Company {
   isVerified         Boolean    @default(false)
   verifiedAt         DateTime?
   createdAt          DateTime   @default(now())
+
+  walletAddress      String?    @unique
+  privyId            String?    @unique
 
   jobPosts           JobPost[]
 
