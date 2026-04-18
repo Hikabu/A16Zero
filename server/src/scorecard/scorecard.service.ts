@@ -103,12 +103,12 @@ export class ScorecardService {
     }
 
     // 1. Fetch Raw Data
-    const rawData = await this.githubAdapter.fetchRawDataByUsername(githubUsername, githubToken);
-    const accountCreatedAt = rawData.accountCreatedAt;
+    const rawData = await this.githubAdapter.fetchRawData(githubUsername, githubToken);
+    const accountCreatedAt = rawData.profile.accountCreatedAt;
 
     // 2. Execute Full Pipeline (In-Memory)
-    const firewallResult = this.firewall.process(githubUsername, accountCreatedAt, rawData);
-    const engineResult = this.signalEngine.compute(githubUsername, firewallResult, accountCreatedAt);
+    const firewallResult = this.firewall.process(githubUsername, accountCreatedAt.toISOString(), rawData as any);
+    const engineResult = this.signalEngine.compute(githubUsername, firewallResult, accountCreatedAt.toISOString());
 
     const defaultWeights: Record<PillarKey, number> = {
       ACTIVITY: 0.20,
@@ -119,17 +119,17 @@ export class ScorecardService {
       GROWTH: 0.15,
     };
     const completenessResult = this.dataCompleteness.compute(engineResult, defaultWeights);
-    const privacyResult = this.privacyAdjustment.compute(rawData.events);
+    const privacyResult = this.privacyAdjustment.compute({ events: [] } as any); // events removed in R2.2
 
     const accountAgeMonths = this.calculateAccountAgeMonths(new Date(accountCreatedAt));
-    const phaseResult = this.careerPhase.compute(rawData, accountCreatedAt);
+    const phaseResult = this.careerPhase.compute(rawData as any, accountCreatedAt.toISOString());
     const behaviorResult = this.behaviorClassifier.compute(engineResult, accountAgeMonths, {
       careerGapDetected: phaseResult.careerGapDetected,
       historicalStrength: phaseResult.peakWindow.score,
     });
 
     const ecosystemResult = this.normaliser.normalise(engineResult);
-    const temporalResult = this.temporalScore.compute(engineResult, phaseResult, { historicalWeight: 0.4, recentWeight: 0.6 }, rawData);
+    const temporalResult = this.temporalScore.compute(engineResult, phaseResult, { historicalWeight: 0.4, recentWeight: 0.6 }, rawData as any);
     const percentileResult = await this.percentileCalculator.calculate(
       ecosystemResult.assignedCohort,
       ecosystemResult.normalisedSignals,

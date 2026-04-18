@@ -46,6 +46,7 @@ describe('BehaviorClassifierService', () => {
       pillarSignals: {} as any,
       fraudScore: 0,
       fraudTier: 'CLEAR',
+      languageDistribution: {},
     };
   };
 

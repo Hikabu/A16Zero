@@ -3,13 +3,16 @@ import { Octokit } from 'octokit';
 import Redis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
 import { decrypt } from '../../shared/crypto.utils';
-import { 
-  GithubRestData, 
-  GithubGraphQLData, 
-  GithubEventsData, 
-  GithubRawDataSnapshot 
-} from './types';
 import { SyncStatus } from '@prisma/client';
+import { 
+  GitHubRawData, 
+  GitHubRepo, 
+  GitHubUserProfile, 
+  GitHubContributionData, 
+  GitHubExternalPRData 
+} from './github-data.types';
+
+const MAX_REPOS = 30;
 
 @Injectable()
 export class GithubAdapterService {
@@ -19,34 +22,6 @@ export class GithubAdapterService {
     private readonly prisma: PrismaService,
     @Inject('REDIS') private readonly redis: Redis,
   ) {}
-
-  /**
-   * Fetches raw data for any GitHub username using a provided token.
-   * This is used for the headless preview endpoint.
-   */
-  async fetchRawDataByUsername(githubUsername: string, token: string): Promise<GithubRawDataSnapshot & { accountCreatedAt: string }> {
-    const user = await this.fetchUserProfile(githubUsername, token);
-    
-    const [rest, graphqlData, events] = await Promise.all([
-      this.fetchRestData(user.id.toString(), githubUsername, token),
-      this.fetchGraphQLData(user.id.toString(), githubUsername, token),
-      this.fetchEventsData(user.id.toString(), githubUsername, token),
-    ]);
-
-    return {
-      rest,
-      graphql: graphqlData,
-      events,
-      fetchedAt: new Date().toISOString(),
-      accountCreatedAt: user.created_at,
-    };
-  }
-
-  async fetchUserProfile(githubUsername: string, token: string): Promise<any> {
-    const octokit = new Octokit({ auth: token });
-    const res = await this.withRetry(() => octokit.rest.users.getByUsername({ username: githubUsername }));
-    return res.data;
-  }
 
   /**
    * Main entry point to fetch and sync all GitHub data for a profile.
@@ -67,24 +42,12 @@ export class GithubAdapterService {
 
     try {
       const token = this.decryptToken(profile.encryptedToken);
-
-      const [rest, graphqlData, events] = await Promise.all([
-        this.fetchRestData(profile.githubUserId, profile.githubUsername, token),
-        this.fetchGraphQLData(profile.githubUserId, profile.githubUsername, token),
-        this.fetchEventsData(profile.githubUserId, profile.githubUsername, token),
-      ]);
-
-      const snapshot: GithubRawDataSnapshot = {
-        rest,
-        graphql: graphqlData,
-        events,
-        fetchedAt: new Date().toISOString(),
-      };
+      const rawData = await this.fetchRawData(profile.githubUsername, token);
 
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          rawDataSnapshot: snapshot as any,
+          rawDataSnapshot: rawData as any,
           syncStatus: SyncStatus.DONE,
           syncProgress: 'COMPLETE',
           lastSyncAt: new Date(),
@@ -100,155 +63,136 @@ export class GithubAdapterService {
     }
   }
 
-  async fetchRestData(githubUserId: string, githubUsername: string, token: string): Promise<GithubRestData> {
-    return this.withCache(`github:${githubUserId}:rest`, async () => {
+  /**
+   * Fetches the minimal audited data required for scoring.
+   */
+  async fetchRawData(githubUsername: string, token: string): Promise<GitHubRawData> {
+    return this.withCache(`github:v2:raw:${githubUsername}`, async () => {
       const octokit = new Octokit({ auth: token });
-      
-      const repos = await this.withRetry(() => 
-        octokit.rest.repos.listForAuthenticatedUser({
-          sort: 'pushed',
-          per_page: 100,
-        })
-      ) as any;
 
-      const languages: Record<string, any> = {};
-      const commits: Record<string, any> = {};
+      // 1. Fetch Profile
+      const profileData = await this.fetchProfile(octokit, githubUsername);
 
-      const twelveMonthsAgo = new Date();
-      twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
-      const since = twelveMonthsAgo.toISOString();
+      // 2. Fetch Repos (limited to MAX_REPOS)
+      const repos = await this.fetchRepos(octokit, githubUsername);
 
-      await Promise.all(repos.data.map(async (repo: any) => {
-        const [langRes, commitRes] = await Promise.all([
-          this.withRetry(() => octokit.rest.repos.listLanguages({ owner: repo.owner.login, repo: repo.name })) as any,
-          this.withRetry(() => octokit.rest.repos.listCommits({ owner: repo.owner.login, repo: repo.name, since, per_page: 100 })) as any,
-        ]);
-        languages[repo.id] = langRes.data;
-        commits[repo.id] = commitRes.data;
-      }));
-
-      return { repos: repos.data, languages, commits };
-    });
-  }
-
-  async fetchGraphQLData(githubUserId: string, githubUsername: string, token: string): Promise<GithubGraphQLData> {
-    return this.withCache(`github:${githubUserId}:graphql`, async () => {
-      const query = `
-        query($login: String!) {
-          user(login: $login) {
-            pullRequests(last: 100, orderBy: {field: CREATED_AT, direction: DESC}) {
-              nodes {
-                id
-                state
-                title
-                createdAt
-                closedAt
-                mergedAt
-                repository {
-                  name
-                  owner { login }
-                  stargazerCount
-                }
-                reviewRequests { totalCount }
-                reviews(last: 10) { 
-                  nodes {
-                    state
-                    createdAt
-                    author { login }
-                  }
-                }
-                commits(last: 100) {
-                  nodes {
-                    commit {
-                      pushedDate
-                      committedDate
-                    }
-                  }
-                }
-              }
-            }
-            pullRequestReviewContributions(last: 100) {
-              nodes {
-                pullRequest {
-                  id
-                  repository {
-                    name
-                    owner { login }
-                    stargazerCount
-                  }
-                }
-                body
-                createdAt
-                comments(last: 10) {
-                  nodes {
-                    body
-                  }
-                }
-              }
-            }
-            contributionsCollection {
-              contributionCalendar {
-                totalContributions
-                weeks {
-                  contributionDays {
-                    contributionCount
-                    date
-                  }
-                }
-              }
-            }
-          }
-        }
-      `;
-
-      const octokit = new Octokit({ auth: token });
-      const result: any = await this.withRetry(() => 
-        octokit.graphql(query, {
-          login: githubUsername,
-        })
-      );
+      // 3. Fetch GraphQL data (Contributions & External PRs)
+      const { contributions, externalPRs } = await this.fetchGraphQLData(octokit, githubUsername);
 
       return {
-        pullRequests: result.user.pullRequests.nodes,
-        reviewsGiven: result.user.pullRequestReviewContributions.nodes,
-        contributionCalendar: result.user.contributionsCollection.contributionCalendar,
+        profile: profileData,
+        repos,
+        contributions,
+        externalPRs,
+        fetchedAt: new Date(),
       };
     });
   }
 
-  async fetchEventsData(githubUserId: string, githubUsername: string, token: string): Promise<GithubEventsData> {
-    return this.withCache(`github:${githubUserId}:events`, async () => {
-      const octokit = new Octokit({ auth: token });
-      const events: any[] = [];
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  private async fetchProfile(octokit: Octokit, username: string): Promise<GitHubUserProfile> {
+    const res = await this.withRetry(() => octokit.rest.users.getByUsername({ username }));
+    const data = res.data;
 
-      for (let page = 1; page <= 10; page++) {
-        const res = await this.withRetry(() => 
-          octokit.rest.activity.listEventsForAuthenticatedUser({
-            username: githubUsername,
-            per_page: 100,
-            page,
-          })
-        ) as any;
+    const accountCreatedAt = new Date(data.created_at);
+    const monthsDiff = (new Date().getTime() - accountCreatedAt.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
 
-        if (res.data.length === 0) break;
+    return {
+      username: data.login,
+      accountCreatedAt: new Date(data.created_at),
+      accountAge: Math.floor(monthsDiff),
+      publicRepos: data.public_repos,
+      followers: data.followers,
+    };
+  }
 
-        const filtered = res.data.filter(event => {
-          const createdAt = new Date(event.created_at!);
-          if (createdAt < ninetyDaysAgo) return false;
-          // We now include private events (listEventsForAuthenticatedUser returns them if scoped)
-          return event.type === 'PushEvent' || event.type === 'PullRequestEvent';
-        });
+  private async fetchRepos(octokit: Octokit, username: string): Promise<GitHubRepo[]> {
+    const res = await this.withRetry(() => 
+      octokit.rest.repos.listForUser({
+        username,
+        sort: 'pushed',
+        per_page: 100, // We fetch 100 but only take MAX_REPOS
+        headers: {
+          'accept': 'application/vnd.github.mercy-preview+json'
+        }
+      })
+    );
 
-        events.push(...filtered);
+    const rawRepos = res.data as any[];
+    return rawRepos.slice(0, MAX_REPOS).map(r => ({
+      name: r.name,
+      language: r.language,
+      stars: r.stargazers_count,
+      forks: r.forks_count,
+      topics: r.topics || [],
+      createdAt: new Date(r.created_at),
+      pushedAt: new Date(r.pushed_at),
+      isFork: r.fork,
+      description: r.description,
+    }));
+  }
 
-        const lastEventDate = new Date(res.data[res.data.length - 1].created_at!);
-        if (lastEventDate < ninetyDaysAgo) break;
+  private async fetchGraphQLData(octokit: Octokit, username: string): Promise<{ contributions: GitHubContributionData, externalPRs: GitHubExternalPRData }> {
+    const query = `
+      query($login: String!) {
+        user(login: $login) {
+          contributionsCollection {
+            contributionCalendar {
+              weeks {
+                contributionDays {
+                  contributionCount
+                }
+              }
+            }
+          }
+          pullRequests(states: MERGED, first: 100, orderBy: {field: CREATED_AT, direction: DESC}) {
+            nodes {
+              repository {
+                name
+                owner { login }
+              }
+            }
+          }
+        }
       }
+    `;
 
-      return { events };
-    });
+    const result: any = await this.withRetry(() => 
+      octokit.graphql(query, {
+        login: username,
+      })
+    );
+
+    const user = result.user;
+
+    // Process Contributions
+    const weeklyTotals: number[] = (user.contributionsCollection.contributionCalendar.weeks || [])
+      .map((week: any) => 
+        week.contributionDays.reduce((sum: number, day: any) => sum + day.contributionCount, 0)
+      )
+      .slice(-52); // Ensure exactly 52 weeks
+
+    // Pad if fewer than 52 weeks returned
+    while (weeklyTotals.length < 52) {
+      weeklyTotals.unshift(0);
+    }
+
+    const activeWeeksCount = weeklyTotals.filter(total => total > 0).length;
+
+    // Process External PRs
+    const externalPRs = user.pullRequests.nodes.filter((pr: any) => 
+      pr.repository.owner.login.toLowerCase() !== username.toLowerCase()
+    );
+
+    return {
+      contributions: {
+        weeklyTotals,
+        activeWeeksCount,
+      },
+      externalPRs: {
+        mergedExternalPRCount: externalPRs.length,
+        externalRepoNames: Array.from(new Set(externalPRs.map((pr: any) => pr.repository.name))) as string[],
+      }
+    };
   }
 
   public decryptToken(encryptedToken: string): string {
@@ -265,25 +209,32 @@ export class GithubAdapterService {
   private async withCache<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
     const cached = await this.redis.get(key);
     if (cached) {
-      return JSON.parse(cached);
+      const parsed = JSON.parse(cached);
+      // Revive dates if necessary (simplified here, but works for plain data)
+      return parsed;
     }
     const result = await fetcher();
     await this.redis.set(key, JSON.stringify(result), 'EX', 24 * 60 * 60);
     return result;
   }
 
-  private async withRetry<T>(fn: () => Promise<T>, attempts = 3, delay = 1000): Promise<T> {
+  private async withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
     try {
       return await fn();
     } catch (error: any) {
       const status = error.status || (error.response && error.response.status);
-      const retryableStatuses = [429, 500, 502, 503];
+      const isRateLimit = status === 429 || (status === 403 && error.message?.toLowerCase().includes('rate limit'));
       
-      if (attempts > 1 && retryableStatuses.includes(status)) {
-        this.logger.warn(`Retryable error ${status}. Retrying in ${delay}ms... (${attempts - 1} left)`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return this.withRetry(fn, attempts - 1, delay * 2);
+      if (attempts > 1 && isRateLimit) {
+        this.logger.warn(`GitHub API rate limit hit. Retrying in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return this.withRetry(fn, attempts - 1);
       }
+
+      if (isRateLimit) {
+        throw new Error('GitHub API rate limit exceeded — please retry in a few minutes');
+      }
+      
       throw error;
     }
   }

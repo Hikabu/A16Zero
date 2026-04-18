@@ -41,14 +41,9 @@ export class GithubSyncProcessor extends WorkerHost {
         },
       });
 
-      // (c) Call adapter methods in parallel
+      // (c) Call consolidated fetcher
       const token = await this.githubAdapter['decryptToken'](profile.encryptedToken); 
-      
-      const [rest, graphql, events] = await Promise.all([
-        this.githubAdapter.fetchRestData(profile.githubUserId, profile.githubUsername, token),
-        this.githubAdapter.fetchGraphQLData(profile.githubUserId, profile.githubUsername, token),
-        this.githubAdapter.fetchEventsData(profile.githubUserId, profile.githubUsername, token),
-      ]);
+      const rawData = await this.githubAdapter.fetchRawData(profile.githubUsername, token);
 
       // (d) Set syncProgress = analyzing_projects (40% - interim)
       // Note: We'll jump to 60% in signal-compute processor
@@ -60,17 +55,10 @@ export class GithubSyncProcessor extends WorkerHost {
       });
 
       // (e) Save raw data, keep status = IN_PROGRESS, lastSyncAt
-      const snapshot = {
-        rest,
-        graphql,
-        events,
-        fetchedAt: new Date().toISOString(),
-      };
-
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          rawDataSnapshot: snapshot as any,
+          rawDataSnapshot: rawData as any,
           lastSyncAt: new Date(),
           syncError: null,
         },

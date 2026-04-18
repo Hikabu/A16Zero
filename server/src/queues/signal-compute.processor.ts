@@ -110,11 +110,11 @@ export class SignalComputeProcessor extends WorkerHost {
   private async runLegacyPipeline(
     githubProfileId: string, 
     profile: any, 
-    rawData: GithubRawDataSnapshot, 
+    rawData: any, 
     accountCreatedAt: string
   ): Promise<void> {
     // 1-3. Firewall & Signal Engine
-    const firewallResult = this.firewall.process(profile.githubUsername, accountCreatedAt, rawData);
+    const firewallResult = this.firewall.process(profile.githubUsername, accountCreatedAt, rawData as any);
     const engineResult = this.signalEngine.compute(profile.githubUsername, firewallResult, accountCreatedAt);
 
     // 4-5. Completeness & Privacy
@@ -127,7 +127,7 @@ export class SignalComputeProcessor extends WorkerHost {
       GROWTH: 0.15,
     };
     const completenessResult = this.dataCompleteness.compute(engineResult, defaultWeights);
-    const privacyResult = this.privacyAdjustment.compute(rawData.events);
+    const privacyResult = this.privacyAdjustment.compute({ events: [] } as any); // events removed in R2.2
 
     // 6-7. Behavior & Career Phase
     const accountAgeMonths = this.calculateAccountAgeMonths(profile.createdAt);

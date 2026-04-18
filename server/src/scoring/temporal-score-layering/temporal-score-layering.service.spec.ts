@@ -31,7 +31,8 @@ describe('TemporalScoreLayeringService', () => {
     consistencyNotes: [],
     pillarSignals: { ACTIVITY: [], COLLABORATION: [], QUALITY: [], IMPACT: [], GROWTH: [], RELIABILITY: [] },
     fraudScore: 0,
-    fraudTier: 'NONE' as any
+    fraudTier: 'NONE' as any,
+    languageDistribution: {}
   };
 
   const mockCareerPhase: CareerPhaseResult = {
