@@ -18,7 +18,9 @@ import { CareerTimelineReconstructorService } from '../scoring/career-timeline-r
 import { ClaimGeneratorService } from '../scoring/claim-generator/claim-generator.service';
 import { GithubRawDataSnapshot } from '../scoring/github-adapter/types';
 import { PillarKey } from '../scoring/signal-engine/types';
-import { FraudTier } from '@prisma/client';
+import { FraudTier, SyncStatus } from '@prisma/client';
+import { AnalysisResult } from '../scoring/types/result.types';
+import { env } from '../shared/config/env.schema';
 
 @Processor('signal-compute', { concurrency: 10 })
 export class SignalComputeProcessor extends WorkerHost {
@@ -44,7 +46,7 @@ export class SignalComputeProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<{ candidateId: string; githubProfileId: string }>): Promise<any> {
+  async process(job: Job<{ candidateId: string; githubProfileId: string }>): Promise<AnalysisResult | void> {
     const { githubProfileId } = job.data;
     this.logger.log(`Starting full signal pipeline for profile ${githubProfileId}`);
 
@@ -61,104 +63,184 @@ export class SignalComputeProcessor extends WorkerHost {
     const accountCreatedAt = profile.createdAt.toISOString();
 
     try {
-      // 1-3. Firewall & Signal Engine
-      const firewallResult = this.firewall.process(profile.githubUsername, accountCreatedAt, rawData);
-      const engineResult = this.signalEngine.compute(profile.githubUsername, firewallResult, accountCreatedAt);
-
-      // 4-5. Completeness & Privacy
-      const defaultWeights: Record<PillarKey, number> = {
-        ACTIVITY: 0.20,
-        COLLABORATION: 0.20,
-        QUALITY: 0.20,
-        RELIABILITY: 0.10,
-        IMPACT: 0.15,
-        GROWTH: 0.15,
-      };
-      const completenessResult = this.dataCompleteness.compute(engineResult, defaultWeights);
-      const privacyResult = this.privacyAdjustment.compute(rawData.events);
-
-      // 6-7. Behavior & Career Phase
-      const accountAgeMonths = this.calculateAccountAgeMonths(profile.createdAt);
-      const phaseResult = this.careerPhase.compute(rawData, accountCreatedAt);
-      const behaviorResult = this.behaviorClassifier.compute(engineResult, accountAgeMonths, {
-        careerGapDetected: phaseResult.careerGapDetected,
-        historicalStrength: phaseResult.peakWindow.score, // Simple mapping for MVP
+      // (a) Set stage: analyzing_projects (60%)
+      await this.prisma.githubProfile.update({
+        where: { id: githubProfileId },
+        data: {
+          syncProgress: JSON.stringify({ stage: 'analyzing_projects', percent: 60 }),
+        },
       });
 
-      // 8-10. Normalization, Layering, Percentiles
-      const ecosystemResult = this.normaliser.normalise(engineResult);
-      const temporalResult = this.temporalScore.compute(engineResult, phaseResult, { historicalWeight: 0.4, recentWeight: 0.6 }, rawData);
-      const percentileResult = await this.percentileCalculator.calculate(
-        ecosystemResult.assignedCohort,
-        ecosystemResult.normalisedSignals,
-      );
+      if (env.LEGACY_SCORING === true) {
+        this.logger.log(`Running LEGACY scoring pipeline for profile ${githubProfileId}`);
+        return this.runLegacyPipeline(githubProfileId, profile, rawData, accountCreatedAt);
+      }
 
-      // 11-12. Confidence & Dominance Capping
-      const effectiveWeights = this.confidenceEnvelope.enforceSignalDominanceCap(completenessResult.rebalancedWeights);
-      const confidenceResult = this.confidenceEnvelope.buildEnvelope({
-        dataCoveragePercent: completenessResult.dataCoveragePercent,
-        visibilityTier: completenessResult.visibilityTier,
-        overallConfidenceCap: completenessResult.overallConfidenceCap,
-        fraudTier: engineResult.fraudTier as any,
-        fraudScore: engineResult.fraudScore,
-        excludedSignals: engineResult.excludedSignals,
-        consistencyNotes: engineResult.consistencyNotes,
-        privateWorkNote: completenessResult.completenessNote,
-        signalCount: Object.keys(engineResult.signals).length,
+      this.logger.log(`Running REFACTORED scoring pipeline (placeholder) for profile ${githubProfileId}`);
+      
+      // Placeholder for new pipeline - Phase 2-4 implementation will go here
+      const result = this.buildPlaceholderResult();
+
+      // (b) Set stage: building_profile (85%)
+      await this.prisma.githubProfile.update({
+        where: { id: githubProfileId },
+        data: {
+          syncProgress: JSON.stringify({ stage: 'building_profile', percent: 85 }),
+        },
       });
 
-      // 13. Capability Translation
-      const translationResult = this.capabilityTranslator.translate(engineResult, behaviorResult, confidenceResult);
-
-      // 14-17. Persistence (Transaction)
-      // Note: roleFitScore is stubbed until Stage 4
-      const ROLE_FIT_STUB = temporalResult.compositeScore; 
-
-      await this.prisma.$transaction(async (tx) => {
-        // A. Update Signals
-        await tx.candidateSignals.upsert({
-          where: { devCandidateId: profile.devCandidateId },
-          create: this.mapSignalData(profile.devCandidateId, engineResult, ecosystemResult, percentileResult, confidenceResult, effectiveWeights, completenessResult),
-          update: this.mapSignalData(profile.devCandidateId, engineResult, ecosystemResult, percentileResult, confidenceResult, effectiveWeights, completenessResult),
-        });
-
-        // B. Build Snapshot
-        await this.snapshotBuilder.build({
-          devCandidateId: profile.devCandidateId,
-          behaviorResult,
-          confidenceEnvelope: confidenceResult,
-          ecosystemResult,
-          capabilityStatements: translationResult.capabilityStatements,
-          roleFitScore: ROLE_FIT_STUB,
-        }, tx);
-
-        // C. Build Timeline
-        await this.timelineReconstructor.build({
-          devCandidateId: profile.devCandidateId,
-          careerPhaseResult: phaseResult,
-          ecosystemResult,
-          privacyResult,
-          signalResult: engineResult,
-          behaviorResult,
-        }, tx);
-
-        // D. Generate Claims
-        await this.claimGenerator.generate({
-          devCandidateId: profile.devCandidateId,
-          capabilityStatements: translationResult.capabilityStatements,
-          signalResult: engineResult,
-        }, tx);
+      // (c) Persistence logic for new pipeline will be added in Phase 3
+      // For now, we update the status to DONE
+      await this.prisma.githubProfile.update({
+        where: { id: githubProfileId },
+        data: {
+          syncStatus: SyncStatus.DONE,
+          syncProgress: JSON.stringify({ stage: 'complete', percent: 100 }),
+        },
       });
 
-      this.logger.log(`Full computation pipeline completed for devCandidate ${profile.devCandidateId}`);
-
-      // 18. Notification Dispatch (Placeholder/Job)
-      // await this.notificationQueue.add('score-ready', { candidateId: profile.devCandidateId });
+      return result;
 
     } catch (error) {
       this.logger.error(`Pipeline failed for profile ${githubProfileId}: ${error.stack}`);
       throw error;
     }
+  }
+
+  private async runLegacyPipeline(
+    githubProfileId: string, 
+    profile: any, 
+    rawData: GithubRawDataSnapshot, 
+    accountCreatedAt: string
+  ): Promise<void> {
+    // 1-3. Firewall & Signal Engine
+    const firewallResult = this.firewall.process(profile.githubUsername, accountCreatedAt, rawData);
+    const engineResult = this.signalEngine.compute(profile.githubUsername, firewallResult, accountCreatedAt);
+
+    // 4-5. Completeness & Privacy
+    const defaultWeights: Record<PillarKey, number> = {
+      ACTIVITY: 0.20,
+      COLLABORATION: 0.20,
+      QUALITY: 0.20,
+      RELIABILITY: 0.10,
+      IMPACT: 0.15,
+      GROWTH: 0.15,
+    };
+    const completenessResult = this.dataCompleteness.compute(engineResult, defaultWeights);
+    const privacyResult = this.privacyAdjustment.compute(rawData.events);
+
+    // 6-7. Behavior & Career Phase
+    const accountAgeMonths = this.calculateAccountAgeMonths(profile.createdAt);
+    const phaseResult = this.careerPhase.compute(rawData, accountCreatedAt);
+    const behaviorResult = this.behaviorClassifier.compute(engineResult, accountAgeMonths, {
+      careerGapDetected: phaseResult.careerGapDetected,
+      historicalStrength: phaseResult.peakWindow.score, // Simple mapping for MVP
+    });
+
+    // 8-10. Normalization, Layering, Percentiles
+    const ecosystemResult = this.normaliser.normalise(engineResult);
+    const temporalResult = this.temporalScore.compute(engineResult, phaseResult, { historicalWeight: 0.4, recentWeight: 0.6 }, rawData);
+    const percentileResult = await this.percentileCalculator.calculate(
+      ecosystemResult.assignedCohort,
+      ecosystemResult.normalisedSignals,
+    );
+
+    // 11-12. Confidence & Dominance Capping
+    const effectiveWeights = this.confidenceEnvelope.enforceSignalDominanceCap(completenessResult.rebalancedWeights);
+    const confidenceResult = this.confidenceEnvelope.buildEnvelope({
+      dataCoveragePercent: completenessResult.dataCoveragePercent,
+      visibilityTier: completenessResult.visibilityTier,
+      overallConfidenceCap: completenessResult.overallConfidenceCap,
+      fraudTier: engineResult.fraudTier as any,
+      fraudScore: engineResult.fraudScore,
+      excludedSignals: engineResult.excludedSignals,
+      consistencyNotes: engineResult.consistencyNotes,
+      privateWorkNote: completenessResult.completenessNote,
+      signalCount: Object.keys(engineResult.signals).length,
+    });
+
+    // (b) Set stage: building_profile (85%) - in legacy path
+    await this.prisma.githubProfile.update({
+      where: { id: githubProfileId },
+      data: {
+        syncProgress: JSON.stringify({ stage: 'building_profile', percent: 85 }),
+      },
+    });
+
+    // 13. Capability Translation
+    const translationResult = this.capabilityTranslator.translate(engineResult, behaviorResult, confidenceResult);
+
+    // 14-17. Persistence (Transaction)
+    const ROLE_FIT_STUB = temporalResult.compositeScore; 
+
+    await this.prisma.$transaction(async (tx) => {
+      // A. Update Signals
+      await tx.candidateSignals.upsert({
+        where: { devCandidateId: profile.devCandidateId },
+        create: this.mapSignalData(profile.devCandidateId, engineResult, ecosystemResult, percentileResult, confidenceResult, effectiveWeights, completenessResult),
+        update: this.mapSignalData(profile.devCandidateId, engineResult, ecosystemResult, percentileResult, confidenceResult, effectiveWeights, completenessResult),
+      });
+
+      // B. Build Snapshot
+      await this.snapshotBuilder.build({
+        devCandidateId: profile.devCandidateId,
+        behaviorResult,
+        confidenceEnvelope: confidenceResult,
+        ecosystemResult,
+        capabilityStatements: translationResult.capabilityStatements,
+        roleFitScore: ROLE_FIT_STUB,
+      }, tx);
+
+      // C. Build Timeline
+      await this.timelineReconstructor.build({
+        devCandidateId: profile.devCandidateId,
+        careerPhaseResult: phaseResult,
+        ecosystemResult,
+        privacyResult,
+        signalResult: engineResult,
+        behaviorResult,
+      }, tx);
+
+      // D. Generate Claims
+      await this.claimGenerator.generate({
+        devCandidateId: profile.devCandidateId,
+        capabilityStatements: translationResult.capabilityStatements,
+        signalResult: engineResult,
+      }, tx);
+    });
+
+    // (c) Set status = DONE, complete (100%)
+    await this.prisma.githubProfile.update({
+      where: { id: githubProfileId },
+      data: {
+        syncStatus: SyncStatus.DONE,
+        syncProgress: JSON.stringify({ stage: 'complete', percent: 100 }),
+      },
+    });
+
+    this.logger.log(`Full computation pipeline completed for devCandidate ${profile.devCandidateId}`);
+  }
+
+  private buildPlaceholderResult(): AnalysisResult {
+    return {
+      summary: 'Placeholder summary for the refactored scoring engine.',
+      capabilities: {
+        backend: { score: 0, confidence: 'low' },
+        frontend: { score: 0, confidence: 'low' },
+        devops: { score: 0, confidence: 'low' },
+      },
+      ownership: {
+        ownedProjects: 0,
+        activelyMaintained: 0,
+        confidence: 'low',
+      },
+      impact: {
+        activityLevel: 'low',
+        consistency: 'sparse',
+        externalContributions: 0,
+        confidence: 'low',
+      },
+    };
   }
 
   private calculateAccountAgeMonths(createdAt: Date): number {

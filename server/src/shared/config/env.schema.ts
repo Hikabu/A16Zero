@@ -5,12 +5,12 @@ export const envSchema = z.object({
 
 
     NODE_ENV: z.string(),
-    PORT: z.number(),
+    PORT: z.coerce.number(),
     SERVER_URL: z.string(),
     FRONTEND_URL: z.string(),
     REDIS_URL: z.string(),
 
-    GITHUB_APP_ID: z.number(),
+    GITHUB_APP_ID: z.coerce.number(),
     GITHUB_CLIENT_ID: z.string(),
     GITHUB_CLIENT_SECRET: z.string(),
     GITHUB_PRIVATE_KEY: z.string(),
@@ -37,6 +37,8 @@ export const envSchema = z.object({
     RESEND_API_KEY: z.string().optional(),
     RESEND_FROM: z.string().optional(),
     SENTRY_DSN: z.string().optional(),
+
+    LEGACY_SCORING: z.string().optional().default('false').transform((v) => v === 'true'),
 
 });
 

@@ -13,8 +13,8 @@ export const ScorecardUiSchema = z.object({
     summary: z.string().describe('A concise professional summary of the developer'),
   }),
   score: z.object({
-    value: z.number().min(0).max(100).describe('Normalized capability score'),
-    percentile: z.number().min(0).max(100).describe('Percentile rank within the cohort'),
+    value: z.coerce.number().min(0).max(100).describe('Normalized capability score'),
+    percentile: z.coerce.number().min(0).max(100).describe('Percentile rank within the cohort'),
     isWithheld: z.object({
       value: z.boolean().describe('Whether the score is withheld'),
       reason: z.string().optional().describe('Human-readable reason for withholding the score (e.g., insufficient data)'),

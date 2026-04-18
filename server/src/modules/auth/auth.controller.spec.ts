@@ -61,7 +61,7 @@ describe('AuthController', () => {
       user: { id: 'user_1' }, // IMPORTANT: callback uses BOTH
     };
 
-    await controller.linkGithubCallback(req, 'mock_state');
+await controller.linkGithubCallback(req, { state: 'mock_state' });
 
     expect(authService.linkOAuth).toHaveBeenCalledWith(
       'user_1',        // authUser.id
@@ -74,7 +74,7 @@ describe('AuthController', () => {
 
   describe('MFA & Verification', () => {
     it('should call verifyEmail', async () => {
-      await controller.verifyEmail('123456');
+await controller.verifyEmail({ code: '123456' });
       expect(authService.verifyEmail).toHaveBeenCalledWith('123456');
     });
 

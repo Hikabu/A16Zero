@@ -32,19 +32,17 @@ export class GithubSyncProcessor extends WorkerHost {
     }
 
     try {
-      // (b) Set syncStatus = IN_PROGRESS, syncProgress = FETCHING
+      // (b) Set syncStatus = IN_PROGRESS, syncProgress = fetching_repos (20%)
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
           syncStatus: SyncStatus.IN_PROGRESS,
-          syncProgress: 'FETCHING',
+          syncProgress: JSON.stringify({ stage: 'fetching_repos', percent: 20 }),
         },
       });
 
       // (c) Call adapter methods in parallel
-      const token = await this.githubAdapter['decryptToken'](profile.encryptedToken); // Access private method via index for now or make it public if needed
-      // Actually, adapter has syncProfile, but user wants specific steps here.
-      // I'll use the individual fetch methods I implemented in Step 1.
+      const token = await this.githubAdapter['decryptToken'](profile.encryptedToken); 
       
       const [rest, graphql, events] = await Promise.all([
         this.githubAdapter.fetchRestData(profile.githubUserId, profile.githubUsername, token),
@@ -52,15 +50,16 @@ export class GithubSyncProcessor extends WorkerHost {
         this.githubAdapter.fetchEventsData(profile.githubUserId, profile.githubUsername, token),
       ]);
 
-      // (d) Set syncProgress = PROCESSING
+      // (d) Set syncProgress = analyzing_projects (40% - interim)
+      // Note: We'll jump to 60% in signal-compute processor
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          syncProgress: 'PROCESSING',
+          syncProgress: JSON.stringify({ stage: 'analyzing_projects', percent: 40 }),
         },
       });
 
-      // (e) Save raw data, set status = DONE, progress = COMPLETE, lastSyncAt
+      // (e) Save raw data, keep status = IN_PROGRESS, lastSyncAt
       const snapshot = {
         rest,
         graphql,
@@ -72,8 +71,6 @@ export class GithubSyncProcessor extends WorkerHost {
         where: { id: githubProfileId },
         data: {
           rawDataSnapshot: snapshot as any,
-          syncStatus: SyncStatus.DONE,
-          syncProgress: 'COMPLETE',
           lastSyncAt: new Date(),
           syncError: null,
         },
