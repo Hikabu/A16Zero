@@ -5,6 +5,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output  = "../src/generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -50,6 +51,7 @@ model Company {
   createdAt          DateTime   @default(now())
 
   walletAddress      String?    @unique
+  smartAccountAddress String?    @unique
   privyId            String?    @unique
 
   jobPosts           JobPost[]

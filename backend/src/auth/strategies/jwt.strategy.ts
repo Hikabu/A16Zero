@@ -23,9 +23,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!company) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Company not found');
     }
 
-    return { id: company.id, walletAddress: company.walletAddress };
+    return company;
   }
 }

@@ -1,18 +1,29 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Post, Body, Headers, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, AuthResponseDto } from './dto/login.dto';
+import { LoginDto } from './dto/login.dto';
+import { BaseController } from '../common/base.controller';
+import { Public } from './decorators/public.decorator';
 
-@ApiTags('auth')
+@ApiTags('Authentication')
 @Controller('auth')
-export class AuthController {
-  constructor(private authService: AuthService) {}
+export class AuthController extends BaseController {
+  constructor(private readonly authService: AuthService) {
+    super();
+  }
 
+  @Public()
   @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with Privy token and receive backend JWT' })
-  @ApiResponse({ status: 200, type: AuthResponseDto })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  @ApiOperation({ 
+    summary: 'Login with Privy token',
+    description: 'Verifies Privy access token and returns an application JWT.'
+  })
+  async login(
+    @Headers('authorization') authHeader: string,
+    @Body() loginDto: LoginDto,
+  ) {
+    const token = authHeader?.replace('Bearer ', '');
+    const result = await this.authService.login(token, loginDto);
+    return this.handleSuccess(result, 'Logged in successfully');
   }
 }
