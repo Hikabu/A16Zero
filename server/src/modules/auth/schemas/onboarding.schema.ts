@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { createZodDto } from 'nestjs-zod';
 
 export const onboardingSchema = z.object({
-  username: z.string().min(3).max(20),
+  username: z.string().describe('Unique public username').min(3).max(20),
 });
 
-export type OnboardingDto = z.infer<typeof onboardingSchema>;
+export class OnboardingDto extends createZodDto(onboardingSchema) {}

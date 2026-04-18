@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import { ZodValidationPipeProvider } from './common/configs/zod.config';
 
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -24,6 +25,7 @@ import { ScorecardModule } from './scorecard/scorecard.module';
     provide: APP_GUARD,
     useClass: ThrottlerGuard,
   },
+  ZodValidationPipeProvider,
 ],
   imports: [
     ThrottlerModule.forRoot({

@@ -1,24 +1,20 @@
-import { Controller, Get, Post, Req, Body, UseGuards, UnauthorizedException, Query, Redirect } from '@nestjs/common';
+import { Controller, Get, Post, Req, Body, UseGuards, Query } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { ZodValidationPipe } from '../../shared/pipes/zod.pipe';
-import { loginSchema } from './schemas/login.schema';
-import type { LoginDto } from './schemas/login.schema';
-import { registerSchema } from './schemas/register.schema';
-import type { RegisterDto } from './schemas/register.schema';
-import { ConfigService } from '@nestjs/config';
-import type { OnboardingDto } from './schemas/onboarding.schema';
-import { onboardingSchema } from './schemas/onboarding.schema';
-import { activateMfaSchema, verifyMfaSchema, verifyMfaRecoverySchema } from './schemas/mfa.schema';
-import type { ActivateMfaDto, VerifyMfaDto, VerifyMfaRecoveryDto } from './schemas/mfa.schema';
-import { requestPasswordResetSchema, resetPasswordSchema } from './schemas/password-reset.schema';
-import type { RequestPasswordResetDto, ResetPasswordDto } from './schemas/password-reset.schema';
-import { Throttle } from '@nestjs/throttler';
-import { SkipThrottle } from '@nestjs/throttler';
+import { LoginDto } from './schemas/login.schema';
+import { RegisterDto } from './schemas/register.schema';
+import { OnboardingDto } from './schemas/onboarding.schema';
+import { ActivateMfaDto, VerifyMfaDto, VerifyMfaRecoveryDto } from './schemas/mfa.schema';
+import { RequestPasswordResetDto, ResetPasswordDto } from './schemas/password-reset.schema';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { GithubLinkGuard } from './guards/github.link.guard';
 import { GoogleLinkGuard } from './guards/google.link.guard';
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { VerifyEmailDto, OAuthCallbackQueryDto } from './schemas/auth-contract.dto';
 
+@ApiTags('Auth')
 @Throttle({ default: { limit: 5, ttl: 60000 } })
 @Controller('auth')
 export class AuthController {
@@ -28,16 +24,12 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  login(
-    @Body(new ZodValidationPipe(loginSchema)) dto: LoginDto
-  ) {
+  login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
   @Post('register')
-  register(
-  @Body(new ZodValidationPipe(registerSchema)) dto: RegisterDto
-  ) {
+  register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
@@ -49,12 +41,12 @@ export class AuthController {
 
   @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @Post('password-reset/request')
-  requestPasswordReset(@Body(new ZodValidationPipe(requestPasswordResetSchema)) dto: RequestPasswordResetDto) {
+  requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
     return this.authService.requestPasswordReset(dto);
   }
 
   @Post('password-reset/reset')
-  resetPassword(@Body(new ZodValidationPipe(resetPasswordSchema)) dto: ResetPasswordDto) {
+  resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
 
@@ -66,7 +58,7 @@ export class AuthController {
 
   @Post('onboarding')
   completeOnboarding(
-    @Body(new ZodValidationPipe(onboardingSchema)) dto: OnboardingDto,
+    @Body() dto: OnboardingDto,
     @Req() req: any
   ) {
     // The onboarding token is in the Authorization header.
@@ -117,23 +109,23 @@ export class AuthController {
   @UseGuards(GithubLinkGuard)  
   @Get('github/link/callback')
   @SkipThrottle()
-  async linkGithubCallback(@Req() req: any, @Query('state') state: string) {
-    return this.authService.linkOAuth(req.authUser.id, req.user, 'GITHUB', state);
+  async linkGithubCallback(@Req() req: any, @Query() query: OAuthCallbackQueryDto) {
+    return this.authService.linkOAuth(req.authUser.id, req.user, 'GITHUB', query.state);
   }
 
   @VerifiedAuth()
   @UseGuards(GoogleLinkGuard)  
   @Get('google/link/callback')
   @SkipThrottle()
-  async linkGoogleCallback(@Req() req: any, @Query('state') state: string) {
-    return this.authService.linkOAuth(req.authUser.id, req.user, 'GOOGLE', state);
+  async linkGoogleCallback(@Req() req: any, @Query() query: OAuthCallbackQueryDto) {
+    return this.authService.linkOAuth(req.authUser.id, req.user, 'GOOGLE', query.state);
   }
 
   // --- Email Verification ---
 
   @Post('verify-email')
-  verifyEmail(@Body('code') code: string) {
-    return this.authService.verifyEmail(code);
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto.code);
   }
 
   // --- MFA ---
@@ -146,17 +138,17 @@ export class AuthController {
 
   @VerifiedAuth()
   @Post('mfa/activate')
-  activateMfa(@Req() req: any, @Body(new ZodValidationPipe(activateMfaSchema)) dto: ActivateMfaDto) {
+  activateMfa(@Req() req: any, @Body() dto: ActivateMfaDto) {
     return this.authService.activateMfa(req.user.id, dto.code);
   }
 
   @Post('mfa/verify')
-  verifyMfa(@Body(new ZodValidationPipe(verifyMfaSchema)) dto: VerifyMfaDto) {
+  verifyMfa(@Body() dto: VerifyMfaDto) {
     return this.authService.verifyMfa(dto.userId, dto.code, dto.mfaToken);
   }
 
   @Post('mfa/verify-recovery')
-  verifyMfaRecovery(@Body(new ZodValidationPipe(verifyMfaRecoverySchema)) dto: VerifyMfaRecoveryDto) {
+  verifyMfaRecovery(@Body() dto: VerifyMfaRecoveryDto) {
     return this.authService.verifyMfaRecovery(dto.userId, dto.backupCode, dto.mfaToken);
   }
 }

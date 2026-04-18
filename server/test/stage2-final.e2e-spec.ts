@@ -56,11 +56,11 @@ describe('Stage 2 Deliverable (E2E)', () => {
         .send({ githubUsername: 'testuser', roleType: RoleType.GENERALIST })
         .expect(200);
 
-      expect(response.body).toHaveProperty('snapshot');
-      expect(response.body).toHaveProperty('timeline');
-      expect(response.body).toHaveProperty('signals');
-      expect(response.body).toHaveProperty('confidenceEnvelope');
-      expect(response.body.confidenceEnvelope).toHaveProperty('overallConfidence');
+      expect(response.body).toHaveProperty('profile');
+      expect(response.body).toHaveProperty('score');
+      expect(response.body).toHaveProperty('trust');
+      expect(response.body).toHaveProperty('insights');
+      expect(response.body.score).toHaveProperty('value');
     });
 
     it('should result in scoreWithheld: true when data coverage is low (0 contributions)', async () => {
@@ -91,7 +91,8 @@ describe('Stage 2 Deliverable (E2E)', () => {
         .expect(200);
         // console.log(response.body.confidenceEnvelope);
 expect(githubAdapter.fetchRawDataByUsername).toHaveBeenCalled();
-      expect(response.body.confidenceEnvelope.scoreWithheld).toBe(true);
+      expect(response.body.score.isWithheld.value).toBe(true);
+      expect(response.body.score.isWithheld).toHaveProperty('reason');
     });
 
   //   it('should result in scoreWithheld: true when data coverage is low (0 contributions)', async () => {
@@ -120,8 +121,8 @@ expect(githubAdapter.fetchRawDataByUsername).toHaveBeenCalled();
         .send({ githubUsername: 'testuser', roleType: RoleType.GENERALIST })
         .expect(200);
 
-      expect(res1.body.signals.confidenceScore).toBe(res2.body.signals.confidenceScore);
-      expect(res1.body.snapshot.summary).toBe(res2.body.snapshot.summary);
+      expect(res1.body.score.value).toBe(res2.body.score.value);
+      expect(res1.body.profile.summary).toBe(res2.body.profile.summary);
     });
   });
 });

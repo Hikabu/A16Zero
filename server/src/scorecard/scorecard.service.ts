@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ScorecardUiDto } from './contract/scorecard.dto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardResult } from './scorecard.types';
@@ -196,6 +197,41 @@ export class ScorecardService {
       confidenceEnvelope: confidenceResult,
       percentile: percentileResult,
       behaviorClassification: behaviorResult,
+    };
+  }
+
+  mapToUiModel(result: ScorecardResult): ScorecardUiDto {
+    const { snapshot, confidenceEnvelope, percentile, behaviorClassification, claims } = result;
+
+    return {
+      profile: {
+        username: result.signals.devCandidateId, 
+        avatarUrl: undefined, 
+        primaryCohort: result.signals.ecosystemCohort ?? 'unknown',
+        seniority: snapshot.seniority as any,
+        summary: snapshot.summary ?? 'Reviewing developer history...',
+      },
+      score: {
+        value: percentile.ecosystemPercentile, 
+        percentile: percentile.ecosystemPercentile,
+        isWithheld: {
+          value: confidenceEnvelope.scoreWithheld,
+          reason: confidenceEnvelope.scoreWithheld 
+            ? "Insufficient verified activity found to generate a reliable score." 
+            : undefined,
+        },
+      },
+      trust: {
+        level: confidenceEnvelope.confidenceTier,
+        risk: confidenceEnvelope.riskLevel as any,
+        label: confidenceEnvelope.hrLabel ?? 'UNCERTAIN',
+        guidance: confidenceEnvelope.hrGuidance ?? 'Contact support for manual review.',
+      },
+      insights: {
+        capabilities: claims.filter(c => c.confidence > 0.7).map(c => c.description ?? ''),
+        gaps: confidenceEnvelope.caveats.filter(c => c.severity === 'CRITICAL').map(c => c.hrReadable ?? ''),
+        caveats: confidenceEnvelope.caveats.map(c => c.hrReadable ?? ''),
+      },
     };
   }
 
