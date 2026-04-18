@@ -6,7 +6,10 @@ import { FirewallService } from '../scoring/firewall/firewall.service';
 import { SignalEngineService } from '../scoring/signal-engine/signal-engine.service';
 import { EcosystemNormaliserService } from '../scoring/ecosystem-normaliser/ecosystem-normaliser.service';
 import { PercentileCalculatorService } from '../scoring/percentile-calculator/percentile-calculator.service';
+import { DataCompletenessEngineService } from '../scoring/data-completeness-engine/data-completeness-engine.service';
+import { ConfidenceEnvelopeService } from '../scoring/confidence-envelope/confidence-envelope.service';
 import { GithubRawDataSnapshot } from '../scoring/github-adapter/types';
+import { PillarKey } from '../scoring/signal-engine/types';
 import { FraudTier } from '@prisma/client';
 
 @Processor('signal-compute', { concurrency: 10 })
@@ -19,6 +22,8 @@ export class SignalComputeProcessor extends WorkerHost {
     private readonly signalEngine: SignalEngineService,
     private readonly normaliser: EcosystemNormaliserService,
     private readonly percentileCalculator: PercentileCalculatorService,
+    private readonly dataCompleteness: DataCompletenessEngineService,
+    private readonly confidenceEnvelope: ConfidenceEnvelopeService,
   ) {
     super();
   }
@@ -57,7 +62,34 @@ export class SignalComputeProcessor extends WorkerHost {
       const normResult = this.normaliser.normalise(engineResult);
       const percResult = await this.percentileCalculator.calculate(normResult.assignedCohort, normResult.normalisedSignals);
 
-      // 4. Update Database
+      // 4. Data Completeness & Confidence Envelope
+      const defaultWeights: Record<PillarKey, number> = {
+        ACTIVITY: 0.20,
+        COLLABORATION: 0.20,
+        QUALITY: 0.20,
+        RELIABILITY: 0.10,
+        IMPACT: 0.15,
+        GROWTH: 0.15,
+      };
+
+      const completenessResult = this.dataCompleteness.compute(engineResult, defaultWeights);
+      const effectiveWeights = this.confidenceEnvelope.enforceSignalDominanceCap(completenessResult.rebalancedWeights);
+
+      const confidenceEnvelopeInput = {
+        dataCoveragePercent: completenessResult.dataCoveragePercent,
+        visibilityTier: completenessResult.visibilityTier,
+        overallConfidenceCap: completenessResult.overallConfidenceCap,
+        fraudTier: engineResult.fraudTier as any, // Using domain FraudTier
+        fraudScore: engineResult.fraudScore,
+        excludedSignals: engineResult.excludedSignals,
+        consistencyNotes: engineResult.consistencyNotes,
+        privateWorkNote: completenessResult.completenessNote,
+        signalCount: Object.keys(engineResult.signals).length,
+      };
+
+      const confidenceResult = this.confidenceEnvelope.buildEnvelope(confidenceEnvelopeInput);
+
+      // 5. Update Database
       const signalData: any = {
         computedAt: new Date(),
         fraudScore: engineResult.fraudScore,
@@ -68,6 +100,14 @@ export class SignalComputeProcessor extends WorkerHost {
         ecosystemPercentile: percResult.ecosystemPercentile,
         percentileLabel: percResult.ecosystemPercentileLabel,
         languageDistribution: engineResult.languageDistribution,
+
+        // Completeness & Confidence
+        dataCoveragePercent: confidenceResult.scoreWithheld ? 0 : completenessResult.dataCoveragePercent,
+        effectivePillarWeights: effectiveWeights,
+        confidenceTier: confidenceResult.confidenceTier,
+        riskLevel: confidenceResult.riskLevel,
+        confidenceScore: confidenceResult.overallConfidence,
+        confidenceCaveats: confidenceResult.caveats,
 
         // Map individual signals
         activeWeeksRatio: engineResult.signals.activeWeeksRatio.value,
