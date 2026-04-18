@@ -4,6 +4,8 @@ import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FirewallService } from '../scoring/firewall/firewall.service';
 import { SignalEngineService } from '../scoring/signal-engine/signal-engine.service';
+import { EcosystemNormaliserService } from '../scoring/ecosystem-normaliser/ecosystem-normaliser.service';
+import { PercentileCalculatorService } from '../scoring/percentile-calculator/percentile-calculator.service';
 import { GithubRawDataSnapshot } from '../scoring/github-adapter/types';
 import { FraudTier } from '@prisma/client';
 
@@ -15,6 +17,8 @@ export class SignalComputeProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly firewall: FirewallService,
     private readonly signalEngine: SignalEngineService,
+    private readonly normaliser: EcosystemNormaliserService,
+    private readonly percentileCalculator: PercentileCalculatorService,
   ) {
     super();
   }
@@ -49,11 +53,22 @@ export class SignalComputeProcessor extends WorkerHost {
         profile.createdAt.toISOString()
       );
 
-      // 3. Update Database
+      // 3. Normalise & Calculate Percentiles
+      const normResult = this.normaliser.normalise(engineResult);
+      const percResult = await this.percentileCalculator.calculate(normResult.assignedCohort, normResult.normalisedSignals);
+
+      // 4. Update Database
       const signalData: any = {
         computedAt: new Date(),
         fraudScore: engineResult.fraudScore,
         fraudTier: this.mapFraudTier(engineResult.fraudTier),
+        
+        // Ecosystem & Percentile
+        ecosystemCohort: normResult.assignedCohort,
+        ecosystemPercentile: percResult.ecosystemPercentile,
+        percentileLabel: percResult.ecosystemPercentileLabel,
+        languageDistribution: engineResult.languageDistribution,
+
         // Map individual signals
         activeWeeksRatio: engineResult.signals.activeWeeksRatio.value,
         commitConsistencyScore: engineResult.signals.commitConsistencyScore.value,
@@ -69,6 +84,7 @@ export class SignalComputeProcessor extends WorkerHost {
         newLanguagesAdopted: engineResult.signals.newLanguagesAdopted1yr.value,
         growthTrajectoryScore: engineResult.signals.seniorityTrajectory.value,
         privateOrgActivity: engineResult.signals.privateOrgActivity.value,
+        
         // Web3 signals
         web3Signals: {
           coreProtocolPrMerges: engineResult.signals.coreProtocolPrMerges.value,
@@ -87,7 +103,7 @@ export class SignalComputeProcessor extends WorkerHost {
         update: signalData,
       });
 
-      this.logger.log(`Signal computation completed for devCandidate ${profile.devCandidateId}`);
+      this.logger.log(`Signal computation completed for devCandidate ${profile.devCandidateId} (Cohort: ${normResult.assignedCohort})`);
     } catch (error) {
       this.logger.error(`Signal computation failed for devCandidate ${profile.devCandidateId}: ${error.message}`);
       throw error;
