@@ -62,7 +62,31 @@ export class SignalEngineService {
       pillarSignals: this.getPillarMapping(),
       fraudScore,
       fraudTier,
+      languageDistribution: this.calculateLanguageDistribution(cleanedData.rest.languages),
     };
+  }
+
+  private calculateLanguageDistribution(repoLanguages: Record<string, any>): Record<string, number> {
+    const aggregate: Record<string, number> = {};
+    let totalBytes = 0;
+
+    for (const repoId in repoLanguages) {
+      const languages = repoLanguages[repoId];
+      for (const lang in languages) {
+        const bytes = languages[lang];
+        aggregate[lang] = (aggregate[lang] || 0) + bytes;
+        totalBytes += bytes;
+      }
+    }
+
+    const distribution: Record<string, number> = {};
+    if (totalBytes === 0) return distribution;
+
+    for (const lang in aggregate) {
+      distribution[lang] = Number(((aggregate[lang] / totalBytes) * 100).toFixed(2));
+    }
+
+    return distribution;
   }
 
   private setSignal(signals: Record<string, SignalValue>, key: SignalKey, value: any, options: { confidence?: number; sampleSize?: number; minimumRequired?: number } = {}) {

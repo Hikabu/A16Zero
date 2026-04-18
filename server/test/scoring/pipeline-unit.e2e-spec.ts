@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FirewallService } from '../firewall/firewall.service';
-import { SignalEngineService } from '../signal-engine/signal-engine.service';
-import { DataCompletenessEngineService } from '../data-completeness-engine/data-completeness-engine.service';
-import { PrivacyAdjustmentEngineService } from '../privacy-adjustment-engine/privacy-adjustment-engine.service';
-import { FraudTier } from '../firewall/types';
-import { PillarKey } from '../signal-engine/types';
+import { FirewallService } from '../../src/scoring/firewall/firewall.service';
+import { SignalEngineService } from '../../src/scoring/signal-engine/signal-engine.service';
+import { DataCompletenessEngineService } from '../../src/scoring/data-completeness-engine/data-completeness-engine.service';
+import { PrivacyAdjustmentEngineService } from '../../src/scoring/privacy-adjustment-engine/privacy-adjustment-engine.service';
+import { FraudTier } from '../../src/scoring/firewall/types';
+import { PillarKey } from '../../src/scoring/signal-engine/types';
 
 describe('Pipeline Checkpoint B', () => {
   let firewall: FirewallService;

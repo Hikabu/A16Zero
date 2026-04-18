@@ -51,4 +51,5 @@ export interface SignalComputeResult {
   pillarSignals: Record<PillarKey, SignalKey[]>;
   fraudScore: number;
   fraudTier: string;
+  languageDistribution: Record<string, number>;
 }
