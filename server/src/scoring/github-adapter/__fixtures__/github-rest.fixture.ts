@@ -8,6 +8,7 @@ export const GITHUB_REST_FIXTURE: GithubRestData = {
       owner: { login: 'testuser' },
       fork: false,
       language: 'TypeScript',
+      created_at: '2023-01-01T00:00:00Z',
       pushed_at: new Date().toISOString(),
     },
     {
@@ -16,6 +17,7 @@ export const GITHUB_REST_FIXTURE: GithubRestData = {
       owner: { login: 'testuser' },
       fork: false,
       language: 'CSS',
+      created_at: '2023-01-01T00:00:00Z',
       pushed_at: new Date().toISOString(),
     },
     {
@@ -24,6 +26,7 @@ export const GITHUB_REST_FIXTURE: GithubRestData = {
       owner: { login: 'otheruser' },
       fork: true,
       language: 'TypeScript',
+      created_at: '2023-01-01T00:00:00Z',
       pushed_at: new Date().toISOString(),
     },
     {
@@ -32,6 +35,7 @@ export const GITHUB_REST_FIXTURE: GithubRestData = {
       owner: { login: 'testuser' },
       fork: true,
       language: 'TypeScript',
+      created_at: '2023-01-01T00:00:00Z',
       pushed_at: new Date().toISOString(),
     },
     {
@@ -40,6 +44,7 @@ export const GITHUB_REST_FIXTURE: GithubRestData = {
       owner: { login: 'testuser' },
       fork: false,
       language: 'TypeScript',
+      created_at: '2023-01-01T00:00:00Z',
       pushed_at: new Date().toISOString(),
     },
   ],

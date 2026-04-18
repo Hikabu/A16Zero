@@ -53,9 +53,35 @@ describe('GithubSync (e2e)', () => {
     })
       .overrideProvider(GithubAdapterService)
       .useValue({
-        fetchRestData: jest.fn().mockResolvedValue(GITHUB_REST_FIXTURE),
-        fetchGraphQLData: jest.fn().mockResolvedValue(GITHUB_GRAPHQL_FIXTURE),
-        fetchEventsData: jest.fn().mockResolvedValue(GITHUB_EVENTS_FIXTURE),
+        fetchRawData: jest.fn().mockResolvedValue({
+          profile: {
+            username: 'testuser',
+            accountCreatedAt: new Date('2020-01-01'),
+            accountAge: 51,
+            publicRepos: 10,
+            followers: 10,
+          },
+          repos: GITHUB_REST_FIXTURE.repos.map((r: any) => ({
+            name: r.name,
+            language: r.language,
+            stars: r.stargazers_count,
+            forks: r.forks_count,
+            topics: r.topics || [],
+            createdAt: new Date(r.created_at),
+            pushedAt: new Date(r.pushed_at),
+            isFork: r.fork,
+            description: r.description,
+          })),
+          contributions: {
+            weeklyTotals: Array(52).fill(1),
+            activeWeeksCount: 52,
+          },
+          externalPRs: {
+            mergedExternalPRCount: GITHUB_GRAPHQL_FIXTURE.pullRequests.length,
+            externalRepoNames: ['repo1'],
+          },
+          fetchedAt: new Date(),
+        }),
         decryptToken: jest.fn().mockReturnValue('mock-token'),
       })
       .overrideProvider(getQueueToken('signal-compute'))
@@ -144,57 +170,46 @@ await redis.quit();
   });
 
   it('Step 4-5: Invoke processor and verify state', async () => {
-  const mockJob: any = {
-    id: 'job-1',
-    data: {
-      candidateId: testCandidate.id,
-      githubProfileId: testGithubProfile.id,
-    },
-  };
+    const mockJob: any = {
+      id: 'job-1',
+      data: {
+        candidateId: testCandidate.id,
+        githubProfileId: testGithubProfile.id,
+      },
+    };
 
-  await processor.process(mockJob);
+    await processor.process(mockJob);
 
-  const updatedProfile = await prisma.githubProfile.findUnique({
-    where: { id: testGithubProfile.id },
+    const updatedProfile = await prisma.githubProfile.findUnique({
+      where: { id: testGithubProfile.id },
+    });
+
+    // Check status - In stage 2, status remains IN_PROGRESS until signals are computed
+    expect(updatedProfile?.syncStatus).toBe(SyncStatus.IN_PROGRESS);
+    
+    // Check JSON-encoded progress
+    const progress = JSON.parse(updatedProfile?.syncProgress || '{}');
+    expect(progress).toHaveProperty('stage', 'analyzing_projects');
+    expect(progress).toHaveProperty('percent', 40);
+
+    expect(updatedProfile?.rawDataSnapshot).toBeDefined();
+
+    const snapshot = updatedProfile!.rawDataSnapshot as any;
+
+    // Check new snapshot structure
+    expect(snapshot.profile.username).toBe('testuser');
+    expect(snapshot.repos.length).toBe(GITHUB_REST_FIXTURE.repos.length);
+    expect(snapshot.contributions.activeWeeksCount).toBe(52);
+
+    expect(new Date(updatedProfile!.lastSyncAt!).getTime())
+      .toBeGreaterThan(Date.now() - 5000);
+
+    expect(signalQueueMock.add).toHaveBeenCalledWith(
+      'compute-signals',
+      expect.objectContaining({ githubProfileId: testGithubProfile.id })
+    );
   });
 
-  expect(updatedProfile?.syncStatus).toBe(SyncStatus.DONE);
-  expect(updatedProfile?.syncProgress).toBe('COMPLETE');
-  expect(updatedProfile?.rawDataSnapshot).toBeDefined();
-
-  const snapshot = updatedProfile!.rawDataSnapshot as any;
-
-  // REST layer
-  expect(snapshot.rest.repos.length).toBe(
-    GITHUB_REST_FIXTURE.repos.length ?? 5
-  );
-
-  // GRAPHQL layer (deterministic)
-  expect(snapshot.graphql.pullRequests.length).toBe(
-    expectedGraphQL.pullRequests
-  );
-
-  expect(snapshot.graphql.reviewsGiven.length).toBe(
-    expectedGraphQL.reviewsGiven
-  );
-
-  expect(snapshot.graphql.contributionCalendar.totalContributions).toBe(
-    expectedGraphQL.contributions
-  );
-
-  // EVENTS (make it fixture-driven if possible)
-  expect(snapshot.events.events.length).toBe(
-    GITHUB_EVENTS_FIXTURE.events.length
-  );
-
-  expect(new Date(updatedProfile!.lastSyncAt!).getTime())
-    .toBeGreaterThan(Date.now() - 5000);
-
-  expect(signalQueueMock.add).toHaveBeenCalledWith(
-    'compute-signals',
-    expect.objectContaining({ githubProfileId: testGithubProfile.id })
-  );
-});
   it('Step 6: POST /api/me/github/sync again (Rate Limit)', async () => {
     const response = await supertest(app.getHttpServer())
       .post('/me/github/sync')
@@ -211,7 +226,8 @@ await redis.quit();
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.syncStatus).toBe('DONE');
-    expect(response.body.syncProgress).toBe('COMPLETE');
+    expect(response.body.syncStatus).toBe('IN_PROGRESS');
+    const progress = JSON.parse(response.body.syncProgress || '{}');
+    expect(progress.stage).toBe('analyzing_projects');
   });
 });
