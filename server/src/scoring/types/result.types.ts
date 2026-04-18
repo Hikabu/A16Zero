@@ -21,6 +21,7 @@ export interface AnalysisResult {
     externalContributions: number;
     confidence:            ConfidenceLevel;
   };
+  privateWorkNote?: string;
 }
 
 export interface ExtractedSignals {
