@@ -57,7 +57,7 @@ describe('Auth OAuth (e2e)', () => {
         lastName: 'User' 
       };
       
-      const res = await authService.oauthLogin(profile, 'GITHUB');
+      const res: any = await authService.oauthLogin(profile, 'GITHUB');
 
       expect(res.needsOnboarding).toBe(true);
       expect(res.tempToken).toBeDefined();
@@ -91,7 +91,8 @@ describe('Auth OAuth (e2e)', () => {
         .expect(201);
       
       // Verification stub
-      const prisma = (app.get(AuthService) as any).prisma;
+      const authService = app.get(AuthService);
+      const prisma = (authService as any).prisma;
       await prisma.user.update({ where: { email }, data: { isEmailVerified: true } as any });
       
       const verifiedLogin = await request(app.getHttpServer())

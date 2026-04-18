@@ -38,8 +38,6 @@ export const envSchema = z.object({
     RESEND_FROM: z.string().optional(),
     SENTRY_DSN: z.string().optional(),
 
-    LEGACY_SCORING: z.string().optional().default('false').transform((v) => v === 'true'),
-
 });
 
 export const env = envSchema.parse(process.env);

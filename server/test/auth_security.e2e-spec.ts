@@ -74,7 +74,7 @@ describe('Auth Security (e2e)', () => {
       
       const authService = app.get(AuthService);
 
-      const prisma = authService.prisma;
+      const prisma = (authService as any).prisma;
       await prisma.user.update({ where: { email }, data: { isEmailVerified: true } as any });
 
       // 1. First login

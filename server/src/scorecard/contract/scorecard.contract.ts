@@ -46,5 +46,4 @@ export const ScorecardResponseSchema = z.object({
  */
 export const ScorecardPreviewRequestSchema = z.object({
   githubUsername: z.string().min(1).describe('The GitHub username to analyze'),
-  roleType: z.nativeEnum(RoleType).default(RoleType.GENERALIST).describe('The target role for the evaluation'),
 });

@@ -103,10 +103,6 @@ model DeveloperCandidate {
   candidate     Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   githubProfile GithubProfile?
   web3Profile   Web3Profile?
-  signals       CandidateSignals?
-  snapshot      DeveloperSnapshot?
-  timeline      CareerTimeline?
-  claims        CandidateClaim[]
   createdAt     DateTime          @default(now())
 }
 
@@ -151,23 +147,27 @@ model Web3Profile {
   createdAt         DateTime          @default(now())
 }
 
-// ─── Signals ─────────────────────────────────────────────────
+// ─── Legacy Enums (Marked for potential purge) ─────────────────
+// DEPRECATED: potentially removable after refactor
 enum FraudTier { 
   CLEAN  
   FLAGGED  
   DISQUALIFIED 
 }
+
+// DEPRECATED: potentially removable after refactor
+enum RiskLevel { 
+  LOW_RISK  
+  MEDIUM_RISK 
+  HIGH_RISK  
+  INSUFFICIENT_DATA 
+}
+
 enum ConfidenceTier { 
   FULL  
   PARTIAL  
   LOW  
   MINIMAL 
-}
-enum RiskLevel { 
-  LOW_RISK  
-MEDIUM_RISK 
-HIGH_RISK  
-INSUFFICIENT_DATA 
 }
 
 enum BehaviorPattern {
@@ -201,167 +201,6 @@ enum RoleType {
   SECURITY_WEB3  
   SECURITY 
   GENERALIST
-}
-
-model CandidateSignals {
-  id                       String             @id @default(uuid())
-  devCandidateId           String             @unique
-  devCandidate             DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  computedAt               DateTime           @default(now())
-
-  // Activity
-  activeWeeksRatio         Float?
-  prThroughput90d          Float?
-  commitConsistencyScore   Float?
-  avgCommitsPerMonth       Float?
-  commitLongevityMonths    Int?
-  privateOrgActivity       Boolean            @default(false)
-  verifiedEmployers        Json?
-  verifiedPrivateMonths    Int                @default(0)
-
-  // Code Quality
-  testPresenceScore        Float?
-  cicdScore                Float?
-  hygieneScore             Float?
-  securityScore            Float?
-  prAcceptanceRate         Float?
-  changeRequestFrequency   Float?
-  reworkRatio              Float?
-
-  // Complexity / Ownership
-  ownershipScore           Float?
-  refactorRatio            Float?
-  docScore                 Float?
-  repoLongevityScore       Float?
-
-  // Collaboration
-  reviewScore              Float?
-  reviewDepth              Float?
-  reviewCommitRatio        Float?
-  externalPrRatio          Float?
-  issueScore               Float?
-  architecturePrScore      Float?
-
-  // Architecture
-  depHygieneScore          Float?
-  cicdStagesScore          Float?
-
-  // Growth
-  stackEvolutionScore      Float?
-  growthTrajectoryScore    Float?
-  newLanguagesAdopted      Int?
-
-  // Impact
-  starsOnOriginalRepos     Int?
-  forksOnOriginalRepos     Int?
-  prestigeRepoContribs     Int                @default(0)
-  primaryLanguageDepth     Float?
-  languageBreadth5yr       Int?
-
-  // Web3 (JSONB — scored only for Web3 RoleTypes)
-  web3Signals              Json?
-
-  // Fraud
-  fraudScore               Float              @default(0)
-  fraudFlags               Json               @default("[]")
-  fraudTier                FraudTier          @default(CLEAN)
-
-  // Data completeness
-  dataCoveragePercent      Float              @default(0)
-  privacyAdjustmentApplied Boolean           @default(false)
-  ecosystemCohort          String?
-  effectivePillarWeights   Json?              // after rebalancing — shown to HR
-
-  // Classification
-  inferredSeniority        Seniority?
-  seniorityConfidence      Float?
-  inferredRole             RoleType?
-  roleConfidence           Float?
-  behaviorPattern          BehaviorPattern?
-  behaviorConfidence       Float?
-
-  // Confidence
-  confidenceTier           ConfidenceTier?
-  riskLevel                RiskLevel?
-  confidenceScore          Float?
-  confidenceCaveats        Json               @default("[]")
-
-  // Temporal
-  peakCareerScore          Float?             // best 24-month window
-  recentScore              Float?             // last 6 months
-  trendSignal              String?            // ASCENDING | STABLE | DECLINING | RETURNING
-
-  // Percentile
-  ecosystemPercentile      Float?
-  percentileLabel          String?            // "Top 15% TypeScript developers"
-
-  // Pillar summaries (0–100)
-  pillarActivity           Float?
-  pillarQuality            Float?
-  pillarComplexity         Float?
-  pillarCollaboration      Float?
-  pillarArchitecture       Float?
-  pillarGrowth             Float?
-  pillarWeb3               Float?
-
-  // Caveats
-  notObservable            Json               @default("[]") // Unknowns layer
-  languageDistribution     Json?
-  topRepos                 Json?
-}
-
-// ─── DeveloperSnapshot (first-class model, ADR-013) ──────────
-model DeveloperSnapshot {
-  id             String             @id @default(uuid())
-  devCandidateId String             @unique
-  devCandidate   DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  role           RoleType
-  roleConfidence Float
-  seniority      Seniority
-  seniorityConf  Float
-  summary        String             // 1-2 sentences from BehaviorPattern + top capabilities
-  riskLevel      RiskLevel
-  decisionSignal String             // PROCEED | REVIEW | REJECT
-  generatedAt    DateTime           @default(now())
-}
-
-// ─── CareerTimeline (first-class model) ──────────────────────
-model CareerTimeline {
-  id               String             @id @default(uuid())
-  devCandidateId   String             @unique
-  devCandidate     DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  phases           Json               // [{ phase, startDate, endDate, signals }]
-  trajectory       String             // ASCENDING | STABLE | DECLINING | RETURNING
-  gapEvents        Json               @default("[]") // [{ startDate, endDate, durationDays }]
-  peakWindow       Json?              // { startDate, endDate, score }
-  contextInference Json?              // workEnvironment, collaborationStyle, teamVsSolo
-  generatedAt      DateTime           @default(now())
-}
-
-// ─── Claims ──────────────────────────────────────────────────
-enum ClaimType { 
-  ACTIVITY
-  IMPACT  
-  COLLABORATION 
-  QUALITY  
-  BEHAVIOR  
-  GROWTH  
-  WEB3 
-}
-
-model CandidateClaim {
-  id                String             @id @default(uuid())
-  devCandidateId    String
-  devCandidate      DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  claimType         ClaimType
-  claimKey          String
-  description       String
-  supportingSignals Json
-  evidenceLinks     Json
-  confidence        Float
-  isActive          Boolean            @default(true)
-  createdAt         DateTime           @default(now())
-  @@index([devCandidateId, isActive])
 }
 
 // ─── Jobs (read-only stub — HR team owns CRUD; same DB) ──────
@@ -415,16 +254,15 @@ model Application {
   candidate             Candidate         @relation(fields: [candidateId], references: [id])
   appliedAt             DateTime          @default(now())
   status                ApplicationStatus @default(PENDING)
-  // Frozen at apply-time (immutable)
-  decisionCard          Json              // { signal, riskLevel, strengths[], risks[] }
-  gapReport             Json              // full GapReport interface
-  capabilityStatements  Json
-  confidenceEnvelope    Json
-  behaviorPattern       BehaviorPattern?
-  temporalProfile       Json?
-  roleFitScore          Float
-  fitTier               FitTier
-  fraudTier             FraudTier
+  
+  // Refactored fields will go here in Phase 3
+  // For now, only generic metadata stays
+  
+  roleFitScore          Float             @default(0)
+  fitTier               FitTier           @default(PASS)
+  fraudTier             FraudTier         @default(CLEAN)
+  riskLevel             RiskLevel?
+  confidenceTier        ConfidenceTier?
   candidateNote         String?           @db.VarChar(280)
   hrNotes               String?
   // Contestation (GDPR Article 22)
@@ -434,78 +272,6 @@ model Application {
   contestationActorId   String?
   @@unique([jobId, candidateId])
   @@index([tenantId, jobId, roleFitScore(sort: Desc)])
-}
-
-// ─── Outcomes & Learning ─────────────────────────────────────
-model HireOutcome {
-  id                           String   @id @default(uuid())
-  tenantId                     String
-  applicationId                String   @unique
-  wasHired                     Boolean
-  performanceRating            Float?   // 0-5 at 90 days
-  behaviorPatternAtDecision    BehaviorPattern?
-  temporalProfileSnapshot      Json?
-  capabilityStatementsAtDecision Json?
-  confidenceAtDecision         Float?
-  roleFitScore                 Float?
-  pillarScores                 Json?
-  recordedAt                   DateTime @default(now())
-  @@index([tenantId, wasHired])
-}
-
-model PlatformPrior {
-  id              String          @id @default(uuid())
-  behaviorPattern BehaviorPattern
-  hireRate        Float
-  avgPerformance90d Float?
-  sampleSize      Int
-  computedAt      DateTime        @default(now())
-  @@unique([behaviorPattern])
-}
-
-// ─── Benchmarks ───────────────────────────────────────────────
-model BenchmarkCohort {
-  id                   String   @id @default(uuid())
-  cohortKey            String   @unique // e.g. "typescript_node_web"
-  pillarDistributions  Json     // { activity: { p25, p50, p75, p90 }, ... }
-  sampleSize           Int
-  computedAt           DateTime @default(now())
-}
-
-// ─── HR Views ────────────────────────────────────────────────
-model HrSavedView {
-  id           String   @id @default(uuid())
-  tenantId     String
-  orgId        String
-  userId       String
-  jobId        String?
-  name         String
-  filterConfig Json
-  createdAt    DateTime @default(now())
-}
-
-// ─── ROI & Fairness ──────────────────────────────────────────
-model RoiSnapshot {
-  id                   String   @id @default(uuid())
-  tenantId             String
-  orgId                String
-  periodStart          DateTime
-  periodEnd            DateTime
-  avgScreenMinutes     Float?
-  interviewOfferRatio  Float?
-  timeToFirstDecision  Float?
-  costDelta            Float?
-  createdAt            DateTime @default(now())
-}
-
-model FairnessReport {
-  id          String   @id @default(uuid())
-  tenantId    String
-  orgId       String
-  quarter     String   // "2026-Q2"
-  reportPdf   Bytes?
-  flagCount   Int      @default(0)
-  generatedAt DateTime @default(now())
 }
 
 // ─── Audit Log ────────────────────────────────────────────────

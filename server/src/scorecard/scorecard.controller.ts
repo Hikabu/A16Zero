@@ -23,7 +23,7 @@ export class ScorecardController {
   @UseGuards(InternalKeyGuard)
   @HttpCode(HttpStatus.OK)
   async preview(@Body() request: ScorecardPreviewRequestDto): Promise<ScorecardUiDto> {
-    const result = await this.scorecardService.previewForUsername(request.githubUsername, request.roleType);
+    const result = await this.scorecardService.previewForUsername(request.githubUsername);
     return this.scorecardService.mapToUiModel(result);
   }
 
@@ -36,6 +36,6 @@ export class ScorecardController {
   @UseGuards(InternalKeyGuard)
   @HttpCode(HttpStatus.OK)
   async previewRaw(@Body() request: ScorecardPreviewRequestDto): Promise<any> {
-    return this.scorecardService.previewForUsername(request.githubUsername, request.roleType);
+    return this.scorecardService.previewForUsername(request.githubUsername);
   }
 }

@@ -27,10 +27,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     BullModule.registerQueue(
       { name: 'github-sync' },
       { name: 'signal-compute' },
-      { name: 'rescore' },
       { name: 'notification' },
       { name: 'ats-sync' },
-      { name: 'prior-calc' },
       { name: 'email' },
     ),
   ],
