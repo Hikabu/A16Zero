@@ -16,6 +16,7 @@ import { HealthModule } from './modules/health/health.module';
 import { QueuesModule } from './queues/queues.module';
 import { ScoringModule } from './scoring/scoring.module';
 import { EmailModule } from './modules/email/email.module';
+import { ScorecardModule } from './scorecard/scorecard.module';
 
 @Module({
   providers: [
@@ -55,7 +56,7 @@ import { EmailModule } from './modules/email/email.module';
     QueuesModule,
     ScoringModule,
     EmailModule,
-    
+    ScorecardModule,
   ],
 
 })

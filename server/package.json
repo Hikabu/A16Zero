@@ -20,6 +20,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand",
     "test:e2e:stage2a": "NODE_ENV=test jest --config ./test/jest-e2e.json --testPathPatterns=github-sync --runInBand",
+    "test:stage2": "NODE_ENV=test jest --config ./test/jest-e2e.json stage2-final.e2e-spec.ts",
+    "test:stage2:unit": "jest src/scoring/__tests__/pipeline-unit.spec.ts src/scoring/__tests__/behavior-temporal.spec.ts src/scoring/capability-translator/capability-translator.service.spec.ts src/scoring/career-timeline-reconstructor/career-timeline-reconstructor.service.spec.ts src/scoring/claim-generator/claim-generator.service.spec.ts src/scoring/developer-snapshot-builder/developer-snapshot-builder.service.spec.ts",
     "worker": "node dist/worker.js",
     "worker:dev": "ts-node src/worker.ts",
     "env:sync": "ts-node scripts/sync-env.ts"
@@ -32,6 +34,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.19",
+    "@nestjs/swagger": "^11.3.0",
     "@nestjs/throttler": "^6.5.0",
     "@octokit/request": "^10.0.8",
     "@otplib/plugin-base32-scure": "^13.4.0",
@@ -57,6 +60,7 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.12.0",
     "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {

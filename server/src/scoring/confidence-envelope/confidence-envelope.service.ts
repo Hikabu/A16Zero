@@ -21,7 +21,7 @@ export class ConfidenceEnvelopeService {
     } else if (input.dataCoveragePercent >= 25) {
       currentConfidence = 0.50;
     } else {
-      currentConfidence = 0.35;
+      currentConfidence = 0.30;
     }
 
     // Step 2: Apply fraud penalty
@@ -88,7 +88,7 @@ export class ConfidenceEnvelopeService {
       riskLevel = RiskLevel.MEDIUM_RISK;
       hrLabel = 'Moderate confidence';
       hrGuidance = 'Proceed with awareness. Score is directionally reliable. Flag gaps for interview.';
-    } else if (currentConfidence >= 0.35) {
+    } else if (currentConfidence > 0.35) {
       confidenceTier = ConfidenceTier.LOW;
       riskLevel = RiskLevel.HIGH_RISK;
       hrLabel = 'Low confidence';

@@ -21,6 +21,34 @@ export class GithubAdapterService {
   ) {}
 
   /**
+   * Fetches raw data for any GitHub username using a provided token.
+   * This is used for the headless preview endpoint.
+   */
+  async fetchRawDataByUsername(githubUsername: string, token: string): Promise<GithubRawDataSnapshot & { accountCreatedAt: string }> {
+    const user = await this.fetchUserProfile(githubUsername, token);
+    
+    const [rest, graphqlData, events] = await Promise.all([
+      this.fetchRestData(user.id.toString(), githubUsername, token),
+      this.fetchGraphQLData(user.id.toString(), githubUsername, token),
+      this.fetchEventsData(user.id.toString(), githubUsername, token),
+    ]);
+
+    return {
+      rest,
+      graphql: graphqlData,
+      events,
+      fetchedAt: new Date().toISOString(),
+      accountCreatedAt: user.created_at,
+    };
+  }
+
+  async fetchUserProfile(githubUsername: string, token: string): Promise<any> {
+    const octokit = new Octokit({ auth: token });
+    const res = await this.withRetry(() => octokit.rest.users.getByUsername({ username: githubUsername }));
+    return res.data;
+  }
+
+  /**
    * Main entry point to fetch and sync all GitHub data for a profile.
    */
   async syncProfile(githubProfileId: string): Promise<void> {

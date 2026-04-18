@@ -260,9 +260,18 @@ export class SignalEngineService {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
     const recentPrs = prs.filter((p: any) => new Date(p.createdAt) > ninetyDaysAgo);
-    this.setSignal(signals, 'prThroughput90d', Number((recentPrs.length / 12.857).toFixed(2)), {
-      sampleSize: recentPrs.length
-    });
+
+    if (accountAgeMonths >= 3) {
+      this.setSignal(signals, 'prThroughput90d', Number((recentPrs.length / 12.857).toFixed(2)), {
+        sampleSize: recentPrs.length
+      });
+    } else {
+      this.excludeSignal(signals, excluded, 'prThroughput90d', {
+        reason: 'Account age reflects insufficient history (<3 months)',
+        sampleSize: Math.floor(accountAgeMonths),
+        minimumRequired: 3
+      });
+    }
 
     // 5. privateOrgActivity
     const hasOrgPush = events.some((e: any) => 
@@ -474,9 +483,18 @@ export class SignalEngineService {
       totalWeight += weight;
     }
     
-    this.setSignal(signals, 'testFilePresence', totalWeight > 0 ? totalWeightedScore / totalWeight : 0, {
-      confidence: 0.8
-    });
+    if (totalWeight > 0) {
+      this.setSignal(signals, 'testFilePresence', totalWeight > 0 ? totalWeightedScore / totalWeight : 0, {
+        confidence: 0.8,
+        sampleSize: repos.length
+      });
+    } else {
+      this.excludeSignal(signals, excluded, 'testFilePresence', {
+        reason: 'No evaluable repositories found',
+        sampleSize: 0,
+        minimumRequired: 1
+      });
+    }
 
     // 2. cicdConfigDetection
     const cicdPaths = ['.github/workflows', '.circleci', '.travis.yml', 'foundry.toml', 'hardhat.config.js', 'hardhat.config.ts'];
@@ -485,7 +503,15 @@ export class SignalEngineService {
       return files.some(f => cicdPaths.some(cp => f.startsWith(cp) || f === cp));
     });
     
-    this.setSignal(signals, 'cicdConfigDetection', hasCicd ? 1 : 0);
+    if (repos.length > 0) {
+      this.setSignal(signals, 'cicdConfigDetection', hasCicd ? 1 : 0);
+    } else {
+      this.excludeSignal(signals, excluded, 'cicdConfigDetection', {
+        reason: 'No repositories found to inspect for CI/CD',
+        sampleSize: 0,
+        minimumRequired: 1
+      });
+    }
   }
 
   // --- IMPACT PILLAR ---
@@ -498,15 +524,26 @@ export class SignalEngineService {
     const now = new Date();
     for (const repo of repos) {
       if (repo.fork || repo.tutorialWeight < 1.0) continue;
-      const createdAt = new Date(repo.createdAt || repo.created_at);
+      const createdAtData = repo.createdAt || repo.created_at;
+      const createdAt = new Date(createdAtData);
       const ageMonths = (now.getTime() - createdAt.getTime()) / (1000 * 3600 * 24 * 30.44);
       const stars = repo.stargazerCount || repo.stargazers_count || 0;
       impactScore += stars * Math.log(ageMonths + 1);
     }
+
+    const eligibleReposCount = repos.filter((r: any) => !r.fork).length;
     
-    this.setSignal(signals, 'starsOnOriginalRepos', Math.min(1, impactScore / 1000), {
-      sampleSize: repos.length
-    });
+    if (eligibleReposCount > 0) {
+      this.setSignal(signals, 'starsOnOriginalRepos', Math.min(1, impactScore / 1000), {
+        sampleSize: eligibleReposCount
+      });
+    } else {
+      this.excludeSignal(signals, excluded, 'starsOnOriginalRepos', {
+        reason: 'No original (non-fork) repositories found',
+        sampleSize: 0,
+        minimumRequired: 1
+      });
+    }
 
     // 2. highPrestigeRepoContributions
     const externalMergedPrs = prs.filter((p: any) => p.mergedAt && p.repository.owner.login.toLowerCase() !== data.username?.toLowerCase());
