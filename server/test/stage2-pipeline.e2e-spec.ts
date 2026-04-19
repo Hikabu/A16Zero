@@ -75,7 +75,7 @@ await prisma.user.deleteMany();
   });
 
   afterAll(async () => {
-    console.log('quitiitng');
+    // console.log('quitiitng');
     await app.close();
     await prisma.$disconnect();
     await redis.quit();
@@ -95,7 +95,7 @@ await prisma.user.deleteMany();
 
   describe('TEST E1 — Happy path', () => {
     it('should complete analysis for alex-backend', async () => {
-      console.log("first test");
+      // console.log("first test");
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({ githubUsername: 'alex-backend' })
@@ -145,7 +145,7 @@ await prisma.user.deleteMany();
   describe('TEST E2 — Cache hit path', () => {
     it('should return cached job immediately and avoid re-fetch', async () => {
       // First request already done in E1
-      console.log("second test");
+      // console.log("second test");
       mockGithubAdapter.fetchRawData.mockClear();
 
       const res = await request(app.getHttpServer())
@@ -166,7 +166,7 @@ await prisma.user.deleteMany();
   });
 
   describe('TEST E3 — Zero public data → graceful failure', () => {
-    console.log("test 3");
+    // console.log("test 3");
     it('should fail with Insufficient public data', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
@@ -250,7 +250,7 @@ await prisma.user.deleteMany();
         const statusRes = await request(app.getHttpServer()).get(`/api/analysis/${res.body.jobId}/status`);
         observedStages.push(statusRes.body.stage);
         observedPercentages.push(statusRes.body.progress);
-          console.log(statusRes.body);
+          // console.log(statusRes.body);
 
         
         if (statusRes.body.status === 'complete') break;
@@ -283,7 +283,7 @@ await prisma.user.deleteMany();
       mockGithubAdapter.fetchRawData.mockClear();
 
       const xKey = process.env.INTERNAL_API_KEY || 'default_timeout_for_tests';
-      console.log("XKEY", xKey);
+      // console.log("XKEY", xKey);
       const res = await request(app.getHttpServer())
         .post('/api/analysis/recompute')
         .set('X-Internal-Key', xKey)  
@@ -307,11 +307,11 @@ await prisma.user.deleteMany();
         await waitForJob(res.body.jobId);
         const resultRes = await request(app.getHttpServer()).get(`/api/analysis/${res.body.jobId}/result`);
         const result: AnalysisResult = resultRes.body.result;
-        console.log("result: ", result);
+        // console.log("result: ", result);
 
         // Capability scores
         Object.values(result.capabilities).forEach(cap => {
-          console.log("cap: ", cap);
+          // console.log("cap: ", cap);
           expect(cap.score).toBeGreaterThanOrEqual(0);
           expect(cap.score).toBeLessThanOrEqual(1);
           expect(['low', 'medium', 'high']).toContain(cap.confidence);

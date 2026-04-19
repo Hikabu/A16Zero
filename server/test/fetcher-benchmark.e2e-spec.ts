@@ -115,7 +115,7 @@ describe('Fetcher Performance Benchmark', () => {
     const end = performance.now();
     const duration = end - start;
 
-    console.log(`[BENCHMARK] Total Pipeline Time: ${duration.toFixed(2)}ms`);
+    // console.log(`[BENCHMARK] Total Pipeline Time: ${duration.toFixed(2)}ms`);
     
     // Assert < 2000ms
     expect(duration).toBeLessThan(2000);
