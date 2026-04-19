@@ -23,7 +23,7 @@ async function bootstrap() {
 
   // Swagger Documentation
   const config = new DocumentBuilder()
-    .setTitle('HireOnChain Employer API')
+    .setTitle('a16zero Employer API')
     .setDescription('Backend MVP for Employer platform features and Account Abstraction auth verification.')
     .setVersion('1.0')
     .addBearerAuth()
