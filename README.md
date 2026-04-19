@@ -1,4 +1,15 @@
 
+## how to run project 
+```bash
+cd backend
+npm i
+docker-compose up --build
+npx prisma migrate dev
+npx prisma generate
+npx prisma db seed
+npm     run start:dev
+```
+
 ## 1. What this project is (big picture)
 
 This is an **employer-facing backend API** (title in Swagger: “HireOnChain Employer API”). The idea:
