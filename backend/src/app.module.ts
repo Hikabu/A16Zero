@@ -9,6 +9,8 @@ import { JobsModule } from './jobs/jobs.module';
 import { CandidatesModule } from './candidates/candidates.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import * as zod from 'zod';
 
 const envSchema = zod.object({
@@ -44,6 +46,8 @@ const envSchema = zod.object({
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    AppService,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
