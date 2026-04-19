@@ -1,5 +1,5 @@
 # PRISMA.md
-
+Prisma version is 6.19
 ## Purpose
 
 This file is the **quick source of truth** for our Prisma database architecture.
