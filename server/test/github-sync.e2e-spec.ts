@@ -205,9 +205,12 @@ await redis.quit();
       .toBeGreaterThan(Date.now() - 5000);
 
     expect(signalQueueMock.add).toHaveBeenCalledWith(
-      'compute-signals',
-      expect.objectContaining({ githubProfileId: testGithubProfile.id })
-    );
+  'compute-signals',
+  expect.objectContaining({
+    githubProfileId: testGithubProfile.id,
+  }),
+  expect.any(Object) // matches { attempts: 1 }
+);
   });
 
   it('Step 6: POST /api/me/github/sync again (Rate Limit)', async () => {

@@ -15,7 +15,7 @@ import {
 import { AnalysisResult } from '../src/scoring/types/result.types';
 import { PrismaService } from '../src/prisma/prisma.service';
 import Redis from 'ioredis';
-
+import { WorkerModule } from '../src/queues/worker.module';
 describe('Colosseum Stage 2 Pipeline (E2E)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -43,7 +43,8 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
         ThrottlerModule.forRoot({
           throttlers: [], // Disable throttling
         }),
-        AppModule
+        AppModule,
+        WorkerModule, // Ensure WorkerModule is included for processing job
       ],
     })
       .overrideProvider(GithubAdapterService)

@@ -60,7 +60,7 @@ import { ScorecardModule } from './scorecard/scorecard.module';
     ScoringModule,
     EmailModule,
     ScorecardModule,
-    ...(process.env.RUN_WORKERS === 'true' ? [WorkerModule] : []),
+    // ...(process.env.RUN_WORKERS === 'true' ? [WorkerModule] : []),
   ],
 
 })

@@ -115,6 +115,22 @@ enum SyncStatus {
   FAILED 
 }
 
+model GithubProfile {
+  id               String             @id @default(uuid())
+  devCandidateId   String             @unique
+  devCandidate     DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+  githubUsername   String             @unique
+  githubUserId     String             @unique
+  encryptedToken   String             // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
+  scopes           String[]
+  lastSyncAt       DateTime?
+  syncStatus       SyncStatus         @default(PENDING)
+  syncProgress     String             @default("0")
+  syncError        String?
+  rawDataSnapshot  Json?
+  createdAt        DateTime           @default(now())
+}
+
 // ─── Web3 Profile (opt-in) ───────────────────────────────────
 // Wallet address submitted by candidate — no signature verification needed.
 // Solana signals use RPC-native methods; there is no Solana equivalent of Etherscan.
