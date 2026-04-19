@@ -24,25 +24,25 @@ export class SignalComputeProcessor extends WorkerHost {
   ) {
     super();
   }
-  @OnWorkerEvent('active')
-onActive(job: Job) {
-  console.log('🟡 ACTIVE:', job.id);
-}
+//   @OnWorkerEvent('active')
+// onActive(job: Job) {
+//   console.log('ACTIVE:', job.id);
+// }
 
-@OnWorkerEvent('completed')
-onCompleted(job: Job) {
-  console.log('✅ COMPLETED:', job.id);
-}
+// @OnWorkerEvent('completed')
+// onCompleted(job: Job) {
+//   console.log('COMPLETED:', job.id);
+// }
 
 @OnWorkerEvent('failed')
 onFailed(job: Job, err: Error) {
-  console.log('🔴 FAILED:', job.id, err.message);
+  console.log('FAILED:', job.id, err.message);
 }
 
-@OnWorkerEvent('stalled')
-onStalled(jobId: string) {
-  console.log('⚠️ STALLED:', jobId);
-}
+// @OnWorkerEvent('stalled')
+// onStalled(jobId: string) {
+//   console.log('STALLED:', jobId);
+// }
 
   async process(job: Job<{ 
     candidateId?: string; 

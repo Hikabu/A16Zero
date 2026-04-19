@@ -7,9 +7,11 @@ import { ScoringModule } from '../scoring/scoring.module';
 import { SignalExtractorModule } from '../scoring/signal-extractor/signal-extractor.module';
 import { CacheModule } from '../scoring/cache/cache.module';
 import { GithubAdapterModule } from '../scoring/github-adapter/github-adapter.module';
+import { QueuesModule } from './queues.module';
 
 @Module({
   imports: [
+    QueuesModule,
     PrismaModule,
     ScoringModule,
     SignalExtractorModule,
