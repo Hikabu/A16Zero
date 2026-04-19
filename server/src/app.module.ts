@@ -15,6 +15,7 @@ import { RoiModule } from './modules/roi/roi.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { QueuesModule } from './queues/queues.module';
+import { WorkerModule } from './queues/worker.module';
 import { ScoringModule } from './scoring/scoring.module';
 import { EmailModule } from './modules/email/email.module';
 import { ScorecardModule } from './scorecard/scorecard.module';
@@ -59,6 +60,7 @@ import { ScorecardModule } from './scorecard/scorecard.module';
     ScoringModule,
     EmailModule,
     ScorecardModule,
+    ...(process.env.RUN_WORKERS === 'true' ? [WorkerModule] : []),
   ],
 
 })

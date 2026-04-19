@@ -9,13 +9,7 @@ import { ExecutionContext, Injectable } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 export const resetBefore = async()=>{
-  //   execSync('npx prisma migrate reset --force', {
-  //   stdio: 'inherit',
-  //   env: {
-  //     ...process.env,
-  //     DATABASE_URL: 'postgresql://user:password@localhost:5432/a16zero_test'
-  //   }
-  // });
+
   const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

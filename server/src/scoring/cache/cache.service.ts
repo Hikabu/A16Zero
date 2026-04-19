@@ -21,7 +21,8 @@ export class CacheService {
     if (walletAddress) {
       return `${base}:${walletAddress.toLowerCase()}`;
     }
-    return base;
+    const safeBase = base.replace(/:/g, '-');
+    return safeBase;
   }
 
   /**

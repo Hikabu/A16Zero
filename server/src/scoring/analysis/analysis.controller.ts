@@ -1,10 +1,11 @@
-import { Controller, Post, Get, Body, Param, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, NotFoundException, HttpCode, HttpStatus } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 import { CacheService } from '../cache/cache.service';
 import { InternalKeyGuard } from '../../scorecard/internal-key.guard';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @ApiTags('Analysis')
 @Controller('api/analysis')
@@ -15,7 +16,86 @@ export class AnalysisController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ 
+    summary: 'Trigger an analysis for a developer profile',
+    description: 'Creates or retrieves a cached analysis job for a GitHub username.'
+  })
+  async createAnalysis(
+    @Body() body: { githubUsername: string },
+  ) {
+    const { githubUsername } = body;
+    const cacheKey = this.cacheService.buildCacheKey(githubUsername);
+    
+    // Check cache first
+    // console.log("cache key: ", cacheKey);
+    const cachedResult = await this.cacheService.get(cacheKey);
+    if (cachedResult) {
+      // console.log("cached result");
+      // Return a completed job immediately
+      const job = await this.signalQueue.add('sync-profile', {
+        githubUsername,
+        cached: true,
+      }, { 
+        jobId: `cached-${cacheKey}`,
+        removeOnComplete: false,
+        attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
+      });
+
+      // Set the result directly
+      await job.updateProgress(100);
+      return { jobId: job.id };
+    }
+    // console.log("no cache result");
+
+    // Find or create profile
+    let profile = await this.prisma.githubProfile.findUnique({
+      where: { githubUsername },
+    });
+
+    if (!profile) {
+      // console.log("creating a profile");
+      // Create user/candidate/profile structure for new username
+      const ts = Date.now();
+      const user = await this.prisma.user.create({
+        data: {
+          username: `auto-${githubUsername}-${ts}`,
+          email: `auto-${githubUsername}-${ts}@colosseum.internal`,
+        }
+      });
+
+      const candidate = await this.prisma.candidate.create({
+        data: { userId: user.id }
+      });
+
+      const devCandidate = await this.prisma.developerCandidate.create({
+        data: { candidateId: candidate.id }
+      });
+
+      profile = await this.prisma.githubProfile.create({
+        data: {
+          devCandidateId: devCandidate.id,
+          githubUsername,
+          githubUserId: `id-${ts}`,
+          encryptedToken: 'v1:auto:auto:auto',
+        }
+      });
+    }
+    // console.log("creating a job");
+    const job = await this.signalQueue.add('sync-profile', {
+      candidateId: profile.devCandidateId,
+      githubProfileId: profile.id,
+      githubUsername,
+    },{
+        attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
+    });
+
+    return { jobId: job.id };
+  }
+
   @Post('recompute')
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(InternalKeyGuard)
   @ApiOperation({ 
     summary: 'Trigger a re-analysis for a developer profile',
@@ -26,9 +106,16 @@ export class AnalysisController {
   ) {
     const { githubUsername, force } = body;
     const cacheKey = this.cacheService.buildCacheKey(githubUsername);
+    // const safeCacheKey = cacheKey.replace(/:/g, '-');
 
     if (force) {
       await this.cacheService.invalidate(cacheKey);
+      await this.prisma.githubProfile.update({
+        where: { githubUsername },
+        data: {
+          rawDataSnapshot: Prisma.DbNull,
+        },
+      }); 
     }
 
     // Find profile
@@ -43,15 +130,55 @@ export class AnalysisController {
     const job = await this.signalQueue.add('sync-profile', {
       candidateId: profile.devCandidateId,
       githubProfileId: profile.id,
+      githubUsername
+    },{
+        attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
     });
 
     return { jobId: job.id };
   }
 
+  @Get(':jobId/status')
+  @ApiOperation({ 
+    summary: 'Get the status of an analysis job',
+    description: 'Returns the current status and progress of an analysis job.'
+  })
+  async getStatus(@Param('jobId') jobId: string) {
+    const job = await this.signalQueue.getJob(jobId);
+
+    if (!job) {
+      throw new NotFoundException(`Job ${jobId} not found`);
+    }
+
+    const [state, progress] = await Promise.all([
+      job.getState(),
+      Promise.resolve(job.progress)
+    ]);
+
+    // Map BullMQ state to analysis stages
+    const stageMap: Record<string, string> = {
+      'completed': 'complete',
+      'failed': 'failed',
+      'active': 'analyzing_projects',
+      'waiting': 'queued',
+      'delayed': 'queued',
+    };
+
+    const stage = stageMap[state] || 'unknown';
+    const progressPercent = this.parseProgress(progress);
+
+    return {
+      status: state === 'completed' ? 'complete' : (state === 'failed' ? 'failed' : 'pending'),
+      stage,
+      progress: progressPercent,
+      failureReason: job.failedReason || undefined,
+    };
+  }
+
   @Get(':jobId/result')
   @ApiOperation({ 
     summary: 'Get the result of an analysis job',
-    description: 'Polls BullMQ for job status and returns the final AnalysisResult when complete.'
+    description: 'Returns the final AnalysisResult when the job is complete.'
   })
   async getResult(@Param('jobId') jobId: string) {
     const job = await this.signalQueue.getJob(jobId);

@@ -65,7 +65,13 @@ export class GithubSyncProcessor extends WorkerHost {
       });
 
       // (f) Enqueue signal-compute
-      await this.signalQueue.add('compute-signals', { candidateId, githubProfileId });
+      await this.signalQueue.add('compute-signals', { 
+        candidateId, 
+        githubProfileId
+       },
+      {
+        attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
+      });
 
       this.logger.log(`GitHub sync completed for profile ${githubProfileId}`);
     } catch (error) {
