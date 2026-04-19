@@ -64,7 +64,8 @@ onStalled(jobId: string) {
         // Return cached result - job should already be marked complete
         this.logger.log(`Returning cached result for ${githubUsername}`);
         const cacheKey = this.cacheService.buildCacheKey(githubUsername);
-        return await this.cacheService.get(cacheKey);
+        const cachedResult = await this.cacheService.get(cacheKey);
+        if (cachedResult) return cachedResult;
       }
 
       // Fetch or get existing profile
@@ -91,7 +92,8 @@ onStalled(jobId: string) {
         await this.updateProgress(githubProfileId, 'fetching_repos', 20);
         
         try {
-          rawData = await this.githubAdapter.fetchRawData(githubUsername, undefined);
+          const token = profile?.encryptedToken ? this.githubAdapter.decryptToken(profile.encryptedToken) : '';
+          rawData = await this.githubAdapter.fetchRawData(githubUsername, token);
           
           // Cache the snapshot if we have a profile
           if (profile && githubProfileId) {
