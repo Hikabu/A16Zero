@@ -91,7 +91,7 @@ Swagger: **`GET /api/docs`**.
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | `/` | **JWT required** (no `@Public`) | Returns `"Hello World!"` — unusual for a root path; normally you’d mark this public for health checks. |
+| GET | `/` | **JWT required** (`@Public`) | Returns `"Hello World!"` — for health checks. |
 | POST | `/auth/login` | **Public** | Body: `walletAddress`, optional `smartAccountAddress`. Header: `Authorization: Bearer <Privy access token>`. Returns `{ success, data: { accessToken } }`. |
 | GET | `/companies/me` | Bearer **backend JWT** | Current company profile (+ job count via `CompaniesService`). |
 | POST | `/jobs` | JWT | Create job (`CreateJobDto`). |
