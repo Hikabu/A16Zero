@@ -93,12 +93,13 @@ describe('AnalysisController (integration)', () => {
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('jobId', 'mock-job-id');
       expect(signalQueueMock.add).toHaveBeenCalledWith(
-        'sync-profile',
-        expect.objectContaining({ 
-          candidateId: expect.any(String),
-          githubProfileId: expect.any(String)
-        })
-      );
+  'sync-profile',
+  expect.objectContaining({
+    candidateId: expect.any(String),
+    githubProfileId: expect.any(String),
+  }),
+  expect.any(Object) // matches { attempts: 1 }
+);
     });
 
     it('should return 404 for missing profile', async () => {

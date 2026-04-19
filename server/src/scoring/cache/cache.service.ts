@@ -17,9 +17,9 @@ export class CacheService {
    * Normalizes and builds a cache key for a given username and optional wallet
    */
   buildCacheKey(username: string, walletAddress?: string): string {
-    const base = `analysis:${username.toLowerCase()}`;
+    let base = `analysis-${username.toLowerCase()}`;
     if (walletAddress) {
-      return `${base}:${walletAddress.toLowerCase()}`;
+      base = `${base}-${walletAddress.toLowerCase()}`;
     }
     const safeBase = base.replace(/:/g, '-');
     return safeBase;
