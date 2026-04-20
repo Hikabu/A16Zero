@@ -64,7 +64,7 @@ describe('Auth (e2e)', () => {
       where: { privyId: 'test-privy-id' },
     });
     expect(company).toBeDefined();
-    expect(company.walletAddress).toBe('0x123');
+    expect(company?.walletAddress).toBe('0x123');
   });
 
   it('/companies/me (GET) - should return company profile with JWT', async () => {

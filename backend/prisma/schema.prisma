@@ -10,7 +10,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // url      = env("DATABASE_URL")
 }
 
 enum JobStatus {
@@ -39,7 +39,7 @@ enum ProofStatus {
   VERIFIED
   REJECTED
 }
-
+// do i need to add email for company?
 model Company {
   id                 String     @id @default(uuid())
   name               String

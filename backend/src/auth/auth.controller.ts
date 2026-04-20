@@ -14,6 +14,7 @@ export class AuthController extends BaseController {
 
   @Public()
   @Post('login')
+  @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Login with Privy token',
     description: 'Verifies Privy access token and returns an application JWT.'
@@ -21,8 +22,11 @@ export class AuthController extends BaseController {
   async login(
     @Headers('authorization') authHeader: string,
     @Body() loginDto: LoginDto,
+    
   ) {
+    console.log("header: ", authHeader);
     const token = authHeader?.replace('Bearer ', '');
+    console.log("1. token: ", token);
     const result = await this.authService.login(token, loginDto);
     return this.handleSuccess(result, 'Logged in successfully');
   }
