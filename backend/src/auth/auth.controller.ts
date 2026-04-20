@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { BaseController } from '../common/base.controller';
 import { Public } from './decorators/public.decorator';
+import { AppException } from '../common/app.exception';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -24,9 +25,12 @@ export class AuthController extends BaseController {
     @Body() loginDto: LoginDto,
     
   ) {
-    console.log("header: ", authHeader);
+    if (!authHeader) {
+      throw new AppException('No authorization header found', 401);
+    }
+    // console.log("header: ", authHeader);
     const token = authHeader?.replace('Bearer ', '');
-    console.log("1. token: ", token);
+    // console.log("1. token: ", token);
     const result = await this.authService.login(token, loginDto);
     return this.handleSuccess(result, 'Logged in successfully');
   }
