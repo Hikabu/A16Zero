@@ -165,7 +165,7 @@ Right after Privy login (or when you need a fresh app token), before calling any
 | Header | Required | Description |
 |--------|----------|-------------|
 | `Authorization` | Yes | `Bearer <privy_access_token>` |
-| `Content-Type` | Yes (JSON body) | `application/json` |
+| `Content-Type` | Yes (JSON body) | `application/json` | (send without Bearer prefix if using Swagger, otherwise with prefix)
 
 #### Body  
 
