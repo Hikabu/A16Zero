@@ -10,7 +10,10 @@ async function bootstrap() {
 
   // Security
   app.use(helmet());
-  app.enableCors();
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
 
   // Global Validation
   app.useGlobalPipes(
@@ -21,6 +24,7 @@ async function bootstrap() {
     }),
   );
 
+
   // Swagger Documentation
   const config = new DocumentBuilder()
     .setTitle('a16zero Employer API')
@@ -30,7 +34,10 @@ async function bootstrap() {
     .build();
   
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api/docs', app, document,{
+    swaggerOptions: {
+    requestSnippetsEnabled: true,
+  }});
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

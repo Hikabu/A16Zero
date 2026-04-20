@@ -13,6 +13,7 @@ export class AuthService {
   ) {}
 
   async login(token: string, body: LoginDto) {
+    console.log("LOGIN: ", token,"body:", body);
     const { privyId, email } = await this.privyService.verifyToken(token);
 
     // Find or create company
