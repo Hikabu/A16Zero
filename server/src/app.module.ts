@@ -11,13 +11,13 @@ import { GithubSyncModule } from './modules/github-sync/github-sync.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { AtsModule } from './modules/ats/ats.module';
 import { FairnessModule } from './modules/fairness/fairness.module';
-import { RoiModule } from './modules/roi/roi.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { QueuesModule } from './queues/queues.module';
 import { ScoringModule } from './scoring/scoring.module';
 import { EmailModule } from './modules/email/email.module';
 import { ScorecardModule } from './scorecard/scorecard.module';
+import { ProfileModule } from './modules/profile/profile.module';
 
 @Module({
   providers: [
@@ -52,13 +52,13 @@ import { ScorecardModule } from './scorecard/scorecard.module';
     JobsModule, 
     AtsModule, 
     FairnessModule, 
-    RoiModule,
     AuthModule,
     HealthModule,
     QueuesModule,
     ScoringModule,
     EmailModule,
     ScorecardModule,
+    ProfileModule,
   ],
 
 })
