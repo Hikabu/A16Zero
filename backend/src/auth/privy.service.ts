@@ -18,7 +18,7 @@ export class PrivyService {
 
   constructor(private configService: ConfigService) {
     const appId = this.configService.get<string>('PRIVY_APP_ID');
-    const appSecret = this.configService.get<string>('PRIVY_APP_SECRET');
+    const appSecret = this.configService.get<string>('PRIVY_SECRET');
     if (!appId || !appSecret) {
       throw new Error('Privy credentials missing');
     }
@@ -64,7 +64,7 @@ export class PrivyService {
   }
   async getUser(privyId: string) {
     try {
-      const user = await this.privyClient.users.get(privyId);
+      const user = await this.privyClient.users()._get(privyId);
       return user;
     } catch (error) {
       this.logger.error(`Privy getUser failed: ${error.message}`);
