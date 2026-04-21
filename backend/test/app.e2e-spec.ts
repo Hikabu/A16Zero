@@ -1,38 +1,59 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrivyService } from '../src/auth/privy.service';
-import { APP_GUARD } from '@nestjs/core';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('APP E2E', () => {
   let app: INestApplication;
   let server: any;
+  let prisma: PrismaService;
 
-  const mockPrivyUser = {
+  const mockPrivyIdentity = {
     privyId: 'did:privy:test-user',
-    walletAddress: '0xTEST_WALLET',
+    email: 'test-company@example.com',
   };
-  const mockAuthGuard = {
-  canActivate: jest.fn(() => true),
-};
+  const mockPrivyProfile = {
+    linked_accounts: [
+      {
+        type: 'wallet',
+        address: '0xTEST_WALLET',
+      },
+    ],
+  };
+  const mockPrivyService = {
+    verifyToken: jest.fn().mockResolvedValue(mockPrivyIdentity),
+    getUser: jest.fn().mockResolvedValue(mockPrivyProfile),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrivyService)
-      .useValue({
-        verifyToken: jest.fn().mockResolvedValue(mockPrivyUser),
-      })
-       .overrideProvider(APP_GUARD)
-       .useValue(mockAuthGuard)
+      .useValue(mockPrivyService)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
     await app.init();
-    server = app.getHttpServer();
+    server = app.getHttpAdapter().getInstance();
+    prisma = moduleFixture.get<PrismaService>(PrismaService);
+
+    try {
+      await prisma.jobPost.deleteMany();
+      await prisma.company.deleteMany();
+    } catch (error) {
+      // Allow the suite to run even if the local test database has not been migrated yet.
+    }
   });
 
   afterAll(async () => {
@@ -66,7 +87,7 @@ it('POST /auth/login should return 400 when walletAddress is missing', async () 
 
   expect(res.status).toBe(400);
   // Verify the specific validation error
-  expect(res.body).toHaveProperty('error'); 
+  expect(res.body).toHaveProperty('error');
 });
 
 //login 
@@ -83,6 +104,8 @@ it('POST /auth/login should return app JWT', async () => {
 
   expect(res.status).toBe(201);
   expect(res.body.data.accessToken).toBeDefined();
+  expect(mockPrivyService.verifyToken).toHaveBeenCalledWith('debugtoken');
+  expect(mockPrivyService.getUser).toHaveBeenCalledWith(mockPrivyIdentity.privyId);
 
   appJwt = res.body.data.accessToken;
 });
@@ -101,6 +124,7 @@ it('GET /companies/me should return company', async () => {
 
   expect(res.status).toBe(200);
   expect(res.body.data.walletAddress).toBe('0xTEST_WALLET');
+  expect(res.body.data.privyId).toBe(mockPrivyIdentity.privyId);
 });
 
 //job flow 

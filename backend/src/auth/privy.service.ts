@@ -38,7 +38,7 @@ export class PrivyService {
   //verify token
   async verifyToken(token: string) {
     console.log('TOKEN', token);
-    console.log('NODE_ENV', process.env.NODE_ENV);
+    console.log('PRIVY_BYPASS', process.env.PRIVY_BYPASS);
     if (process.env.PRIVY_BYPASS==='true' && token === 'debugtoken') {
     return {
       privyId: 'did:privy:test-user-123',
