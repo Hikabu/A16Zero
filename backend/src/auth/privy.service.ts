@@ -39,12 +39,13 @@ export class PrivyService {
   async verifyToken(token: string) {
     console.log('TOKEN', token);
     console.log('PRIVY_BYPASS', process.env.PRIVY_BYPASS);
-    if (process.env.PRIVY_BYPASS==='true' && token === 'debugtoken') {
-    return {
-      privyId: 'did:privy:test-user-123',
-      email: 'valeriia@test.com',
-    };
-  }
+    if (process.env.PRIVY_BYPASS === 'true' && token === 'debugtoken') {
+      console.log('Using PRIVY_BYPASS mode');
+      return {
+        privyId: 'did:privy:test-user-123',
+        email: 'valeriia@test.com',
+      };
+    }
     try {
       const appId = this.configService.get<string>('PRIVY_APP_ID');
       
@@ -63,6 +64,17 @@ export class PrivyService {
     }
   }
   async getUser(privyId: string) {
+    if (process.env.PRIVY_BYPASS === 'true' && privyId === 'did:privy:test-user-123') {
+    return {
+      id: 'did:privy:test-user-123',
+      linked_accounts: [
+        {
+          type: 'wallet',
+          address: '0x123456789abcdef0123456789abcdef012345678',
+        },
+      ],
+    };
+  }
     try {
       const user = await this.privyClient.users()._get(privyId);
       return user;
