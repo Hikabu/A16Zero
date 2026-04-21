@@ -1,20 +1,9 @@
 import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// @Injectable()
-// export class GoogleLinkGuard extends AuthGuard('google') {
-//   getAuthenticateOptions(context: ExecutionContext) {
-//     const req = context.switchToHttp().getRequest();
-
-//     return {
-//       state: req.query.state,
-//     };
-//   }
-// }
-
 
 @Injectable()
-export class GoogleLinkGuard extends AuthGuard('google') {
+export class GoogleLinkGuard extends AuthGuard('googleLink') {
   getAuthenticateOptions(context: ExecutionContext) {
     const req = context.switchToHttp().getRequest();
 

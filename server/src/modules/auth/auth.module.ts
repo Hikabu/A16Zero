@@ -10,6 +10,9 @@ import { GithubLinkGuard } from './guards/github.link.guard';
 import { GoogleLinkGuard } from './guards/google.link.guard';
 import { ConfigModule } from '@nestjs/config';
 import authConfig from './auth.config';
+import { GithubLinkStrategy } from './strategies/github.link.strategy';
+import { GoogleLinkStrategy } from './strategies/google.link.strategy';
+import { GithubSyncConnectStrategy } from './strategies/github.sync.connect.strategy';
 
 @Module({
   imports: [
@@ -29,6 +32,9 @@ import authConfig from './auth.config';
     AuthService, 
     GithubStrategy,
     GoogleStrategy,
+    GithubLinkStrategy,
+    GoogleLinkStrategy,
+    GithubSyncConnectStrategy,
     JwtStrategy,
     GithubLinkGuard,
     GoogleLinkGuard,

@@ -24,8 +24,8 @@
     "test:stage2:benchmark": "NODE_ENV=test jest --config test/jest-e2e.json test/fetcher-benchmark.e2e-spec.ts",
     "test:stage2:all": "jest 'signal-extraction|scoring-pipeline|stage2' --coverage",
     "test:stage2:unit": "jest src/scoring/__tests__/pipeline-unit.spec.ts src/scoring/__tests__/behavior-temporal.spec.ts src/scoring/capability-translator/capability-translator.service.spec.ts src/scoring/career-timeline-reconstructor/career-timeline-reconstructor.service.spec.ts src/scoring/claim-generator/claim-generator.service.spec.ts src/scoring/developer-snapshot-builder/developer-snapshot-builder.service.spec.ts",
-    "worker": "node dist/worker.js",
-    "worker:dev": "ts-node src/worker.ts",
+    "worker": "ts-node src/worker.ts",
+    "worker:dev": "ts-node-dev --respawn --transpile-only src/worker.ts",
     "env:sync": "ts-node scripts/sync-env.ts",
     "preload:cache": "ts-node -r tsconfig-paths/register src/scripts/preload-cache.ts"
   },
@@ -47,6 +47,7 @@
     "bullmq": "^5.74.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "cookie-parser": "^1.4.7",
     "helmet": "^8.1.0",
     "ioredis": "^5.10.1",
     "nestjs-pino": "^4.6.1",
@@ -73,6 +74,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
@@ -90,8 +92,9 @@
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.20.0"
   },
   "jest": {

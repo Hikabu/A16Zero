@@ -4,13 +4,13 @@ import { Strategy } from 'passport-github2';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
+export class GithubLinkStrategy extends PassportStrategy(Strategy, 'githubLink') {
   constructor(private config: ConfigService) {
-    console.log("Initializing GithubStrategy with callback URL: ", config.get('app.url') + config.get('auth.githubCallback'));
+    console.log("Initializing GithubLinkStrategy with callback URL: ", config.get('app.url') + config.get('auth.githubCallback'));
     super({
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: config.get('app.url') + config.get('auth.githubCallback'),
+      callbackURL: config.get('app.url') + config.get('auth.githubLinkCallback'),
       scope: ['user:email'],
     });
   }

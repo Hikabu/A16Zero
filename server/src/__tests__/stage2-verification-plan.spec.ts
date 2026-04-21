@@ -231,7 +231,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
           devCandidateId: devCandidate.id,
           githubUsername: username,
           githubUserId: 'id_torvalds',
-          encryptedToken: 'mock:mock',
+          encryptedToken: '',
         }
       });
 

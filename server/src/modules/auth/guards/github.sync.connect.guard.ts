@@ -3,7 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 
 @Injectable()
-export class GithubLinkGuard extends AuthGuard('githubLink') {
+export class GithubSyncConnectGuard extends AuthGuard('githubSyncConnect') {
   getAuthenticateOptions(context: ExecutionContext) {
     const req = context.switchToHttp().getRequest();
 

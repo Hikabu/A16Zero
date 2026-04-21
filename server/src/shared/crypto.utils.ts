@@ -30,13 +30,16 @@ export function encrypt(text: string, key: string): string {
  * Decrypts a string using AES-256-GCM.
  */
 export function decrypt(encryptedData: string, key: string): string {
+  console.log(`Decrypting data, length: ${encryptedData.length}, key: ${key.length}`);
   if (key.length !== 64) {
+    console.log(`Invalid key length: ${key.length}`);
     throw new Error('Encryption key must be a 64-character hex string (32 bytes)');
   }
 
   const [ivHex, authTagHex, encryptedHex] = encryptedData.split(':');
   
   if (!ivHex || !authTagHex || !encryptedHex) {
+    console.log(`Invalid encrypted data format: ${encryptedData}`);
     throw new Error('Invalid encrypted data format');
   }
 

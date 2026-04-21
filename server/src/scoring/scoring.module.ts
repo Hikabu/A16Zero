@@ -8,6 +8,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ScoringService } from './scoring-service/scoring.service';
 import { SignalExtractorService } from './signal-extractor/signal-extractor.service';
 import { SummaryGeneratorService } from './summary-generator/summary-generator.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Global()
 @Module({
@@ -15,6 +16,7 @@ import { SummaryGeneratorService } from './summary-generator/summary-generator.s
     PrismaModule, 
     RedisModule,
     BullModule.registerQueue({ name: 'signal-compute' }),
+    ConfigModule
   ],
   providers: [
     GithubAdapterService,

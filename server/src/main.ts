@@ -4,12 +4,15 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
+import cookieParser from 'cookie-parser';
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   app.useLogger(app.get(Logger));
   app.use(helmet());
+  app.use(cookieParser());
   app.enableCors({
     origin: true,
     credentials: true,
@@ -17,7 +20,9 @@ async function bootstrap() {
 
   setUpSwagger(app);
 
-  await app.listen(3000);
+  const port = 3000;
+  await app.listen(port);
+  console.log(`Starting server on port ${port}...`);
 }
 
 function setUpSwagger(app){

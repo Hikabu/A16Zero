@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { NestFactory } from "@nestjs/core";
 import { WorkerModule } from "./queues/worker.module";
 

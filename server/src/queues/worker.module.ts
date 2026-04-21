@@ -8,7 +8,8 @@ import { SignalExtractorModule } from '../scoring/signal-extractor/signal-extrac
 import { CacheModule } from '../scoring/cache/cache.module';
 import { GithubAdapterModule } from '../scoring/github-adapter/github-adapter.module';
 import { QueuesModule } from './queues.module';
-
+import { EmailModule } from '../modules/email/email.module';
+import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [
     QueuesModule,
@@ -17,6 +18,8 @@ import { QueuesModule } from './queues.module';
     SignalExtractorModule,
     GithubAdapterModule,
     CacheModule,
+    EmailModule,
+    ConfigModule,
   ],
   providers: [
     SignalComputeProcessor,

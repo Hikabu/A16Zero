@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
-import { EmailService } from '../shared/email/email.service';
+import { EmailService } from '../modules/email/email.service';
 
 @Processor('email', { concurrency: 5 })
 export class EmailProcessor extends WorkerHost {

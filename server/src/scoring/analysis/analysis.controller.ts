@@ -3,9 +3,10 @@ import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 import { CacheService } from '../cache/cache.service';
 import { InternalKeyGuard } from '../../scorecard/internal-key.guard';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { CreateAnalysisDto, RecomputeAnalysisDto } from './analysis.dto';
 
 @ApiTags('Analysis')
 @Controller('api/analysis')
@@ -19,11 +20,11 @@ export class AnalysisController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ 
-    summary: 'Trigger an analysis for a developer profile',
-    description: 'Creates or retrieves a cached analysis job for a GitHub username.'
+    summary: 'Create scorecard analysis job',
+    description: 'Creates or retrieves a cached analysis job for any GitHub username (no auth), or in depth analysis for a user`s github profile(must call me/github/sync before hand).'
   })
   async createAnalysis(
-    @Body() body: { githubUsername: string },
+    @Body() body: CreateAnalysisDto,
   ) {
     const { githubUsername } = body;
     const cacheKey = this.cacheService.buildCacheKey(githubUsername);
@@ -32,7 +33,7 @@ export class AnalysisController {
     // console.log("cache key: ", cacheKey);
     const cachedResult = await this.cacheService.get(cacheKey);
     if (cachedResult) {
-      // console.log("cached result");
+      console.log("cached result");
       // Return a completed job immediately
       const job = await this.signalQueue.add('sync-profile', {
         githubUsername,
@@ -47,7 +48,7 @@ export class AnalysisController {
       await job.updateProgress(100);
       return { jobId: job.id };
     }
-    // console.log("no cache result");
+    console.log("no cache result");
 
     // Find or create profile
     let profile = await this.prisma.githubProfile.findUnique({
@@ -55,7 +56,7 @@ export class AnalysisController {
     });
 
     if (!profile) {
-      // console.log("creating a profile");
+      console.log("creating a profile");
       // Create user/candidate/profile structure for new username
       const ts = Date.now();
       const user = await this.prisma.user.create({
@@ -78,11 +79,11 @@ export class AnalysisController {
           devCandidateId: devCandidate.id,
           githubUsername,
           githubUserId: `id-${ts}`,
-          encryptedToken: 'v1:auto:auto:auto',
+          encryptedToken: '',
         }
       });
     }
-    // console.log("creating a job");
+    console.log("syncing profile - PROCESSOR @signalCompute");
     const job = await this.signalQueue.add('sync-profile', {
       candidateId: profile.devCandidateId,
       githubProfileId: profile.id,
@@ -94,15 +95,20 @@ export class AnalysisController {
     return { jobId: job.id };
   }
 
+  @ApiHeader({
+    name: 'X-Internal-Key',
+    description: 'Internal API key',
+    required: true,
+  })
+  @UseGuards(InternalKeyGuard)
   @Post('recompute')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(InternalKeyGuard)
   @ApiOperation({ 
     summary: 'Trigger a re-analysis for a developer profile',
     description: 'Invalidates cache if force=true and enqueues a new scoring job.'
   })
   async recompute(
-    @Body() body: { githubUsername: string; force?: boolean },
+@Body() body: RecomputeAnalysisDto,
   ) {
     const { githubUsername, force } = body;
     const cacheKey = this.cacheService.buildCacheKey(githubUsername);

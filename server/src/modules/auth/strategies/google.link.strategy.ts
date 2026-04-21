@@ -4,12 +4,12 @@ import { Strategy } from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
+export class GoogleLinkStrategy extends PassportStrategy(Strategy, 'googleLink') {
 constructor(private config: ConfigService) {
     super({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: config.get('app.url') + config.get('auth.googleCallback'),
+      callbackURL: config.get('app.url') + config.get('auth.googleLinkCallback'),
       scope: ['email', 'profile'],
     });
   }

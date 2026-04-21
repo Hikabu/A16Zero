@@ -4,13 +4,13 @@ import { Strategy } from 'passport-github2';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
+export class GithubSyncConnectStrategy extends PassportStrategy(Strategy, 'githubSyncConnect') {
   constructor(private config: ConfigService) {
-    console.log("Initializing GithubStrategy with callback URL: ", config.get('app.url') + config.get('auth.githubCallback'));
+    console.log("Initializing GithubLinkStrategy with callback URL: ", config.get('app.url') + config.get('auth.githubCallback'));
     super({
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: config.get('app.url') + config.get('auth.githubCallback'),
+      callbackURL: config.get('app.url') + config.get('auth.githubSyncConnectCallback'),
       scope: ['user:email'],
     });
   }
@@ -23,7 +23,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
     
     return {
       githubId: profile.id,
-      username: profile.username,
+      login: profile.username,
       email: emailObj?.value,
       email_verified: emailObj?.verified ?? true, // GitHub verified status
       accessToken,

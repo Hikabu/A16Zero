@@ -196,6 +196,7 @@ export class GithubAdapterService {
   }
 
   public decryptToken(encryptedToken: string): string {
+    console.log(`Decrypting token, length: ${encryptedToken.length}, startsWith v1: ${encryptedToken.startsWith('v1:')}`);
     const key = process.env.AUTH_ENCRYPTION_KEY;
     if (!key) throw new Error('AUTH_ENCRYPTION_KEY not set');
     
@@ -203,7 +204,9 @@ export class GithubAdapterService {
       ? encryptedToken.substring(3) 
       : encryptedToken;
 
-    return decrypt(data, key);
+    const decripted =  decrypt(data, key);
+    console.log(`Decrypted token, length: ${decripted.length}`);
+    return decripted;
   }
 
   private async withCache<T>(key: string, fetcher: () => Promise<T>): Promise<T> {

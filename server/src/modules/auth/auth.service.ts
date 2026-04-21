@@ -214,16 +214,28 @@ export class AuthService {
        }
     );
     await this.redis.set(`refresh:${userId}`, refreshJti, 'EX', 60 * 60 * 24 * 7);
+    console.log("refresh token: ", refreshToken);
+    console.log("access token: ", accessToken);
     return { accessToken, refreshToken };
   }
 
   // --- OAuth & Linking ---
 
+  private extractProfileId(profile: any, provider: Provider): string {
+    if (provider === 'GITHUB') return profile.githubId;
+    if (provider === 'GOOGLE') return profile.googleId;
+    throw new Error('Unsupported provider');
+  }
   async oauthLogin(profile: any, provider: Provider) {
+    // console.log("hello?????????");
+    // console.log("profile: ", profile);
+    const id = this.extractProfileId(profile, provider);
+    // console.log(">id>: ", id);
+
     if (!profile) throw new UnauthorizedException();
 
     let account = await this.prisma.authAccount.findUnique({
-      where: { provider_providerId: { provider, providerId: profile.id } },
+      where: { provider_providerId: { provider, providerId: id } },
       include: { user: true },
     });
 
@@ -249,7 +261,7 @@ export class AuthService {
       const existingAccount = user.authAccounts.find(a => a.provider === provider);
       if (!existingAccount) {
         await this.prisma.authAccount.create({
-          data: { userId: user.id, provider, providerId: profile.id },
+          data: { userId: user.id, provider, providerId: id },
         });
         this.logger.log(`ACCOUNT_LINKED: User ${user.id} auto-linked to ${provider}`);
       }
@@ -261,7 +273,7 @@ export class AuthService {
       `onboarding_claim:${claimId}`,
       JSON.stringify({
         provider,
-        providerId: profile.id,
+        providerId: id,
         email: profile.email,
         firstName: profile.firstName,
         lastName: profile.lastName,
@@ -276,6 +288,7 @@ export class AuthService {
       secret: this.config.get("jwt_secret.onboarding"),
       expiresIn: '15m' 
     });
+    console.log("Generated onboarding token: ", tempToken);
     return { needsOnboarding: true, tempToken };
   }
 
@@ -286,17 +299,21 @@ export class AuthService {
   }
 
   async linkOAuth(userId: string, profile: any, provider: Provider, state: string) {
+    console.log("linkauth1!!!!!");
+    console.log("Linking profile: ", profile);
+    console.log("Linking provider: ", provider);
     const storedUserId = await this.redis.get(`link_state:${state}`);
     if (!storedUserId || storedUserId !== userId) throw new UnauthorizedException('Invalid link state');
     await this.redis.del(`link_state:${state}`);
-
+    const id  = this.extractProfileId(profile, provider);
+    console.log("Extracted provider ID: ", id);
     const existing = await this.prisma.authAccount.findUnique({
-      where: { provider_providerId: { provider, providerId: profile.id } },
+      where: { provider_providerId: { provider, providerId: id } },
     });
     if (existing) throw new ConflictException('Account already linked');
 
     await this.prisma.authAccount.create({
-      data: { userId, provider, providerId: profile.id },
+      data: { userId, provider, providerId: id },
     });
 
     this.logger.log(`ACCOUNT_LINKED: User ${userId} successfully linked ${provider}`);
@@ -304,51 +321,35 @@ export class AuthService {
     return { message: `${provider} linked successfully` };
   }
 
-  async completeOnboarding(dto: any, authHeader: string) {
-    if (!authHeader) throw new UnauthorizedException();
-    const token = authHeader.split(' ')[1];
+  async completeOnboarding(dto, oauth: any) {
+  const usernameExists = await this.prisma.user.findUnique({
+    where: { username: dto.username },
+  });
 
-    let payload: any;
-    try { 
-      payload = this.jwt.verify(token, {
-        secret: this.config.get('jwt_secret.onboarding'),
-      }); 
-    } catch { throw new UnauthorizedException('Invalid token'); }
-    if (payload.type !== 'onboarding') throw new UnauthorizedException();
-
-    const raw = await this.redis.get(`onboarding_claim:${payload.claimId}`);
-    if (!raw) throw new UnauthorizedException('Session expired');
-    const oauth = JSON.parse(raw);
-
-    const usernameExists = await this.prisma.user.findUnique({ where: { username: dto.username } });
-    if (usernameExists) throw new ConflictException('Username taken');
-
-    try {
-      const user = await this.prisma.user.create({
-        data: {
-          email: oauth.email,
-          username: dto.username,
-          firstName: oauth.firstName,
-          lastName: oauth.lastName,
-          isEmailVerified: true,
-          authAccounts: { 
-            create: { provider: oauth.provider as Provider, providerId: oauth.providerId as string } 
-          },
-        } as any,
-      });
-
-      await this.redis.del(`onboarding_claim:${payload.claimId}`);
-      
-      this.logger.log(`LOGIN_SUCCESS: User ${user.email} logged in via OAuth (Onboarding Complete)`);
-      
-      return this.handleLoginResponse(user);
-    } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('Username or email already taken');
-      }
-      throw error;
-    }
+  if (usernameExists) {
+    throw new ConflictException('Username taken');
   }
+
+  const user = await this.prisma.user.create({
+    data: {
+      email: oauth.email,
+      username: dto.username,
+      firstName: oauth.firstName,
+      lastName: oauth.lastName,
+      isEmailVerified: true,
+      authAccounts: {
+        create: {
+          provider: oauth.provider,
+          providerId: oauth.providerId,
+        },
+      },
+    },
+  });
+
+  await this.redis.del(`onboarding_claim:${oauth.claimId}`);
+
+  return this.handleLoginResponse(user);
+}
 
   // --- Email Verification ---
 
@@ -455,7 +456,7 @@ export class AuthService {
     await this.emailQueue.add('send-reset', {
       to: user.email,
       subject: 'Reset your Colosseum password',
-      html: `<p>Click <a href="${this.config.get('app.url')}/reset-password?token=${token}">here</a> to reset your password.</p>`,
+      html: `<p>Click <a href="${this.config.get('APP_URL')}/reset-password?token=${token}">here</a> to reset your password.</p>`,
     });
     
     return { message: 'If an account with that email exists, a reset link has been sent.' };
@@ -491,20 +492,31 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
-  async githubLink(userId){
-    const state = await this.generateLinkState(userId);
-        const base = this.config.get('github.authorizationURL') || 'https://github.com/login/oauth/authorize';
-        const clientId = this.config.get('github.clientID');
-        const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
-        
-        return {
-          url: `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`,
-        };
-  }
+ async githubLink(userId: string) {
+  const state = await this.generateLinkState(userId);
 
-  async googleLink(userId){
+  const base = 'https://github.com/login/oauth/authorize';
+
+
+  const clientId = this.config.get('GITHUB_CLIENT_ID');
+  const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
+    console.log("!!!!GITHUB Link Callback URL: ", redirectUri); // Debug log to check the callback URL being generated
+
+  return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`;
+}
+
+async googleLink(userId: string) {
     const state = await this.generateLinkState(userId);
-        // Google linking would follow similar pattern
-      return { state, message: 'Redirect to Google OAuth with this state' };
+
+    const base = 'https://accounts.google.com/o/oauth2/v2/auth';
+    const clientId = this.config.get('GOOGLE_CLIENT_ID');
+
+    const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.googleLinkCallback')}`;
+
+    console.log("!!!!Google Link Callback URL: ", redirectUri); // Debug log to check the callback URL being generated
+    const scope = encodeURIComponent('openid email profile');
+
+    return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;
   }
 }
+

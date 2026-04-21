@@ -94,6 +94,7 @@ model Candidate {
   careerPath   Int                @default(1) // bitmask: 1=DEVELOPER
   devProfile   DeveloperCandidate?
   applications Application[]
+  scorecard   Json?              // { roleType, seniorityLevel, signals: { key: value }, overallFit }
   createdAt    DateTime           @default(now())
 }
 

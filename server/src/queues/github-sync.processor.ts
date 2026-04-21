@@ -42,7 +42,7 @@ export class GithubSyncProcessor extends WorkerHost {
       });
 
       // (c) Call consolidated fetcher
-      const token = await this.githubAdapter['decryptToken'](profile.encryptedToken); 
+      const token = await this.githubAdapter.decryptToken(profile.encryptedToken); 
       const rawData = await this.githubAdapter.fetchRawData(profile.githubUsername, token);
 
       // (d) Set syncProgress = analyzing_projects (40% - interim)
@@ -53,6 +53,8 @@ export class GithubSyncProcessor extends WorkerHost {
           syncProgress: JSON.stringify({ stage: 'analyzing_projects', percent: 40 }),
         },
       });
+
+      console.log("Fetched raw data for profile ", githubProfileId, ": ", JSON.stringify(rawData, null, 2));
 
       // (e) Save raw data, keep status = IN_PROGRESS, lastSyncAt
       await this.prisma.githubProfile.update({
@@ -66,8 +68,10 @@ export class GithubSyncProcessor extends WorkerHost {
 
       // (f) Enqueue signal-compute
       await this.signalQueue.add('compute-signals', { 
-        candidateId, 
-        githubProfileId
+          candidateId, 
+  githubProfileId, 
+  githubUsername: profile.githubUsername,
+  cached: false,
        },
       {
         attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
