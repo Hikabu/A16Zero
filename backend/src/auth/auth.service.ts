@@ -34,9 +34,13 @@ export class AuthService {
     // Always fetch user from Privy to sync/verify privyId and get wallet address
     const privyUser = await this.privyService.getUser(privyId);
     const walletAccount = privyUser.linked_accounts?.find(
-      (acc) => acc.type === 'wallet'
+      (acc ) => acc.type === 'wallet'
     );
-    const walletAddress = walletAccount?.address;
+    // Type guard: ensure walletAccount has address property
+    const walletAddress = (walletAccount && 'address' in walletAccount) 
+      ? walletAccount.address 
+      : null;
+ 
 
     if (!walletAddress) {
       throw new UnauthorizedException('No wallet linked to Privy user');
