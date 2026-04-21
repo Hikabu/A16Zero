@@ -12,7 +12,6 @@ export class AuthController extends BaseController {
   constructor(private readonly authService: AuthService) {
     super();
   }
-
   @Public()
   @Post('login')
   @ApiBearerAuth()

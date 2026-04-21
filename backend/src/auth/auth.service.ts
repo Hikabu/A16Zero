@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrivyService } from './privy.service';
 import { LoginDto } from './dto/login.dto';
+import { UnauthorizedException } from '@nestjs/common';
 
 /*
   Login via Privy on the frontend to get the accessToken
@@ -25,29 +26,35 @@ export class AuthService {
     console.log("LOGIN: ", token,"body:", body);
     const { privyId, email } = await this.privyService.verifyToken(token);
 
+    if (!privyId) {
+      throw new UnauthorizedException('Invalid Privy token');
+    }
     // Find or create company
     let company = await this.prisma.company.findUnique({
-      where: { privyId: privyId },
+      where: { privyId },
     });
+    console.log("company1: ", company);
 
     if (!company) {
-      company = await this.prisma.company.create({
+      const privyUser = await this.privyService.getUser(privyId);
+      const wallet =
+        privyUser.linkedAccounts?.find(acc => acc.type === 'wallet');
+      if (!wallet) {
+        throw new UnauthorizedException('No wallet linked to Privy user');
+      }
+        company = await this.prisma.company.create({
         data: {
-          privyId: privyId,
+          privyId,
+          email,
           name: 'New company',
           country: 'Unknown',
           isVerified: true,
-          walletAddress: body.walletAddress,
-          smartAccountAddress: body.smartAccountAddress,
-        },
-      });
-    } else if (body.walletAddress && !company.walletAddress) {
-      company = await this.prisma.company.update({
-        where: { id: company.id },
-        data: { walletAddress: body.walletAddress },
-      });
+          // WALLET COMES FROM PRIVY, NOT FRONTEND
+          walletAddress: wallet.address,
+          smartAccountAddress: wallet.smartWalletAddress ?? null,
+          },
+        });
     }
-
     const payload = { 
       sub: company.id, 
       walletAddress: company.walletAddress,
