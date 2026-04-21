@@ -30,37 +30,37 @@ export class AuthService {
     if (!privyId) {
       throw new UnauthorizedException('Invalid Privy token');
     }
-    // Find or create company
-    let company = await this.prisma.company.findUnique({
-      where: { privyId },
-    });
-    console.log("company1: ", company);
 
-    if (!company) {
-      const privyUser = await this.privyService.getUser(privyId);
-      const walletAccount = privyUser.linked_accounts?.find(
-        (acc) => acc.type === 'wallet'
-      );
-      const walletAddress = walletAccount?.address;
+    // Always fetch user from Privy to sync/verify privyId and get wallet address
+    const privyUser = await this.privyService.getUser(privyId);
+    const walletAccount = privyUser.linked_accounts?.find(
+      (acc) => acc.type === 'wallet'
+    );
+    const walletAddress = walletAccount?.address;
 
-      // If not exists → search in linked wallets (Metamask, etc.)
-      if (!walletAddress) {
-        throw new UnauthorizedException('No wallet linked to Privy user');
-      }
-      
-        company = await this.prisma.company.create({
-        data: {
-          privyId,
-          email,
-          name: 'New company',
-          country: 'Unknown',
-          isVerified: true,
-          // WALLET COMES FROM PRIVY, NOT FRONTEND
-          walletAddress: walletAddress,
-          smartAccountAddress: walletAddress,
-          },
-        });
+    if (!walletAddress) {
+      throw new UnauthorizedException('No wallet linked to Privy user');
     }
+
+    // Use upsert keyed on walletAddress to avoid P2002 errors
+    const company = await this.prisma.company.upsert({
+      where: { walletAddress },
+      update: {
+        privyId,
+        email: email || undefined,
+      },
+      create: {
+        privyId,
+        email,
+        walletAddress,
+        smartAccountAddress: body.smartAccountAddress || walletAddress,
+        name: 'New company',
+        country: 'Unknown',
+        isVerified: true,
+      },
+    });
+
+    console.log("Logged in company: ", company);
 
     const payload = { 
       sub: company.id, 

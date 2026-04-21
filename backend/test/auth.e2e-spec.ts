@@ -10,12 +10,21 @@ import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication;
+  let server: any;
   let prisma: PrismaService;
 
   const mockPrivyService = {
     verifyToken: jest.fn().mockResolvedValue({
       privyId: 'test-privy-id',
       email: 'test@example.com',
+    }),
+    getUser: jest.fn().mockResolvedValue({
+      linked_accounts: [
+        {
+          type: 'wallet',
+          address: '0xTEST_WALLET',
+        },
+      ],
     }),
   };
 
@@ -28,8 +37,15 @@ describe('Auth (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
     await app.init();
+    server = app.getHttpAdapter().getInstance();
 
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     // Cleanup test data
@@ -48,7 +64,7 @@ describe('Auth (e2e)', () => {
   });
 
   it('/auth/login (POST) - should create company and return JWT', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(server)
       .post('/auth/login')
       .set('Authorization', 'Bearer mock-token')
       .send({
@@ -64,18 +80,18 @@ describe('Auth (e2e)', () => {
       where: { privyId: 'test-privy-id' },
     });
     expect(company).toBeDefined();
-    expect(company?.walletAddress).toBe('0x123');
+    expect(company?.walletAddress).toBe('0xTEST_WALLET');
   });
 
   it('/companies/me (GET) - should return company profile with JWT', async () => {
-    const loginRes = await request(app.getHttpServer())
+    const loginRes = await request(server)
       .post('/auth/login')
       .set('Authorization', 'Bearer mock-token')
       .send({ walletAddress: '0x123' });
 
     const token = loginRes.body.data.accessToken;
 
-    const response = await request(app.getHttpServer())
+    const response = await request(server)
       .get('/companies/me')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
@@ -85,14 +101,14 @@ describe('Auth (e2e)', () => {
   });
 
   it('/jobs (POST) - should create a job', async () => {
-    const loginRes = await request(app.getHttpServer())
+    const loginRes = await request(server)
       .post('/auth/login')
       .set('Authorization', 'Bearer mock-token')
       .send({ walletAddress: '0x123' });
 
     const token = loginRes.body.data.accessToken;
 
-    const response = await request(app.getHttpServer())
+    const response = await request(server)
       .post('/jobs')
       .set('Authorization', `Bearer ${token}`)
       .send({
@@ -107,14 +123,24 @@ describe('Auth (e2e)', () => {
   });
 
   it('/analytics/dashboard (GET) - should return stats', async () => {
-    const loginRes = await request(app.getHttpServer())
+    const loginRes = await request(server)
       .post('/auth/login')
       .set('Authorization', 'Bearer mock-token')
       .send({ walletAddress: '0x123' });
 
     const token = loginRes.body.data.accessToken;
 
-    const response = await request(app.getHttpServer())
+    await request(server)
+      .post('/jobs')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Analytics Test Job',
+        description: 'Created for dashboard assertions',
+        bonusAmount: 100,
+      })
+      .expect(201);
+
+    const response = await request(server)
       .get('/analytics/dashboard')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
@@ -124,7 +150,7 @@ describe('Auth (e2e)', () => {
   });
 
   it('Protected route should fail without token', async () => {
-    await request(app.getHttpServer())
+    await request(server)
       .get('/companies/me')
       .expect(401);
   });
