@@ -5,6 +5,7 @@ import { PrivyService } from './privy.service';
 import { LoginDto } from './dto/login.dto';
 import { UnauthorizedException } from '@nestjs/common';
 
+
 /*
   Login via Privy on the frontend to get the accessToken
 
@@ -37,11 +38,16 @@ export class AuthService {
 
     if (!company) {
       const privyUser = await this.privyService.getUser(privyId);
-      const wallet =
-        privyUser.linkedAccounts?.find(acc => acc.type === 'wallet');
-      if (!wallet) {
+      const walletAccount = privyUser.linked_accounts?.find(
+        (acc) => acc.type === 'wallet'
+      );
+      const walletAddress = walletAccount?.address;
+
+      // If not exists → search in linked wallets (Metamask, etc.)
+      if (!walletAddress) {
         throw new UnauthorizedException('No wallet linked to Privy user');
       }
+      
         company = await this.prisma.company.create({
         data: {
           privyId,
@@ -50,11 +56,12 @@ export class AuthService {
           country: 'Unknown',
           isVerified: true,
           // WALLET COMES FROM PRIVY, NOT FRONTEND
-          walletAddress: wallet.address,
-          smartAccountAddress: wallet.smartWalletAddress ?? null,
+          walletAddress: walletAddress,
+          smartAccountAddress: walletAddress,
           },
         });
     }
+
     const payload = { 
       sub: company.id, 
       walletAddress: company.walletAddress,
