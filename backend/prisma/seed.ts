@@ -25,6 +25,7 @@ async function main() {
             legalName: faker.company.name(),
             registrationNumber: faker.string.alphanumeric(8).toUpperCase(),
             country: faker.location.country(),
+            email: faker.internet.email(),
             isVerified: faker.datatype.boolean({ probability: 0.7 }),
             walletAddress: `0x${faker.string.hexadecimal({ length: 40 })}`,
             smartAccountAddress: `0x${faker.string.hexadecimal({ length: 40 })}`,

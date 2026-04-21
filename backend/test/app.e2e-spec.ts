@@ -1,48 +1,22 @@
-// import { Test, TestingModule } from '@nestjs/testing';
-// import { INestApplication } from '@nestjs/common';
-// import request from 'supertest';
-// import { App } from 'supertest/types';
-// import { AppModule } from './../src/app.module';
-
-// describe('AppController (e2e)', () => {
-//   let app: INestApplication<App>;
-
-//   beforeEach(async () => {
-//     const moduleFixture: TestingModule = await Test.createTestingModule({
-//       imports: [AppModule],
-//     }).compile();
-
-//     app = moduleFixture.createNestApplication();
-//     await app.init();
-//   });
-
-//   it('/ (GET)', () => {
-//     return request(app.getHttpServer())
-//       .get('/')
-//       .expect(200)
-//       .expect('Hello World!');
-//   });
-
-//   afterEach(async () => {
-//     await app.close();
-//   });
-// });
-
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrivyService } from '../src/auth/privy.service';
+import { APP_GUARD } from '@nestjs/core';
 
 describe('APP E2E', () => {
   let app: INestApplication;
   let server: any;
 
   const mockPrivyUser = {
-    userId: 'did:privy:test-user',
+    privyId: 'did:privy:test-user',
     walletAddress: '0xTEST_WALLET',
   };
+  const mockAuthGuard = {
+  canActivate: jest.fn(() => true),
+};
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -52,6 +26,8 @@ describe('APP E2E', () => {
       .useValue({
         verifyToken: jest.fn().mockResolvedValue(mockPrivyUser),
       })
+       .overrideProvider(APP_GUARD)
+       .useValue(mockAuthGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -82,24 +58,27 @@ it('POST /auth/login should fail without token', async () => {
 });
 
 //wallet
-it('POST /auth/login should fail without walletAddress', async () => {
+it('POST /auth/login should return 400 when walletAddress is missing', async () => {
   const res = await request(server)
     .post('/auth/login')
-    .set('Authorization', 'Bearer test_privy_token')
-    .send({});
+    .set('Authorization', 'Bearer debugtoken')
+    .send({}); // Missing walletAddress
 
   expect(res.status).toBe(400);
+  // Verify the specific validation error
+  expect(res.body).toHaveProperty('error'); 
 });
+
 //login 
 let appJwt: string;
 
 it('POST /auth/login should return app JWT', async () => {
   const res = await request(server)
     .post('/auth/login')
-    .set('Authorization', 'Bearer test_privy_token')
+    .set('Authorization', 'Bearer debugtoken')
     .send({
-      walletAddress: '0xTEST_WALLET',
-      smartAccountAddress: '0xSMART',
+      walletAddress: '0x123',
+      smartAccountAddress: '0xabc',
     });
 
   expect(res.status).toBe(201);

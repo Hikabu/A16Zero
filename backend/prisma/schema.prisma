@@ -50,8 +50,9 @@ model Company {
   verifiedAt         DateTime?
   createdAt          DateTime   @default(now())
 
+  email              String?    @unique
   walletAddress      String?    @unique
-  smartAccountAddress String?    @unique
+  smartAccountAddress String?   @unique
   privyId            String?    @unique
 
   jobPosts           JobPost[]
