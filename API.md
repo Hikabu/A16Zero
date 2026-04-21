@@ -1,5 +1,15 @@
 
-
+# in short to check on swagger auth.login 
+```bash
+http://localhost:3000/api/docs - API documentation  
+for auth/login use for locker - debugtoken
+for the user in aithorisation privyId will be did:privy:test-user-123
+for body 
+{
+  "walletAddress": "0x123456789abcdef0123456789abcdef012345678",
+  "smartAccountAddress": "0x123456789abcdef0123456789abcdef012345678"
+}
+```
 # 1️⃣ SYSTEM OVERVIEW
 
 **What this backend is**  
