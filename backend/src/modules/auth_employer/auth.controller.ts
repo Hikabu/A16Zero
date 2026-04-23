@@ -7,7 +7,7 @@ import { Public } from './decorators/public.decorator';
 import { AppException } from '../../shared/config/common/app.exception';
 
 @ApiTags('Authentication')
-@Controller('auth')
+@Controller('auth/employer')
 export class AuthController extends BaseController {
   constructor(private readonly authService: AuthService) {
     super();

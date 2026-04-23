@@ -3,12 +3,12 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './modules/auth/auth.module';
+import { AuthModule } from './modules/auth_employer/auth.module';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
-import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from './modules/auth_employer/guards/jwt-auth.guard';
 import { AppService } from './app.service';
 import * as zod from 'zod';
 
