@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jose from 'jose';
-import { AppException } from '../common/app.exception';
+import { AppException } from '../../shared/config/common/app.exception';
 import { Public } from './decorators/public.decorator';
 import { PrivyClient } from '@privy-io/node';
 require('dotenv').config();

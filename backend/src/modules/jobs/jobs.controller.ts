@@ -2,7 +2,7 @@ import { Controller, Post, Get, Patch, Body, Param, Request } from '@nestjs/comm
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
-import { BaseController } from '../common/base.controller';
+import { BaseController } from '../../shared/config/common/base.controller';
 
 @ApiTags('Jobs')
 @ApiBearerAuth()

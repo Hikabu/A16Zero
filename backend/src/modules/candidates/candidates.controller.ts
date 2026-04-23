@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Param, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { BaseController } from '../common/base.controller';
+import { BaseController } from '../../shared/config/common/base.controller';
 
 @ApiTags('Candidates')
 @ApiBearerAuth()
