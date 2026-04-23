@@ -1,0 +1,177 @@
+import {
+  Injectable,
+  Inject,
+  HttpException,
+  HttpStatus,
+  ConflictException,
+  UnauthorizedException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { SyncStatus } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
+import * as crypto from 'crypto';
+import { encrypt } from 'src/shared/utils/crypto.utils';
+
+@Injectable()
+export class GithubSyncService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    @Inject('REDIS') private readonly redis: Redis,
+    @InjectQueue('github-sync') private readonly githubSyncQueue: Queue,
+  ) {}
+
+  // ─── Shared: lazily create Candidate + DeveloperCandidate ────────
+  private async ensureDevCandidate(userId: string) {
+    const candidate = await this.prisma.candidate.upsert({
+      where: { userId },
+      create: { user: { connect: { id: userId } }, careerPath: 1 },
+      update: {},
+      include: { devProfile: { include: { githubProfile: true } } },
+    });
+
+    if (!candidate.devProfile) {
+      await this.prisma.developerCandidate.create({
+        data: { candidate: { connect: { id: candidate.id } } },
+      });
+      return this.prisma.candidate.findUnique({
+        where: { userId },
+        include: { devProfile: { include: { githubProfile: true } } },
+      });
+    }
+
+    return candidate;
+  }
+
+  // ─── Connect step 1: generate state, return OAuth URL ────────────
+  async startConnect(userId: string): Promise<string> {
+    const state = crypto.randomBytes(16).toString('hex');
+    // Store userId against state for 5 minutes — same as link flow
+    await this.redis.set(`github_sync_state:${state}`, userId, 'EX', 300);
+
+    const clientId = this.config.get('GITHUB_CLIENT_ID');
+    const callbackUrl = `${this.config.get('app.url')}${this.config.get('auth.githubSyncConnectCallback')}`;
+console.log("callback url: ", callbackUrl);
+    const scopes = encodeURIComponent('read:user repo');
+
+    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scopes}&state=${state}`;
+  }
+
+  // ─── Connect step 2: OAuth callback → create GithubProfile ───────
+  async connectGithub(
+    githubData: { githubId: string; login: string; accessToken: string; scopes: string[] },
+    state: string,
+  ) {
+    // Recover userId from Redis state — same pattern as linkOAuth
+    const userId = await this.redis.get(`github_sync_state:${state}`);
+    if (!userId) {
+      throw new UnauthorizedException('Invalid or expired connect state. Please try again.');
+    }
+    await this.redis.del(`github_sync_state:${state}`);
+
+const candidate = await this.ensureDevCandidate(userId);
+if (!candidate?.devProfile) {
+  throw new InternalServerErrorException('Failed to ensure developer profile.');
+}
+const key = this.config.get<string>('AUTH_ENCRYPTION_KEY');
+if (!key) {
+  throw new InternalServerErrorException('Encryption key is not configured.');
+}
+const encryptedToken = encrypt(githubData.accessToken, key);
+
+    await this.prisma.githubProfile.upsert({
+      where: { devCandidateId: candidate.devProfile.id },
+      create: {
+        devCandidate: { connect: { id: candidate.devProfile.id } },
+        githubUsername: githubData.login,
+        githubUserId: githubData.githubId,
+        encryptedToken,
+        scopes: githubData.scopes,
+      },
+      update: {
+        // Rotate token on re-connect (expired or user re-authorized)
+        githubUsername: githubData.login,
+        githubUserId: githubData.githubId,
+        encryptedToken,
+        scopes: githubData.scopes,
+        syncStatus: SyncStatus.PENDING,
+        syncProgress: '0',
+        syncError: null,
+      },
+    });
+
+    // Immediately enqueue sync after connecting
+    return this.triggerSync(userId);
+  }
+
+  // ─── Trigger sync ─────────────────────────────────────────────────
+  async triggerSync(userId: string) {
+    const candidate = await this.ensureDevCandidate(userId);
+    const githubProfile = candidate?.devProfile?.githubProfile;
+
+    if (!githubProfile) {
+      // Frontend should redirect to /me/github/sync/connect on this code
+      throw new ConflictException({
+        code: 'GITHUB_NOT_CONNECTED',
+        message: 'Connect your GitHub account to continue.',
+        redirectTo: '/me/github/sync/connect',
+      });
+    }
+
+    // Rate limit: 24h (skip if called internally from connectGithub — lastSyncAt is null on first sync)
+    // if (githubProfile.lastSyncAt) {
+    //   const diffHours =
+    //     (Date.now() - new Date(githubProfile.lastSyncAt).getTime()) / (1000 * 60 * 60);
+
+    //   if (diffHours < 24) {
+    //     throw new HttpException(
+    //       {
+    //         code: 'RATE_LIMITED',
+    //         message: 'You can only sync once every 24 hours.',
+    //         retryAfter: Math.ceil(24 - diffHours),
+    //       },
+    //       HttpStatus.TOO_MANY_REQUESTS,
+    //     );
+    //   }
+    // }
+
+    const updated = await this.prisma.githubProfile.update({
+      where: { id: githubProfile.id },
+      data: { syncStatus: SyncStatus.PENDING, syncProgress: '0', syncError: null },
+    });
+
+    console.log("addign sync job to queue with data" );
+
+    await this.githubSyncQueue.add('sync-profile', {
+      candidateId: candidate.id,
+      devCandidateId: candidate?.devProfile?.id,
+      githubProfileId: githubProfile.id,
+    });
+
+    return updated;
+  }
+
+  // ─── Status ───────────────────────────────────────────────────────
+  async getSyncStatus(userId: string) {
+    const profile = await this.prisma.githubProfile.findFirst({
+      where: { devCandidate: { candidate: { userId } } },
+      select: {
+        syncStatus: true,
+        syncProgress: true,
+        lastSyncAt: true,
+        syncError: true,
+        githubUsername: true,
+      },
+    });
+
+    if (!profile) {
+      return { syncStatus: null, code: 'GITHUB_NOT_CONNECTED' };
+    }
+
+    return profile;
+  }
+}

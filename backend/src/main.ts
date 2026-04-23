@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { cleanupOpenApiDoc } from 'nestjs-zod';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 
@@ -34,7 +35,8 @@ async function bootstrap() {
     .build();
   
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document,{
+  const cleanedDocument = cleanupOpenApiDoc(document);
+  SwaggerModule.setup('api/docs', app, cleanedDocument,{
     swaggerOptions: {
     requestSnippetsEnabled: true,
   }});

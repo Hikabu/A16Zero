@@ -4,7 +4,7 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client-js"
   moduleFormat = "cjs"
 }
 
@@ -13,18 +13,88 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum JobStatus {
-  DRAFT
-  PENDING_PAYMENT   // created, bonus not yet paid
-  ACTIVE            // paid and live
-  CLOSED_PENDING    // payment done but not published yet
-  CLOSED            // finished, no longer accepting
+// -- COMPANY USER ----
+model Company {
+  id                 String    @id @default(uuid())
+  name               String
+  legalName          String? // exact registered business name 
+  registrationNumber String?   @unique
+  country            String
+  isVerified         Boolean   @default(false)
+  verifiedAt         DateTime?
+  createdAt          DateTime  @default(now())
+
+  email               String? @unique
+  walletAddress       String? @unique
+  smartAccountAddress String? @unique
+  privyId             String? @unique
+
+  jobPosts JobPost[]
+
+  @@map("companies")
 }
 
-enum MatchTier {
-  TOP_MATCH
-  POTENTIAL_MATCH
-  GENERAL_MATCH
+//----------JOB POST --------------------
+
+enum JobStatus {
+  DRAFT
+  PENDING_PAYMENT // created, bonus not yet paid
+  ACTIVE // paid and live
+  CLOSED_PENDING // payment done but not published yet
+  CLOSED // finished, no longer accepting
+}
+
+enum Seniority {
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+}
+
+enum RoleType {
+  BACKEND
+  FRONTEND
+  FULLSTACK
+  INFRASTRUCTURE
+  DATA_ML
+  SMART_CONTRACT
+  WEB3_BACKEND
+  WEB3_FRONTEND
+  WEB3_FULLSTACK
+  DEFI_PROTOCOL
+  SECURITY_WEB3
+  SECURITY
+  GENERALIST
+}
+
+model JobPost {
+  id             String     @id @default(uuid())
+  companyId      String
+  title          String
+  description    String
+  location       String?
+  employmentType String? // full-time, part-time, contract
+  bonusAmount    Decimal    @db.Decimal(10, 2)
+  currency       String     @default("USD")
+  status         JobStatus  @default(DRAFT)
+  roleType       RoleType
+  seniorityLevel Seniority?
+  publishedAt    DateTime?
+  closedAt       DateTime?
+  createdAt      DateTime   @default(now())
+
+  company    Company     @relation(fields: [companyId], references: [id])
+  shortlists Shortlist[]
+
+  @@index([companyId, status, roleType])
+  @@map("job_posts")
+}
+
+//----APPLICATION----------------
+enum FraudTier {
+  CLEAN
+  FLAGGED
+  DISQUALIFIED
 }
 
 enum ShortlistStatus {
@@ -34,99 +104,193 @@ enum ShortlistStatus {
   REJECTED
 }
 
-enum ProofStatus {
-  UNVERIFIED
-  VERIFIED
-  REJECTED
-}
-// do i need to add email for company?
-model Company {
-  id                 String     @id @default(uuid())
-  name               String
-  legalName          String? // exact registered business name 
-  registrationNumber String?    @unique
-  country            String
-  isVerified         Boolean    @default(false)
-  verifiedAt         DateTime?
-  createdAt          DateTime   @default(now())
-
-  email              String?    @unique
-  walletAddress      String?    @unique
-  smartAccountAddress String?   @unique
-  privyId            String?    @unique
-
-  jobPosts           JobPost[]
-
-  @@map("companies")
+enum RiskLevel {
+  LOW_RISK
+  MEDIUM_RISK
+  HIGH_RISK
+  INSUFFICIENT_DATA
 }
 
-model JobPost {
-  id             String     @id @default(uuid())
-  companyId      String
-  title          String
-  description    String
-  location       String?
-  employmentType String?    // full-time, part-time, contract
-  bonusAmount    Decimal    @db.Decimal(10, 2)
-  currency       String     @default("USD")
-  status         JobStatus  @default(DRAFT)
-  publishedAt    DateTime?
-  closedAt       DateTime?
-  createdAt      DateTime   @default(now())
-
-  company        Company    @relation(fields: [companyId], references: [id])
-  shortlists     Shortlist[]
-
-  @@index([companyId])
-  @@index([status])
-  @@map("job_posts")
+enum ConfidenceTier {
+  FULL
+  PARTIAL
+  LOW
+  MINIMAL
 }
 
-model Candidate {
-  id        String   @id @default(uuid())
-  firstName String
-  lastName  String
-  email     String   @unique
-  skills    Json     @default("[]")
-  country   String?
-  createdAt DateTime @default(now())
-
-  talentProofs TalentProof[]
-  shortlists   Shortlist[]
-
-  @@map("candidates")
+enum BehaviorPattern {
+  REVIEW_HEAVY_SENIOR
+  COMMIT_HEAVY_MIDLEVEL
+  BALANCED_CONTRIBUTOR
+  OSS_COLLABORATOR
+  EARLY_CAREER
+  RETURNING_DEVELOPER
+  WEB3_SPECIALIST
 }
 
-model TalentProof {
-  id          String      @id @default(uuid())
-  candidateId String
-  proofType   String      // e.g. "github", "portfolio", "certification", "work_history"
-  title       String
-  url         String?
-  verifiedBy  String?     // system or partner name
-  status      ProofStatus @default(UNVERIFIED)
-  score       Decimal?    @db.Decimal(5, 2)  // drives match tier calculation
-  createdAt   DateTime    @default(now())
-
-  candidate   Candidate   @relation(fields: [candidateId], references: [id])
-
-  @@index([candidateId])
-  @@map("talent_proofs")
+enum FitTier {
+  STRONG
+  PROBE
+  PASS
 }
 
 model Shortlist {
-  id         String          @id @default(uuid())
-  jobPostId  String
+  id          String          @id @default(uuid())
+  jobPostId   String
   candidateId String
-  matchTier  MatchTier
-  status     ShortlistStatus @default(PENDING)
-  notes      String?
-  createdAt  DateTime        @default(now())
+  status      ShortlistStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime        @default(now())
 
-  jobPost    JobPost         @relation(fields: [jobPostId], references: [id])
-  candidate  Candidate       @relation(fields: [candidateId], references: [id])
+  jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
+  candidate Candidate @relation(fields: [candidateId], references: [id])
 
-  @@unique([jobPostId, candidateId])  // one entry per candidate per job
-  @@index([jobPostId, matchTier])
+  roleFitScore    Float            @default(0)
+  fraudTier       FraudTier        @default(CLEAN)
+  riskLevel       RiskLevel?
+  confidenceTier  ConfidenceTier?
+  behaviorPattern BehaviorPattern?
+  fitTier         FitTier          @default(PASS)
+
+  candidateNote String? @db.VarChar(280)
+  hrNotes       String?
+
+  appliedAt DateTime @default(now())
+
+  @@unique([jobPostId, candidateId]) // one entry per candidate per job
+  //   @@index([jobPostId, roleFitScore])
+  @@index([jobPostId, roleFitScore(sort: Desc)])
   @@map("shortlists")
+}
+
+// ─── User Hierarchy CANDIDATES ──────────────────────────────────────────
+enum UserRole {
+  CANDIDATE
+  HR
+  HR_ADMIN
+  ORG_MANAGER
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id       String  @id @default(uuid())
+  email    String? @unique
+  username String? @unique
+
+  firstName String?
+  lastName  String?
+
+  role          UserRole      @default(CANDIDATE)
+  accountStatus AccountStatus @default(ACTIVE)
+
+  isEmailVerified Boolean  @default(false)
+  mfaEnabled      Boolean  @default(false)
+  mfaSecret       String? // Should be encrypted at rest
+  mfaBackupCodes  String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authAccounts AuthAccount[]
+  candidate    Candidate?
+}
+
+// ─── User AUTH  ──────────────────────────────────────────
+enum AuthProvider {
+  LOCAL
+  GITHUB
+  GOOGLE
+}
+
+model AuthAccount {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider   AuthProvider
+  providerId String
+
+  passwordHash String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([provider, providerId])
+}
+
+// ─── User Type: CANDIDATE  ──────────────────────────────────────────
+
+model Candidate {
+  id         String              @id @default(uuid())
+  userId     String              @unique
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio        String?             @db.VarChar(500)
+  careerPath Int                 @default(1) // bitmask: 1=DEVELOPER
+  devProfile DeveloperCandidate?
+  shortlist  Shortlist[]
+  scorecard  Json? // { roleType, seniorityLevel, signals: { key: value }, overallFit }
+  createdAt  DateTime            @default(now())
+}
+
+model DeveloperCandidate {
+  id            String         @id @default(uuid())
+  candidateId   String         @unique
+  candidate     Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  githubProfile GithubProfile?
+  web3Profile   Web3Profile?
+  createdAt     DateTime       @default(now())
+}
+
+// ─── GitHub Profile ──────────────────────────────────────────
+enum SyncStatus {
+  PENDING
+  IN_PROGRESS
+  RUNNING
+  DONE
+  FAILED
+}
+
+model GithubProfile {
+  id              String             @id @default(uuid())
+  devCandidateId  String             @unique
+  devCandidate    DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+  githubUsername  String             @unique
+  githubUserId    String             @unique
+  encryptedToken  String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
+  scopes          String[]
+  lastSyncAt      DateTime?
+  syncStatus      SyncStatus         @default(PENDING)
+  syncProgress    String             @default("0")
+  syncError       String?
+  rawDataSnapshot Json?
+  createdAt       DateTime           @default(now())
+}
+
+// ─── Web3 Profile (opt-in) ───────────────────────────────────
+// Wallet address submitted by candidate — no signature verification needed.
+// Solana signals use RPC-native methods; there is no Solana equivalent of Etherscan.
+
+model Web3Profile {
+  id                String             @id @default(uuid())
+  devCandidateId    String             @unique
+  devCandidate      DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+  evmAddress        String?
+  solanaAddress     String?
+  // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
+  verifiedContracts Json?
+  onChainMetrics    Json?
+  createdAt         DateTime           @default(now())
+}
+
+// ─── Cache Layer ──────────────────────────────────────────────
+model CachedResult {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique // format: 'analysis:{username}' or 'analysis:{username}:{walletAddress}'
+  result    Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
