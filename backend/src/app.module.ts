@@ -1,51 +1,67 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './modules/auth_employer/auth.module';
-import { CompaniesModule } from './modules/companies/companies.module';
-import { JobsModule } from './modules/jobs/jobs.module';
-import { CandidatesModule } from './modules/candidates/candidates.module';
-import { AnalyticsModule } from './modules/analytics/analytics.module';
-import { JwtAuthGuard } from './modules/auth_employer/guards/jwt-auth.guard';
-import { AppService } from './app.service';
-import * as zod from 'zod';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
+import { ZodValidationPipeProvider } from './shared/config/zod.config';
 
-const envSchema = zod.object({
-  DATABASE_URL: zod.string().url(),
-  JWT_SECRET: zod.string().min(32),
-  PRIVY_APP_ID: zod.string(),
-  PRIVY_JWKS_URL: zod.string().url().optional(),
-  PORT: zod.string().default('3000'),
-  NODE_ENV: zod.enum(['development', 'production', 'test']).default('development'),
-});
+import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
+
+import { GithubSyncModule } from './modules/github-sync/github-sync.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+import { AtsModule } from './modules/ats/ats.module';
+import { FairnessModule } from './modules/fairness/fairness.module';
+import { HealthModule } from './modules/health/health.module';
+import { QueuesModule } from './queues/queues.module';
+import { ScoringModule } from './modules/scoring/scoring.module';
+import { EmailModule } from './modules/email/email.module';
+import { ScorecardModule } from './modules/scorecard/scorecard.module';
+import { ProfileModule } from './modules/profile/profile.module';
+import { AuthEmployerModule } from './modules/auth_employer/auth.employer.module';
+import { AuthCandidateModule } from './modules/auth-candidate/auth.candidate.module';
 
 @Module({
+  providers: [
+  {
+    provide: APP_GUARD,
+    useClass: ThrottlerGuard,
+  },
+  ZodValidationPipeProvider,
+],
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      validate: (config) => {
-        return envSchema.parse(config);
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
+    }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        transport: process.env.NODE_ENV !== 'production'
+          ? {
+              target: 'pino-pretty',
+              options: { singleLine: true },
+            }
+          : undefined,
       },
     }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
     PrismaModule,
-    AuthModule,
-    CompaniesModule,
-    JobsModule,
-    CandidatesModule,
-    AnalyticsModule,
+    RedisModule,
+    GithubSyncModule, 
+    JobsModule, 
+    AtsModule, 
+    FairnessModule, 
+    AuthEmployerModule,
+	AuthCandidateModule,
+    HealthModule,
+    QueuesModule,
+    ScoringModule,
+    EmailModule,
+    ScorecardModule,
+    ProfileModule,
   ],
-  providers: [
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
-    AppService,
-  ],
+
 })
 export class AppModule {}
