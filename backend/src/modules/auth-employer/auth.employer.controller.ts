@@ -1,36 +1,82 @@
-import { Controller, Post, Body, Headers, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Body, Headers } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiUnauthorizedResponse,
+  ApiBadRequestResponse,
+} from '@nestjs/swagger';
+
 import { AuthEmployerService } from './auth.employer.service';
 import { LoginDto } from './dto/login.dto';
-import { BaseController } from '../../shared/config/common/base.controller';
+import { BaseController } from '../../shared/base.controller';
 import { Public } from './decorators/public.decorator';
-import { AppException } from '../../shared/config/common/app.exception';
+import { AppException } from '../../shared/app.exception';
 
-@ApiTags('Authentication')
+class LoginResponseDto {
+  accessToken: string;
+}
+
+class ErrorResponseDto {
+  statusCode: number;
+  message: string;
+  error: string;
+}
+
+@ApiTags('Auth (Employer)')
 @Controller('auth/employer')
 export class AuthEmployerController extends BaseController {
   constructor(private readonly authService: AuthEmployerService) {
     super();
   }
+
+  // ---------------- LOGIN ----------------
+
   @Public()
   @Post('login')
-  @ApiBearerAuth()
-  @ApiOperation({ 
+  @ApiBearerAuth() // 👈 THIS is the correct Swagger way
+  @ApiOperation({
     summary: 'Login with Privy token',
-    description: 'Verifies Privy access token and returns an application JWT.'
+    description:
+      'Verifies a Privy access token from frontend authentication and returns a signed JWT for API access.',
+  })
+  @ApiBody({
+    type: LoginDto,
+    description: 'Optional login metadata used during company creation or update',
+    examples: {
+      default: {
+        value: {
+          smartAccountAddress: '0x123abc...',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Successfully authenticated and returned application JWT',
+    type: LoginResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or missing Privy token',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Missing authorization header or invalid request payload',
+    type: ErrorResponseDto,
   })
   async login(
     @Headers('authorization') authHeader: string,
     @Body() loginDto: LoginDto,
-    
   ) {
     if (!authHeader) {
       throw new AppException('No authorization header found', 401);
     }
-    // console.log("header: ", authHeader);
-    const token = authHeader?.replace('Bearer ', '');
-    // console.log("1. token: ", token);
+
+    const token = authHeader.replace('Bearer ', '');
+
     const result = await this.authService.login(token, loginDto);
+
     return this.handleSuccess(result, 'Logged in successfully');
   }
 }

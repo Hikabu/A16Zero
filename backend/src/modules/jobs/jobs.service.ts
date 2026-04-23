@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { JobStatus } from '@prisma/client';
-import { AppException } from '../../shared/config/common/app.exception';
+import { AppException } from '../../shared/app.exception';
 
 @Injectable()
 export class JobsService {

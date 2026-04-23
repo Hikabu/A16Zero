@@ -18,6 +18,8 @@ import { ProfileModule } from './modules/profile-candidate/profile.module';
 import { AuthEmployerModule } from './modules/auth-employer/auth.employer.module';
 import { AuthCandidateModule } from './modules/auth-candidate/auth.candidate.module';
 import { CompaniesModule } from './modules/profile-employer/companies.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { ApplicantsModule } from './modules/applicants/applicants.module';
 
 @Module({
   providers: [
@@ -48,6 +50,8 @@ import { CompaniesModule } from './modules/profile-employer/companies.module';
     }),
     PrismaModule,
     RedisModule,
+	AnalyticsModule,
+	ApplicantsModule,
     GithubSyncModule, 
     JobsModule, 
     AuthEmployerModule,
@@ -59,6 +63,7 @@ import { CompaniesModule } from './modules/profile-employer/companies.module';
     EmailModule,
     ScorecardModule,
     ProfileModule,
+	CompaniesModule
   ],
 
 })
