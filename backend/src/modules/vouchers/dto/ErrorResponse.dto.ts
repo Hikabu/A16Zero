@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 /**
  * Standard Error DTO
  */
-export class ErrorResponseDto {
+export class VoucherErrorResponseDto {
   @ApiProperty({ example: 400 })
   statusCode: number;
 

@@ -23,7 +23,7 @@ import {
   import { ConfirmVouchDto } from './dto/ConfirmVoucher.dto';
   import { RevokeVouchDto } from './dto/RevokeVouch.dto';
   import { VouchResponseDto } from './dto/VouchResponse.dto';
-  import { ErrorResponseDto } from './dto/ErrorResponse.dto';
+  import { VoucherErrorResponseDto } from './dto/ErrorResponse.dto';
   
   @ApiTags('Vouches')
   @Controller('vouch')
@@ -85,7 +85,7 @@ import {
 	})
 	@ApiBadRequestResponse({
 	  description: 'Validation error, duplicate vouch, self-vouch, budget exceeded, or invalid transaction',
-	  type: ErrorResponseDto,
+	  type: VoucherErrorResponseDto,
 	  examples: {
 		duplicate: {
 		  summary: 'User already vouched for this candidate',
@@ -115,7 +115,7 @@ import {
 	})
 	@ApiNotFoundResponse({
 	  description: 'Candidate not found',
-	  type: ErrorResponseDto,
+	  type: VoucherErrorResponseDto,
 	  examples: {
 		notFound: {
 		  summary: 'Candidate does not exist',
@@ -169,7 +169,7 @@ import {
 	})
 	@ApiBadRequestResponse({
 	  description: 'Malformed signature or already inactive vouch',
-	  type: ErrorResponseDto,
+	  type: VoucherErrorResponseDto,
 	  examples: {
 		invalidSignatureFormat: {
 		  summary: 'Signature could not be decoded',
@@ -191,7 +191,7 @@ import {
 	})
 	@ApiUnauthorizedResponse({
 	  description: 'Signature verification failed',
-	  type: ErrorResponseDto,
+	  type: VoucherErrorResponseDto,
 	  examples: {
 		invalidSignature: {
 		  summary: 'Wallet signature is invalid',
@@ -205,7 +205,7 @@ import {
 	})
 	@ApiNotFoundResponse({
 	  description: 'Vouch not found or wallet mismatch',
-	  type: ErrorResponseDto,
+	  type: VoucherErrorResponseDto,
 	  examples: {
 		notFound: {
 		  summary: 'Vouch does not exist or does not belong to wallet',

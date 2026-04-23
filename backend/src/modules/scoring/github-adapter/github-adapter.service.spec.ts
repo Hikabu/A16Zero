@@ -56,6 +56,7 @@ describe('GithubAdapterService', () => {
   });
 
   it('TEST: fetchRawData returns GitHubRawData with all fields correctly shaped', async () => {
+<<<<<<< HEAD
     const mockUser = {
       login: 'testuser',
       created_at: '2020-01-01T00:00:00Z',
@@ -75,18 +76,40 @@ describe('GithubAdapterService', () => {
         fork: false,
         description: 'desc',
       }));
+=======
+    const mockUser = { login: 'testuser', created_at: '2020-01-01T00:00:00Z', public_repos: 10, followers: 5 };
+    const mockRepos = Array(5).fill(null).map((_, i) => ({
+      name: `repo-${i}`,
+      language: 'TypeScript',
+      stargazers_count: 10,
+      forks_count: 5,
+      topics: ['nestjs'],
+      created_at: '2021-01-01T00:00:00Z',
+      pushed_at: '2023-01-01T00:00:00Z',
+      fork: false,
+      description: 'desc',
+    }));
+>>>>>>> main
     const mockGql = {
       user: {
         contributionsCollection: {
           contributionCalendar: {
+<<<<<<< HEAD
             weeks: Array(52).fill({
               contributionDays: [{ contributionCount: 1 }],
             }),
+=======
+            weeks: Array(52).fill({ contributionDays: [{ contributionCount: 1 }] }),
+>>>>>>> main
           },
         },
         pullRequests: {
           nodes: [
+<<<<<<< HEAD
             { repository: { name: 'ext-repo', owner: { login: 'other' } } },
+=======
+            { repository: { name: 'ext-repo', owner: { login: 'other' } } }
+>>>>>>> main
           ],
         },
       },
@@ -110,17 +133,25 @@ describe('GithubAdapterService', () => {
       user: {
         contributionsCollection: {
           contributionCalendar: {
+<<<<<<< HEAD
             weeks: Array(10).fill({
               contributionDays: [{ contributionCount: 5 }],
             }), // Only 10 weeks
+=======
+            weeks: Array(10).fill({ contributionDays: [{ contributionCount: 5 }] }), // Only 10 weeks
+>>>>>>> main
           },
         },
         pullRequests: { nodes: [] },
       },
     };
+<<<<<<< HEAD
     mockOctokit.rest.users.getByUsername.mockResolvedValue({
       data: { login: 'u', created_at: '...', public_repos: 0, followers: 0 },
     });
+=======
+    mockOctokit.rest.users.getByUsername.mockResolvedValue({ data: { login: 'u', created_at: '...', public_repos: 0, followers: 0 } });
+>>>>>>> main
     mockOctokit.rest.repos.listForUser.mockResolvedValue({ data: [] });
     mockOctokit.graphql.mockResolvedValue(mockGql);
 
@@ -131,21 +162,29 @@ describe('GithubAdapterService', () => {
   });
 
   it('TEST: isFork repos are identified correctly', async () => {
+<<<<<<< HEAD
     mockOctokit.rest.users.getByUsername.mockResolvedValue({
       data: { created_at: '2020-01-01T00:00:00Z' },
     });
+=======
+    mockOctokit.rest.users.getByUsername.mockResolvedValue({ data: { created_at: '2020-01-01T00:00:00Z' } });
+>>>>>>> main
     mockOctokit.rest.repos.listForUser.mockResolvedValue({
       data: [
         { name: 'r1', fork: true, pushed_at: '2023-01-01T00:00:00Z' },
         { name: 'r2', fork: false, pushed_at: '2023-01-01T00:00:00Z' },
       ],
     });
+<<<<<<< HEAD
     mockOctokit.graphql.mockResolvedValue({
       user: {
         contributionsCollection: { contributionCalendar: { weeks: [] } },
         pullRequests: { nodes: [] },
       },
     });
+=======
+    mockOctokit.graphql.mockResolvedValue({ user: { contributionsCollection: { contributionCalendar: { weeks: [] } }, pullRequests: { nodes: [] } } });
+>>>>>>> main
 
     const result = await service.fetchRawData('u', 't');
     expect(result.repos[0].isFork).toBe(true);
@@ -153,6 +192,7 @@ describe('GithubAdapterService', () => {
   });
 
   it('TEST: topics field is populated (Mercy header must be included)', async () => {
+<<<<<<< HEAD
     mockOctokit.rest.users.getByUsername.mockResolvedValue({
       data: { created_at: '2020-01-01T00:00:00Z' },
     });
@@ -175,6 +215,19 @@ describe('GithubAdapterService', () => {
         headers: { accept: 'application/vnd.github.mercy-preview+json' },
       }),
     );
+=======
+    mockOctokit.rest.users.getByUsername.mockResolvedValue({ data: { created_at: '2020-01-01T00:00:00Z' } });
+    mockOctokit.rest.repos.listForUser.mockResolvedValue({
+      data: [{ name: 'r1', topics: ['a', 'b'], pushed_at: '2023-01-01T00:00:00Z' }],
+    });
+    mockOctokit.graphql.mockResolvedValue({ user: { contributionsCollection: { contributionCalendar: { weeks: [] } }, pullRequests: { nodes: [] } } });
+
+    const result = await service.fetchRawData('u', 't');
+    expect(result.repos[0].topics).toEqual(['a', 'b']);
+    expect(mockOctokit.rest.repos.listForUser).toHaveBeenCalledWith(expect.objectContaining({
+      headers: { 'accept': 'application/vnd.github.mercy-preview+json' }
+    }));
+>>>>>>> main
   });
 
   it('TEST: 429 response triggers a retry', async () => {
@@ -183,6 +236,7 @@ describe('GithubAdapterService', () => {
 
     mockOctokit.rest.users.getByUsername
       .mockRejectedValueOnce(error429)
+<<<<<<< HEAD
       .mockResolvedValueOnce({
         data: { login: 'u', created_at: '2020-01-01T00:00:00Z' },
       });
@@ -199,6 +253,15 @@ describe('GithubAdapterService', () => {
     jest
       .spyOn(global, 'setTimeout' as any)
       .mockImplementation((fn: any) => fn());
+=======
+      .mockResolvedValueOnce({ data: { login: 'u', created_at: '2020-01-01T00:00:00Z' } });
+
+    mockOctokit.rest.repos.listForUser.mockResolvedValue({ data: [] });
+    mockOctokit.graphql.mockResolvedValue({ user: { contributionsCollection: { contributionCalendar: { weeks: [] } }, pullRequests: { nodes: [] } } });
+
+    // Mock setTimeout to resolve immediately
+    jest.spyOn(global, 'setTimeout' as any).mockImplementation((fn: any) => fn());
+>>>>>>> main
 
     const result = await service.fetchRawData('u', 't');
     expect(result.profile.username).toBe('u');
@@ -210,6 +273,7 @@ describe('GithubAdapterService', () => {
     (error429 as any).status = 429;
 
     mockOctokit.rest.users.getByUsername.mockRejectedValue(error429);
+<<<<<<< HEAD
     jest
       .spyOn(global, 'setTimeout' as any)
       .mockImplementation((fn: any) => fn());
@@ -218,10 +282,18 @@ describe('GithubAdapterService', () => {
       'GitHub API rate limit exceeded — please retry in a few minutes',
     );
 
+=======
+    jest.spyOn(global, 'setTimeout' as any).mockImplementation((fn: any) => fn());
+
+    await expect(service.fetchRawData('u', 't'))
+      .rejects.toThrow('GitHub API rate limit exceeded — please retry in a few minutes');
+    
+>>>>>>> main
     expect(mockOctokit.rest.users.getByUsername).toHaveBeenCalledTimes(2);
   });
 
   it('TEST: repos array length is ≤ MAX_REPOS', async () => {
+<<<<<<< HEAD
     const manyRepos = Array(50)
       .fill(null)
       .map((_, i) => ({
@@ -239,6 +311,16 @@ describe('GithubAdapterService', () => {
         pullRequests: { nodes: [] },
       },
     });
+=======
+    const manyRepos = Array(50).fill(null).map((_, i) => ({
+      name: `repo-${i}`,
+      pushed_at: new Date(2023, 0, 50 - i).toISOString(),
+    }));
+
+    mockOctokit.rest.users.getByUsername.mockResolvedValue({ data: { created_at: '2020-01-01T00:00:00Z' } });
+    mockOctokit.rest.repos.listForUser.mockResolvedValue({ data: manyRepos });
+    mockOctokit.graphql.mockResolvedValue({ user: { contributionsCollection: { contributionCalendar: { weeks: [] } }, pullRequests: { nodes: [] } } });
+>>>>>>> main
 
     const result = await service.fetchRawData('u', 't');
     expect(result.repos.length).toBe(30);
@@ -252,6 +334,7 @@ describe('GithubAdapterService', () => {
     // We assume they come sorted from API as pushed DESC, so 'new' then 'old'
     const sortedMock = [repos[1], repos[0]];
 
+<<<<<<< HEAD
     mockOctokit.rest.users.getByUsername.mockResolvedValue({
       data: { created_at: '2020-01-01T00:00:00Z' },
     });
@@ -262,6 +345,11 @@ describe('GithubAdapterService', () => {
         pullRequests: { nodes: [] },
       },
     });
+=======
+    mockOctokit.rest.users.getByUsername.mockResolvedValue({ data: { created_at: '2020-01-01T00:00:00Z' } });
+    mockOctokit.rest.repos.listForUser.mockResolvedValue({ data: sortedMock });
+    mockOctokit.graphql.mockResolvedValue({ user: { contributionsCollection: { contributionCalendar: { weeks: [] } }, pullRequests: { nodes: [] } } });
+>>>>>>> main
 
     const result = await service.fetchRawData('u', 't');
     expect(result.repos[0].name).toBe('new');
@@ -269,6 +357,7 @@ describe('GithubAdapterService', () => {
   });
 
   it('TEST: no additional pagination or extra repo fetch calls are made', async () => {
+<<<<<<< HEAD
     mockOctokit.rest.users.getByUsername.mockResolvedValue({
       data: { created_at: '2020-01-01T00:00:00Z' },
     });
@@ -288,5 +377,17 @@ describe('GithubAdapterService', () => {
         per_page: 100,
       }),
     );
+=======
+    mockOctokit.rest.users.getByUsername.mockResolvedValue({ data: { created_at: '2020-01-01T00:00:00Z' } });
+    mockOctokit.rest.repos.listForUser.mockResolvedValue({ data: [] });
+    mockOctokit.graphql.mockResolvedValue({ user: { contributionsCollection: { contributionCalendar: { weeks: [] } }, pullRequests: { nodes: [] } } });
+
+    await service.fetchRawData('u', 't');
+    
+    expect(mockOctokit.rest.repos.listForUser).toHaveBeenCalledTimes(1);
+    expect(mockOctokit.rest.repos.listForUser).toHaveBeenCalledWith(expect.objectContaining({
+      per_page: 100
+    }));
+>>>>>>> main
   });
 });

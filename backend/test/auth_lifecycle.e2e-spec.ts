@@ -7,18 +7,19 @@ describe('Auth Lifecycle (e2e)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
-    ({ app } = await resetBefore());
+     ({ app } = await resetBefore());
+    
   });
 
   afterEach(async () => {
-    await resetAfter(app);
+     await resetAfter(app);
   });
 
   const testUser = {
     email: `test-${Date.now()}@example.com`,
     username: `user-${Date.now()}`,
     password: 'Password123!',
-    role: 'CANDIDATE',
+    role: "CANDIDATE"
   };
 
   it('/auth/register (POST) -> Blocked Access', async () => {
@@ -41,12 +42,12 @@ describe('Auth Lifecycle (e2e)', () => {
     // In this E2E test, we'll use a direct Prisma update to simulate verification
     // because the code for verification stub logs the code to console.
     // However, the AuthService allows verification via a code in Redis.
-    await request(app.getHttpServer())
+     await request(app.getHttpServer())
       .post('/auth/register')
       .send(testUser)
       .expect(201);
 
-    // For the sake of the E2E test lifecycle, we'll manually verify the user
+    // For the sake of the E2E test lifecycle, we'll manually verify the user 
     // to test that the login flow then works.
     const prisma = app.get(PrismaService);
     await prisma.user.update({
@@ -84,11 +85,11 @@ describe('Auth Lifecycle (e2e)', () => {
       .post('/auth/password-reset/request')
       .send({ email })
       .expect(201);
-
+    
     // 2. Get token from Redis (simulating email retrieval)
     const redis = app.get('REDIS');
     const keys = await redis.keys('password_reset:*');
-    // We need to find the one for this specific test if multiple are running,
+    // We need to find the one for this specific test if multiple are running, 
     // but here we are inBand.
     const token = keys[0].split(':')[1];
 
@@ -96,7 +97,7 @@ describe('Auth Lifecycle (e2e)', () => {
     const resetRes = await request(app.getHttpServer())
       .post('/auth/password-reset/reset')
       .send({ token, newPassword: 'NewStrongPassword123!' });
-
+    
     expect(resetRes.status).toBe(201);
 
     // 4. Verify login with NEW password
@@ -104,7 +105,7 @@ describe('Auth Lifecycle (e2e)', () => {
       .post('/auth/login')
       .send({ identifier: email, password: 'NewStrongPassword123!' })
       .expect(201);
-
+    
     expect(loginRes.status).toBe(201);
   });
 });

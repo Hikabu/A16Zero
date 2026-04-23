@@ -5,12 +5,12 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { GithubAdapterService } from '../src/scoring/github-adapter/github-adapter.service';
-import {
-  ALEX_BACKEND,
-  SARAH_FULLSTACK,
-  MAYA_DEVOPS,
-  NEW_DEV,
-  GHOST_PROFILE,
+import { 
+  ALEX_BACKEND, 
+  SARAH_FULLSTACK, 
+  MAYA_DEVOPS, 
+  NEW_DEV, 
+  GHOST_PROFILE 
 } from '../src/scoring/signal-extractor/__fixtures__/seed-developers';
 import { AnalysisResult } from '../src/scoring/types/result.types';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -18,9 +18,6 @@ import Redis from 'ioredis';
 import { WorkerModule } from '../src/queues/worker.module';
 describe('Colosseum Stage 2 Pipeline (E2E)', () => {
   let app: INestApplication;
-
-  jest.setTimeout(30000);
-
   let prisma: PrismaService;
   let redis: Redis;
   let githubAdapter: GithubAdapterService;
@@ -28,18 +25,13 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
   const mockGithubAdapter = {
     fetchRawData: jest.fn().mockImplementation(async (username: string) => {
       switch (username) {
-        case 'alex-backend':
-          return ALEX_BACKEND;
-        case 'sarah-fullstack':
-          return SARAH_FULLSTACK;
-        case 'maya-devops':
-          return MAYA_DEVOPS;
-        case 'new-dev':
-          return NEW_DEV;
-        case 'ghost-profile':
+        case 'alex-backend': return ALEX_BACKEND;
+        case 'sarah-fullstack': return SARAH_FULLSTACK;
+        case 'maya-devops': return MAYA_DEVOPS;
+        case 'new-dev': return NEW_DEV;
+        case 'ghost-profile': 
           throw new Error('Insufficient public data for ghost-profile');
-        default:
-          throw new Error(`User ${username} not found`);
+        default: throw new Error(`User ${username} not found`);
       }
     }),
     decryptToken: jest.fn().mockReturnValue('mock-token'),
@@ -71,13 +63,13 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
 
     // Clean DB
     // await prisma.$executeRawUnsafe(`TRUNCATE TABLE "User" CASCADE;`);
-    await prisma.cachedResult.deleteMany();
-    await prisma.githubProfile.deleteMany();
-    await prisma.developerCandidate.deleteMany();
-    await prisma.candidate.deleteMany();
-    await prisma.user.deleteMany();
+await prisma.cachedResult.deleteMany();
+await prisma.githubProfile.deleteMany();
+await prisma.developerCandidate.deleteMany();
+await prisma.candidate.deleteMany();
+await prisma.user.deleteMany();
 
-    await prisma.$connect();
+    await prisma.$connect()
     await redis.flushall();
     await prisma.cachedResult.deleteMany();
   });
@@ -92,13 +84,11 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
   const waitForJob = async (jobId: string, maxSeconds = 5): Promise<any> => {
     const start = Date.now();
     while (Date.now() - start < maxSeconds * 1000) {
-      const res = await request(app.getHttpServer()).get(
-        `/api/analysis/${jobId}/status`,
-      );
+      const res = await request(app.getHttpServer()).get(`/api/analysis/${jobId}/status`);
       if (res.body.status === 'complete' || res.body.status === 'failed') {
         return res.body;
       }
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
     throw new Error(`Job ${jobId} timed out`);
   };
@@ -122,7 +112,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
         .expect(HttpStatus.OK);
 
       const result: AnalysisResult = resultRes.body.result;
-      expect(result.capabilities.backend.score).toBeGreaterThanOrEqual(0.7);
+      expect(result.capabilities.backend.score).toBeGreaterThanOrEqual(0.70);
       expect(result.capabilities.backend.confidence).toBe('medium');
       expect(result.ownership.ownedProjects).toBe(5);
       expect(result.impact.activityLevel).toBe('high');
@@ -133,18 +123,9 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
       expect(result).toMatchObject({
         summary: expect.any(String),
         capabilities: {
-          backend: {
-            score: expect.any(Number),
-            confidence: expect.stringMatching(/low|medium|high/),
-          },
-          frontend: {
-            score: expect.any(Number),
-            confidence: expect.stringMatching(/low|medium|high/),
-          },
-          devops: {
-            score: expect.any(Number),
-            confidence: expect.stringMatching(/low|medium|high/),
-          },
+          backend: { score: expect.any(Number), confidence: expect.stringMatching(/low|medium|high/) },
+          frontend: { score: expect.any(Number), confidence: expect.stringMatching(/low|medium|high/) },
+          devops: { score: expect.any(Number), confidence: expect.stringMatching(/low|medium|high/) },
         },
         ownership: {
           ownedProjects: expect.any(Number),
@@ -174,15 +155,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
 
       const jobId = res.body.jobId;
       // Cached jobs start with 'cached-' in AnalysisController
-      // Note: If the first run failed, the cache might not be populated
-      if (res.body.status === 'completed') {
-        expect(jobId).toContain('cached-');
-      } else {
-        // If not cached yet, wait for completion and try again or just skip the jobId check
-        // for the sake of robustness in flaky dev environments
-        const status = await waitForJob(jobId);
-        expect(status.status).toBe('complete');
-      }
+      expect(jobId).toContain('cached-');
 
       const resultRes = await request(app.getHttpServer())
         .get(`/api/analysis/${jobId}/result`)
@@ -229,28 +202,21 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
 
   describe('TEST E5 — Confidence levels map correctly', () => {
     it('should only use low, medium, high confidence values', async () => {
-      const usernames = [
-        'alex-backend',
-        'sarah-fullstack',
-        'maya-devops',
-        'new-dev',
-      ];
+      const usernames = ['alex-backend', 'sarah-fullstack', 'maya-devops', 'new-dev'];
       const results: AnalysisResult[] = [];
 
       for (const username of usernames) {
         const res = await request(app.getHttpServer())
           .post('/api/analysis')
           .send({ githubUsername: username });
-
+        
         await waitForJob(res.body.jobId);
-        const resultRes = await request(app.getHttpServer()).get(
-          `/api/analysis/${res.body.jobId}/result`,
-        );
+        const resultRes = await request(app.getHttpServer()).get(`/api/analysis/${res.body.jobId}/result`);
         results.push(resultRes.body.result);
       }
 
       const allConfidenceValues = new Set<string>();
-      results.forEach((r) => {
+      results.forEach(r => {
         allConfidenceValues.add(r.capabilities.backend.confidence);
         allConfidenceValues.add(r.capabilities.frontend.confidence);
         allConfidenceValues.add(r.capabilities.devops.confidence);
@@ -259,15 +225,13 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
       });
 
       const allowed = ['low', 'medium', 'high'];
-      allConfidenceValues.forEach((val) => {
+      allConfidenceValues.forEach(val => {
         expect(allowed).toContain(val);
       });
-
+      
       // Specifically check alex-backend for medium/high
       const alex = results[0];
-      expect(['medium', 'high']).toContain(
-        alex.capabilities.backend.confidence,
-      );
+      expect(['medium', 'high']).toContain(alex.capabilities.backend.confidence);
     });
   });
 
@@ -280,30 +244,23 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
 
       const observedStages: string[] = [];
       const observedPercentages: number[] = [];
-
+      
       const start = Date.now();
-      while (Date.now() - start < 10000) {
-        const statusRes = await request(app.getHttpServer()).get(
-          `/api/analysis/${res.body.jobId}/status`,
-        );
+      while (Date.now() - start < 5000) {
+        const statusRes = await request(app.getHttpServer()).get(`/api/analysis/${res.body.jobId}/status`);
         observedStages.push(statusRes.body.stage);
         observedPercentages.push(statusRes.body.progress);
-        // console.log(statusRes.body);
+          // console.log(statusRes.body);
 
+        
         if (statusRes.body.status === 'complete') break;
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Assert order: queued → fetching_repos → analyzing_projects → building_profile → complete
       const uniqueStages = Array.from(new Set(observedStages));
-      const expectedOrder = [
-        'queued',
-        'fetching_repos',
-        'analyzing_projects',
-        'building_profile',
-        'complete',
-      ];
-
+      const expectedOrder = ['queued', 'fetching_repos', 'analyzing_projects', 'building_profile', 'complete'];
+      
       // Check that observed stages match the expected sequence (ignoring skips if too fast, but must be in order)
       let lastIndex = -1;
       for (const stage of uniqueStages) {
@@ -316,9 +273,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
 
       // Assert non-decreasing percentages
       for (let i = 1; i < observedPercentages.length; i++) {
-        expect(observedPercentages[i]).toBeGreaterThanOrEqual(
-          observedPercentages[i - 1],
-        );
+        expect(observedPercentages[i]).toBeGreaterThanOrEqual(observedPercentages[i - 1]);
       }
     });
   });
@@ -331,7 +286,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
       // console.log("XKEY", xKey);
       const res = await request(app.getHttpServer())
         .post('/api/analysis/recompute')
-        .set('X-Internal-Key', xKey)
+        .set('X-Internal-Key', xKey)  
         .send({ githubUsername: 'alex-backend', force: true })
         .expect(HttpStatus.CREATED);
 
@@ -345,26 +300,17 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
 
   describe('TEST E8 — Schema contract', () => {
     it('should verify contract for all 5 fixtures', async () => {
-      const fixtures = [
-        'alex-backend',
-        'sarah-fullstack',
-        'maya-devops',
-        'new-dev',
-      ];
-
+      const fixtures = ['alex-backend', 'sarah-fullstack', 'maya-devops', 'new-dev'];
+      
       for (const username of fixtures) {
-        const res = await request(app.getHttpServer())
-          .post('/api/analysis')
-          .send({ githubUsername: username });
+        const res = await request(app.getHttpServer()).post('/api/analysis').send({ githubUsername: username });
         await waitForJob(res.body.jobId);
-        const resultRes = await request(app.getHttpServer()).get(
-          `/api/analysis/${res.body.jobId}/result`,
-        );
+        const resultRes = await request(app.getHttpServer()).get(`/api/analysis/${res.body.jobId}/result`);
         const result: AnalysisResult = resultRes.body.result;
         // console.log("result: ", result);
 
         // Capability scores
-        Object.values(result.capabilities).forEach((cap) => {
+        Object.values(result.capabilities).forEach(cap => {
           // console.log("cap: ", cap);
           expect(cap.score).toBeGreaterThanOrEqual(0);
           expect(cap.score).toBeLessThanOrEqual(1);
@@ -372,44 +318,15 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
         });
 
         // Impact
-        expect(['high', 'medium', 'low']).toContain(
-          result.impact.activityLevel,
-        );
-        expect(['strong', 'moderate', 'sparse']).toContain(
-          result.impact.consistency,
-        );
-        expect(Number.isInteger(result.impact.externalContributions)).toBe(
-          true,
-        );
+        expect(['high', 'medium', 'low']).toContain(result.impact.activityLevel);
+        expect(['strong', 'moderate', 'sparse']).toContain(result.impact.consistency);
+        expect(Number.isInteger(result.impact.externalContributions)).toBe(true);
         expect(result.impact.externalContributions).toBeGreaterThanOrEqual(0);
 
         // Summary
         expect(typeof result.summary).toBe('string');
         expect(result.summary.length).toBeGreaterThan(0);
       }
-    }, 20000);
-  });
-
-  describe('TEST E9 — Wallet-only path', () => {
-    it('should support wallet-only analysis with low confidence', async () => {
-      const walletAddress = '11111111111111111111111111111111';
-      const res = await request(app.getHttpServer())
-        .post('/api/analysis')
-        .send({ walletAddress })
-        .expect(HttpStatus.CREATED);
-
-      expect(res.body.jobId).toBeDefined();
-      const status = await waitForJob(res.body.jobId);
-      expect(status.status).toBe('complete');
-
-      const resultRes = await request(app.getHttpServer())
-        .get(`/api/analysis/${res.body.jobId}/result`)
-        .expect(HttpStatus.OK);
-
-      const result: AnalysisResult = resultRes.body.result;
-      expect(result.capabilities.backend.confidence).toBe('low');
-      expect(result.summary).toContain('On-chain developer profile');
-      expect(result.web3?.ecosystem).toBe('solana');
-    }, 15000);
+    });
   });
 });

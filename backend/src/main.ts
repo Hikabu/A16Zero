@@ -1,35 +1,50 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import helmet from 'helmet';
-import { Logger } from 'nestjs-pino';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
+import { AppModule } from './app.module';
+import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create(AppModule);
 
-  app.useLogger(app.get(Logger));
+  // Security
   app.use(helmet());
   app.enableCors({
     origin: true,
     credentials: true,
   });
 
-  setUpSwagger(app);
+  // Global Validation
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
-  await app.listen(3000);
-}
 
-function setUpSwagger(app) {
+  // Swagger Documentation
   const config = new DocumentBuilder()
-    .setTitle('Colosseum API')
+    .setTitle('a16zero Employer API')
+    .setDescription('Backend MVP for Employer platform features and Account Abstraction auth verification.')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-
+  
   const document = SwaggerModule.createDocument(app, config);
   const cleanedDocument = cleanupOpenApiDoc(document);
-  SwaggerModule.setup('docs', app, cleanedDocument);
-}
+  SwaggerModule.setup('api/docs', app, cleanedDocument,{
+    swaggerOptions: {
+    requestSnippetsEnabled: true,
+  }});
 
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  
+  logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`Swagger documentation: http://localhost:${port}/api/docs`);
+}
 bootstrap();

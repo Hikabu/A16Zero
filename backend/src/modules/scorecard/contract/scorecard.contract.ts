@@ -1,86 +1,85 @@
 import { z } from 'zod';
-import { RoleType, Seniority, RiskLevel } from '@prisma/client';
+import { Seniority, RiskLevel } from '@prisma/client';
 
 /**
- * Frontend-Safe UI Model
+ * Capability item (structured UI representation)
+ */
+export const CapabilityItemSchema = z.object({
+  key: z.enum(['backend', 'frontend', 'devops']),
+  label: z.string(),
+  score: z.number().min(0).max(1),
+  displayScore: z.number().min(0).max(100),
+  confidence: z.string(),
+  strength: z.enum(['strong', 'moderate', 'weak']),
+});
+
+/**
+ * Core UI Scorecard Schema (FINAL MERGED VERSION)
  */
 export const ScorecardUiSchema = z.object({
   profile: z.object({
     username: z.string().describe('GitHub username of the candidate'),
-    avatarUrl: z
-      .string()
-      .url()
-      .optional()
-      .describe('URL to the candidate profile avatar'),
-    primaryCohort: z
-      .string()
-      .describe('The primary ecosystem cohort (e.g., typescript-node)'),
-    seniority: z
-      .nativeEnum(Seniority)
-      .describe('Inferred developer seniority level'),
-    summary: z
-      .string()
-      .describe('A concise professional summary of the developer'),
+    avatarUrl: z.string().url().optional(),
+    primaryCohort: z.string(),
+    seniority: z.nativeEnum(Seniority),
+    summary: z.string(),
   }),
+
   score: z.object({
-    value: z.coerce
-      .number()
-      .min(0)
-      .max(100)
-      .describe('Normalized capability score'),
-    percentile: z.coerce
-      .number()
-      .min(0)
-      .max(100)
-      .describe('Percentile rank within the cohort'),
-    isWithheld: z
-      .object({
-        value: z.boolean().describe('Whether the score is withheld'),
-        reason: z
-          .string()
-          .optional()
-          .describe(
-            'Human-readable reason for withholding the score (e.g., insufficient data)',
-          ),
-      })
-      .describe('Score withholding status and context'),
+    value: z.number().min(0).max(100),
+    percentile: z.number().min(0).max(100),
+    isWithheld: z.object({
+      value: z.boolean(),
+      reason: z.string().optional(),
+    }),
   }),
-  trust: z
-    .object({
-      level: z
-        .string()
-        .describe('Confidence tier (FULL, PARTIAL, LOW, MINIMAL)'),
-      risk: z.nativeEnum(RiskLevel).describe('Systemic risk assessment'),
-      label: z.string().describe('HR-friendly status label'),
-      guidance: z.string().describe('Actionable guidance for the recruiter'),
-    })
-    .describe('Reliability and risk assessment for the scorecard'),
+
+  trust: z.object({
+    level: z.string(), // FULL | PARTIAL | LOW | MINIMAL (kept flexible)
+    risk: z.nativeEnum(RiskLevel),
+    label: z.string(),
+    guidance: z.string(),
+  }),
+
   insights: z.object({
-    capabilities: z
-      .array(z.string())
-      .describe('Strong professional capabilities identified'),
-    gaps: z
-      .array(z.string())
-      .describe('Identified skill gaps or missing evidence'),
-    caveats: z.array(z.string()).describe('Data quality or integrity caveats'),
+    // structured capabilities (replaces string[])
+    capabilities: z.array(CapabilityItemSchema),
+
+    // narrative layer (for UI / recruiter explanation)
+    highlights: z.array(z.string()),
+    gaps: z.array(z.string()),
+    caveats: z.array(z.string()),
+
+    // raw structured breakdown (important for debugging + UI expansion)
+    ownership: z.object({
+      ownedProjects: z.number(),
+      activelyMaintained: z.number(),
+      confidence: z.string(),
+    }),
+
+    impact: z.object({
+      activityLevel: z.string(),
+      consistency: z.string(),
+      externalContributions: z.number(),
+      confidence: z.string(),
+    }),
   }),
 });
 
 /**
- * Full Response Schema (including Raw data)
+ * Full API Response
  */
 export const ScorecardResponseSchema = z.object({
-  ui: ScorecardUiSchema.describe(
-    'Transformed model for immediate UI rendering',
-  ),
-  raw: z
-    .any()
-    .describe('Full internal scoring result for audit and secondary logic'),
+  ui: ScorecardUiSchema,
+  raw: z.any(), // internal scoring object (audit/debug)
 });
 
 /**
- * Preview Request Schema
+ * Preview Request
  */
 export const ScorecardPreviewRequestSchema = z.object({
-  githubUsername: z.string().min(1).describe('The GitHub username to analyze'),
+  githubUsername: z.string().min(1),
 });
+
+export type ScorecardUiDto = z.infer<typeof ScorecardUiSchema>;
+export type CapabilityItem = z.infer<typeof CapabilityItemSchema>;

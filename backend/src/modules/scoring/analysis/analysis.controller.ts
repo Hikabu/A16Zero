@@ -37,7 +37,7 @@ import {
 	JobResponseDto,
 	JobStatusResponseDto,
 	JobResultResponseDto,
-	ErrorResponseDto,
+	AnalysisErrorResponseDto,
   } from './dto/analysis-response.dto';
   
   @ApiTags('Analysis')
@@ -101,7 +101,7 @@ import {
 	})
 	@ApiBadRequestResponse({
 	  description: 'Invalid input (missing identifiers or invalid wallet)',
-	  type: ErrorResponseDto,
+	  type: AnalysisErrorResponseDto,
 	})
 	async createAnalysis(@Body() body: CreateAnalysisDto) {
 	  // unchanged logic
@@ -242,11 +242,11 @@ import {
 	})
 	@ApiUnauthorizedResponse({
 	  description: 'Missing or invalid internal API key',
-	  type: ErrorResponseDto,
+	  type: AnalysisErrorResponseDto,
 	})
 	@ApiNotFoundResponse({
 	  description: 'Profile not found',
-	  type: ErrorResponseDto,
+	  type: AnalysisErrorResponseDto,
 	})
 	async recompute(@Body() body: RecomputeAnalysisDto) {
 	  const { githubUsername, walletAddress, force } = body;
@@ -319,7 +319,7 @@ import {
 	})
 	@ApiNotFoundResponse({
 	  description: 'Job not found',
-	  type: ErrorResponseDto,
+	  type: AnalysisErrorResponseDto,
 	})
 	async getStatus(@Param('jobId') jobId: string) {
 	  const job = await this.signalQueue.getJob(jobId);
@@ -370,7 +370,7 @@ import {
 	})
 	@ApiNotFoundResponse({
 	  description: 'Job not found',
-	  type: ErrorResponseDto,
+	  type: AnalysisErrorResponseDto,
 	})
 	async getResult(@Param('jobId') jobId: string) {
 	  const job = await this.signalQueue.getJob(jobId);

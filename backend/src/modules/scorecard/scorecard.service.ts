@@ -2,8 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ScorecardUiDto } from './contract/scorecard.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScorecardResult } from './scorecard.types';
-import { GithubAdapterService } from '../../modules/scoring/github-adapter/github-adapter.service';
+import { GithubAdapterService } from '../scoring/github-adapter/github-adapter.service';
 import { ConfigService } from '@nestjs/config';
+import { AnalysisResult } from '../scoring/types/result.types';
+import { CacheService } from '../scoring/cache/cache.service';
+import { RawScorecard } from './contract/scorecard.schema';
 
 @Injectable()
 export class ScorecardService {
@@ -13,61 +16,253 @@ export class ScorecardService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly githubAdapter: GithubAdapterService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async computeForCandidate(candidateId: string): Promise<ScorecardResult> {
-    this.logger.log(
-      `Computing scorecard for candidate ${candidateId} (Refactored Placeholder)`,
-    );
-
-    // For now, return a placeholder result until Phase 3 implementation
+    this.logger.log(`Computing scorecard for candidate ${candidateId}`);
     return this.buildPlaceholderResult();
   }
 
   async previewForUsername(githubUsername: string): Promise<ScorecardResult> {
-    this.logger.log(
-      `Running headless preview for ${githubUsername} (Refactored Placeholder)`,
-    );
+    this.logger.log(`Running headless preview for ${githubUsername}`);
 
     const githubToken = this.configService.get<string>('GITHUB_SYSTEM_TOKEN');
     if (!githubToken) {
       throw new Error('GITHUB_SYSTEM_TOKEN not configured');
     }
 
-    // Still fetch raw data to verify connectivity, but return placeholder result
     await this.githubAdapter.fetchRawData(githubUsername, githubToken);
 
     return this.buildPlaceholderResult();
   }
 
-  mapToUiModel(result: ScorecardResult): ScorecardUiDto {
+  async getScorecardForUser(userId: string): Promise<RawScorecard | null> {
+    const candidate = await this.prisma.candidate.findFirst({
+      where: { userId },
+      select: {
+        scorecard: true,
+        devProfile: {
+          select: {
+            githubProfile: {
+              select: {
+                githubUsername: true,
+                lastSyncAt: true,
+                syncStatus: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!candidate) return null;
+
+    if (candidate.scorecard) {
+      return candidate.scorecard as RawScorecard;
+    }
+
+    const username = candidate.devProfile?.githubProfile?.githubUsername;
+    if (username) {
+      this.logger.warn(`DB scorecard empty for user ${userId}, checking Redis`);
+      return this.getScorecardFromCache(username);
+    }
+
+    return null;
+  }
+
+  async getScorecardFromCache(
+    githubUsername: string,
+  ): Promise<AnalysisResult | null> {
+    const cacheKey = this.cacheService.buildCacheKey(githubUsername);
+    return this.cacheService.get(cacheKey);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // UI MAPPER (FIXED)
+  // ─────────────────────────────────────────────────────────────
+
+  mapToUiModel(raw: RawScorecard | ScorecardResult): ScorecardUiDto {
+    const isRaw = (r: any): r is RawScorecard => 'ownership' in r;
+
+    // ── Fallback / placeholder UI ─────────────────────────────
+    if (!isRaw(raw)) {
+      return {
+        profile: {
+          username: 'candidate',
+          avatarUrl: undefined,
+          primaryCohort: 'unknown',
+          seniority: 'MID' as any,
+          summary: 'Reviewing developer history...',
+        },
+        score: {
+          value: 0,
+          percentile: 0,
+          isWithheld: { value: false },
+        },
+        trust: {
+          level: 'PARTIAL' as any,
+          risk: 'LOW_RISK' as any,
+          label: 'NEUTRAL',
+          guidance: 'Awaiting updated scoring analysis.',
+        },
+        insights: {
+          capabilities: [],
+          highlights: [],
+          gaps: [],
+          caveats: [],
+          ownership: {
+            ownedProjects: 0,
+            activelyMaintained: 0,
+            confidence: 'low',
+          },
+          impact: {
+            activityLevel: 'low',
+            consistency: 'sparse',
+            externalContributions: 0,
+            confidence: 'low',
+          },
+        },
+      };
+    }
+
+    const real = raw;
+
+    const capabilities = [
+      this.mapCapability('backend', real.capabilities.backend),
+      this.mapCapability('frontend', real.capabilities.frontend),
+      this.mapCapability('devops', real.capabilities.devops),
+    ];
+
     return {
       profile: {
-        username: 'candidate',
+        username: 'unknown',
         avatarUrl: undefined,
         primaryCohort: 'unknown',
         seniority: 'MID' as any,
-        summary: 'Reviewing developer history...',
+        summary: real.summary,
       },
       score: {
-        value: 0,
+        value: this.computeOverallScore(real.capabilities),
         percentile: 0,
-        isWithheld: {
-          value: false,
-        },
+        isWithheld: { value: false },
       },
       trust: {
-        level: 'PARTIAL' as any,
+        level: this.mapConfidenceLevel(real),
         risk: 'LOW_RISK' as any,
-        label: 'NEUTRAL',
-        guidance: 'Awaiting updated scoring analysis.',
+        label: this.mapTrustLabel(real),
+        guidance: this.mapGuidance(real),
       },
       insights: {
-        capabilities: [],
-        gaps: [],
+        capabilities, // ✅ FIXED (was [] → now correct)
+        highlights: this.buildHighlights(real),
+        gaps: this.buildGaps(real),
         caveats: [],
+        ownership: real.ownership,
+        impact: real.impact,
       },
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // HELPERS (unchanged but valid)
+  // ─────────────────────────────────────────────────────────────
+
+  private buildGaps(raw: RawScorecard): string[] {
+    const out: string[] = [];
+
+    if (raw.capabilities.frontend.score < 0.5) {
+      out.push('Limited frontend evidence');
+    }
+    if (raw.capabilities.devops.score < 0.5) {
+      out.push('Limited DevOps exposure');
+    }
+    if (raw.impact.externalContributions === 0) {
+      out.push('No external contributions detected');
+    }
+
+    return out;
+  }
+
+  private buildHighlights(raw: RawScorecard): string[] {
+    const out: string[] = [];
+
+    if (raw.capabilities.backend.score >= 0.7) {
+      out.push('Strong backend capability');
+    }
+    if (raw.ownership.activelyMaintained > 5) {
+      out.push(`Maintains ${raw.ownership.activelyMaintained} active projects`);
+    }
+    if (raw.impact.externalContributions > 0) {
+      out.push('Has external/open-source contributions');
+    }
+
+    return out;
+  }
+
+  private mapGuidance(raw: RawScorecard): string {
+    if (raw.impact.externalContributions === 0) {
+      return 'Limited external contributions—consider reviewing project depth.';
+    }
+    return 'Sufficient activity and project ownership observed.';
+  }
+
+  private mapTrustLabel(raw: RawScorecard): string {
+    if (raw.impact.confidence === 'high') return 'HIGH CONFIDENCE';
+    if (raw.impact.confidence === 'medium') return 'MODERATE CONFIDENCE';
+    return 'LOW CONFIDENCE';
+  }
+
+  private mapConfidenceLevel(raw: RawScorecard): string {
+    const confidences = [
+      raw.capabilities.backend.confidence,
+      raw.capabilities.frontend.confidence,
+      raw.capabilities.devops.confidence,
+      raw.ownership.confidence,
+      raw.impact.confidence,
+    ];
+
+    if (confidences.every((c) => c === 'high')) return 'FULL';
+    if (confidences.includes('medium')) return 'PARTIAL';
+    return 'LOW';
+  }
+
+  private mapCapability(
+    key: 'backend' | 'frontend' | 'devops',
+    data: { score: number; confidence: string },
+  ) {
+    return {
+      key,
+      label: this.labelize(key),
+      score: data.score,
+      displayScore: Math.round(data.score * 100),
+      confidence: data.confidence,
+      strength: this.mapStrength(data.score),
+    };
+  }
+
+  private mapStrength(score: number): 'strong' | 'moderate' | 'weak' {
+    if (score >= 0.7) return 'strong';
+    if (score >= 0.4) return 'moderate';
+    return 'weak';
+  }
+
+  private labelize(key: string): string {
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  private computeOverallScore(
+    capabilities: RawScorecard['capabilities'],
+  ): number {
+    const scores = [
+      capabilities.backend.score,
+      capabilities.frontend.score,
+      capabilities.devops.score,
+    ];
+
+    return Math.round(
+      (scores.reduce((a, b) => a + b, 0) / scores.length) * 100,
+    );
   }
 
   private buildPlaceholderResult(): ScorecardResult {
