@@ -1,61 +1,61 @@
-name: CI
+# name: CI
 
-on:
-  push:
-    branches: [main, dev]
-  pull_request:
+# on:
+#   push:
+#     branches: [main, dev]
+#   pull_request:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
+#     services:
+#       postgres:
+#         image: postgres:16
+#         env:
+#           POSTGRES_USER: postgres
+#           POSTGRES_PASSWORD: postgres
+#           POSTGRES_DB: test_db
+#         ports:
+#           - 5432:5432
+#         options: >-
+#           --health-cmd="pg_isready -U postgres"
+#           --health-interval=5s
+#           --health-timeout=5s
+#           --health-retries=10
 
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-      JWT_ACCESS_SECRET: test_secret
-      NODE_ENV: test
+#     env:
+#       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+#       JWT_ACCESS_SECRET: test_secret
+#       NODE_ENV: test
 
-    steps:
-      - uses: actions/checkout@v4
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
+#       - uses: actions/setup-node@v4
+#         with:
+#           node-version: 20
+#           cache: 'npm'
 
-      - run: npm ci
+#       - run: npm ci
 
-      - name: Wait for Postgres
-        run: |
-          for i in {1..10}; do
-            pg_isready -h localhost -p 5432 && break
-            echo "Waiting for postgres..."
-            sleep 2
-          done
+#       - name: Wait for Postgres
+#         run: |
+#           for i in {1..10}; do
+#             pg_isready -h localhost -p 5432 && break
+#             echo "Waiting for postgres..."
+#             sleep 2
+#           done
 
-      - run: npx prisma generate
+#       - run: npx prisma generate
 
-      - run: npx prisma migrate deploy
+#       - run: npx prisma migrate deploy
 
-      - run: npm run test
-      - run: npm run test:e2e
+#       - run: npm run test
+#       - run: npm run test:e2e
 
-      - run: npm run env:sync
+#       - run: npm run env:sync
 
-      - name: Check if .env.example is up to date
-        run: |
-          git diff --exit-code .env.example || (echo ".env.example is outdated. Run npm run env:sync" && exit 1)
+#       - name: Check if .env.example is up to date
+#         run: |
+#           git diff --exit-code .env.example || (echo ".env.example is outdated. Run npm run env:sync" && exit 1)

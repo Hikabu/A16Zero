@@ -10,6 +10,7 @@ import * as QRCode from 'qrcode';
 
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { AuthState } from './schemas/auth-result.dto';
 
 type Provider = 'LOCAL' | 'GITHUB' | 'GOOGLE';
 
@@ -125,7 +126,10 @@ export class AuthCandidateService {
 
   private async handleLoginResponse(user: any) {
     if (!user.isEmailVerified) {
-      return { needsVerification: true, email: user.email };
+		return {
+			type: AuthState.NEEDS_VERIFICATION,
+			data: { email: user.email },
+		  };
     }
 
     if (user.mfaEnabled) {
@@ -136,7 +140,10 @@ export class AuthCandidateService {
           expiresIn: '5m' 
         }
       );
-      return { mfaRequired: true, mfaToken };
+      return {
+		type: AuthState.MFA_REQUIRED,
+		data: { mfaToken },
+	  };
     }
 
     return await this.issueTokens(user.id, (user as any).isEmailVerified);
@@ -216,7 +223,10 @@ export class AuthCandidateService {
     await this.redis.set(`refresh:${userId}`, refreshJti, 'EX', 60 * 60 * 24 * 7);
     console.log("refresh token: ", refreshToken);
     console.log("access token: ", accessToken);
-    return { accessToken, refreshToken };
+    return {
+		type: AuthState.SUCCESS,
+		data: { accessToken, refreshToken },
+	  };
   }
 
   // --- OAuth & Linking ---
@@ -289,7 +299,10 @@ export class AuthCandidateService {
       expiresIn: '15m' 
     });
     console.log("Generated onboarding token: ", tempToken);
-    return { needsOnboarding: true, tempToken };
+    return {
+		type: AuthState.NEEDS_ONBOARDING,
+		data: { tempToken },
+	  };
   }
 
   async generateLinkState(userId: string): Promise<string> {
@@ -317,8 +330,6 @@ export class AuthCandidateService {
     });
 
     this.logger.log(`ACCOUNT_LINKED: User ${userId} successfully linked ${provider}`);
-
-    return { message: `${provider} linked successfully` };
   }
 
   async completeOnboarding(dto, oauth: any) {
@@ -370,7 +381,6 @@ export class AuthCandidateService {
 
     await this.prisma.user.update({ where: { id: userId }, data: { isEmailVerified: true } as any });
     await this.redis.del(`verify_email:${code}`);
-    return { message: 'Verified' };
   }
 
   // --- MFA Setup ---
@@ -405,7 +415,7 @@ export class AuthCandidateService {
       } as any
     });
     await this.redis.del(`mfa_setup:${userId}`);
-    return { message: 'MFA activated', backupCodes };
+    return { backupCodes };
   }
 
   async verifyMfaRecovery(userId: string, backupCode: string, mfaToken: string) {
@@ -447,7 +457,7 @@ export class AuthCandidateService {
     // SECURITY: Always return success to prevent email enumeration
     if (!user) {
       this.logger.warn(`RESET_REQUEST: Non-existent email ${dto.email}`);
-      return { message: 'If an account with that email exists, a reset link has been sent.' };
+	  return;
     }
 
     const token = crypto.randomBytes(32).toString('hex');
@@ -459,7 +469,6 @@ export class AuthCandidateService {
       html: `<p>Click <a href="${this.config.get('APP_URL')}/reset-password?token=${token}">here</a> to reset your password.</p>`,
     });
     
-    return { message: 'If an account with that email exists, a reset link has been sent.' };
   }
 
   async resetPassword(dto: any) {
@@ -489,7 +498,6 @@ export class AuthCandidateService {
     
     this.logger.log(`PASSWORD_RESET_SUCCESS: User ${userId} reset their password`);
     
-    return { message: 'Password reset successfully' };
   }
 
  async githubLink(userId: string) {

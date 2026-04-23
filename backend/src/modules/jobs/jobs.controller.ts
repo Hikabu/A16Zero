@@ -1,42 +1,148 @@
-import { Controller, Post, Get, Patch, Body, Param, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JobsService } from './jobs.service';
-import { CreateJobDto } from './dto/create-job.dto';
-import { BaseController } from '../../shared/config/common/base.controller';
-
-@ApiTags('Jobs')
-@ApiBearerAuth()
-@Controller('jobs')
-export class JobsController extends BaseController {
-  constructor(private readonly jobsService: JobsService) {
-    super();
+import {
+	Controller,
+	Post,
+	Get,
+	Body,
+	Param,
+	Req,
+  } from '@nestjs/common';
+  import {
+	ApiTags,
+	ApiOperation,
+	ApiBearerAuth,
+	ApiOkResponse,
+	ApiCreatedResponse,
+	ApiBadRequestResponse,
+	ApiForbiddenResponse,
+	ApiNotFoundResponse,
+	ApiParam,
+  } from '@nestjs/swagger';
+  
+  import { JobsService } from './jobs.service';
+  import { CreateJobDto } from './dto/create-job.dto';
+  import { BaseController } from '../../shared/base.controller';
+  
+  class JobResponseDto {
+	id: string;
+	title: string;
+	description: string;
+	status: string;
+	companyId: string;
+	createdAt: string;
+	updatedAt: string;
   }
-
-  @Post()
-  @ApiOperation({ summary: 'Create a new job post' })
-  async create(@Request() req, @Body() dto: CreateJobDto) {
-    const job = await this.jobsService.create(req.user.id, dto);
-    return this.handleCreated(job, 'Job created successfully');
+  
+  class ErrorResponseDto {
+	statusCode: number;
+	message: string;
+	error: string;
   }
-
-  @Get('my')
-  @ApiOperation({ summary: 'Get jobs created by the current company' })
-  async getMyJobs(@Request() req) {
-    const jobs = await this.jobsService.findMyJobs(req.user.id);
-    return this.handleSuccess(jobs);
+  
+  @ApiTags('Jobs')
+  @ApiBearerAuth()
+  @Controller('jobs')
+  export class JobsController extends BaseController {
+	constructor(private readonly jobsService: JobsService) {
+	  super();
+	}
+  
+	// ─────────────────────────────
+	// CREATE JOB
+	// ─────────────────────────────
+	@Post()
+	@ApiOperation({
+	  summary: 'Create a new job post',
+	  description:
+		'Creates a job in DRAFT status for the authenticated company. The job is not visible publicly until published.',
+	})
+	@ApiCreatedResponse({
+	  description: 'Job created successfully',
+	  type: JobResponseDto,
+	})
+	@ApiBadRequestResponse({
+	  description: 'Invalid job payload',
+	  type: ErrorResponseDto,
+	})
+	async create(@Req() req: any, @Body() dto: CreateJobDto) {
+	  const job = await this.jobsService.create(req.user.id, dto);
+	  return this.handleCreated(job, 'Job created successfully');
+	}
+  
+	// ─────────────────────────────
+	// GET MY JOBS
+	// ─────────────────────────────
+	@Get('my')
+	@ApiOperation({
+	  summary: 'Get my jobs',
+	  description:
+		'Returns all job posts created by the authenticated company, ordered by newest first.',
+	})
+	@ApiOkResponse({
+	  description: 'List of company job posts',
+	  type: [JobResponseDto],
+	})
+	async getMyJobs(@Req() req: any) {
+	  const jobs = await this.jobsService.findMyJobs(req.user.id);
+	  return this.handleSuccess(jobs);
+	}
+  
+	// ─────────────────────────────
+	// PUBLISH JOB
+	// ─────────────────────────────
+	@Post(':id/publish')
+	@ApiOperation({
+	  summary: 'Publish a job',
+	  description:
+		'Publishes a draft job and makes it ACTIVE (visible to candidates). Simulates payment flow in current system.',
+	})
+	@ApiParam({
+	  name: 'id',
+	  required: true,
+	  description: 'Job ID to publish',
+	  example: 'cma9x1k2p0000qwert123',
+	})
+	@ApiOkResponse({
+	  description: 'Job published successfully',
+	  type: JobResponseDto,
+	})
+	@ApiNotFoundResponse({
+	  description: 'Job not found or does not belong to user',
+	  type: ErrorResponseDto,
+	})
+	@ApiForbiddenResponse({
+	  description: 'Access denied',
+	  type: ErrorResponseDto,
+	})
+	async publish(@Req() req: any, @Param('id') id: string) {
+	  const job = await this.jobsService.publish(id, req.user.id);
+	  return this.handleSuccess(job, 'Job published successfully');
+	}
+  
+	// ─────────────────────────────
+	// CLOSE JOB
+	// ─────────────────────────────
+	@Post(':id/close')
+	@ApiOperation({
+	  summary: 'Close a job',
+	  description:
+		'Marks a job as CLOSED. Closed jobs are no longer visible to candidates or accept applications.',
+	})
+	@ApiParam({
+	  name: 'id',
+	  required: true,
+	  description: 'Job ID to close',
+	  example: 'cma9x1k2p0000qwert123',
+	})
+	@ApiOkResponse({
+	  description: 'Job closed successfully',
+	  type: JobResponseDto,
+	})
+	@ApiNotFoundResponse({
+	  description: 'Job not found or access denied',
+	  type: ErrorResponseDto,
+	})
+	async close(@Req() req: any, @Param('id') id: string) {
+	  const job = await this.jobsService.close(id, req.user.id);
+	  return this.handleSuccess(job, 'Job closed successfully');
+	}
   }
-
-  @Post(':id/publish')
-  @ApiOperation({ summary: 'Publish a job (simulate payment)' })
-  async publish(@Request() req, @Param('id') id: string) {
-    const job = await this.jobsService.publish(id, req.user.id);
-    return this.handleSuccess(job, 'Job published successfully');
-  }
-
-  @Post(':id/close')
-  @ApiOperation({ summary: 'Close a job' })
-  async close(@Request() req, @Param('id') id: string) {
-    const job = await this.jobsService.close(id, req.user.id);
-    return this.handleSuccess(job, 'Job closed successfully');
-  }
-}
