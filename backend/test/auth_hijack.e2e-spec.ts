@@ -5,7 +5,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as crypto from 'crypto';
-import { GithubLinkGuard } from '../src/modules/auth/guards/github.link.guard';
+import { GithubLinkGuard } from '../src/modules/auth-candidate/guards/github.link.guard';
 import { MockGithubGuard } from './shared';
 
 

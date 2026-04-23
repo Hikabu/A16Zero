@@ -10,7 +10,7 @@ import {
 import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { GithubSyncService } from './github-sync.service';
-import { GithubSyncConnectGuard } from '../auth/guards/github.sync.connect.guard';
+import { GithubSyncConnectGuard } from '../auth-candidate/guards/github.sync.connect.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('GitHub Sync')

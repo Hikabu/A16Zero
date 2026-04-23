@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { resetBefore, resetAfter, resetBeforeNoThrottle } from './shared';
-import { AuthService } from '../src/modules/auth/auth.service';
+import { AuthService } from '../src/modules/auth-candidate/auth.service';
 
 describe('Auth Security (e2e)', () => {
   let app: INestApplication;

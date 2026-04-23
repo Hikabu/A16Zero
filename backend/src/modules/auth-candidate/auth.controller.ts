@@ -26,7 +26,7 @@ import { VerifiedGuard } from './guards/verified.guard';
 
 @ApiTags('Auth')
 @Throttle({ default: { limit: 500, ttl: 60000 } })
-@Controller('auth')
+@Controller('auth/candidate')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,

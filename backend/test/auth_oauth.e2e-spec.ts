@@ -1,12 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { resetBefore, resetAfter } from './shared';
-import { AuthService } from '../src/modules/auth/auth.service';
+import { AuthService } from '../src/modules/auth-candidate/auth.service';
 import { Test } from '@nestjs/testing';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as crypto from 'crypto';
-import { GithubLinkGuard } from '../src/modules/auth/guards/github.link.guard';
+import { GithubLinkGuard } from '../src/modules/auth-candidate/guards/github.link.guard';
 import { MockGithubGuard } from './shared';
 
 describe('Auth OAuth (e2e)', () => {

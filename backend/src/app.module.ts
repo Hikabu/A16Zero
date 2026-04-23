@@ -11,7 +11,7 @@ import { GithubSyncModule } from './modules/github-sync/github-sync.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { AtsModule } from './modules/ats/ats.module';
 import { FairnessModule } from './modules/fairness/fairness.module';
-import { AuthModule } from './modules/auth/auth.module';
+import { AuthModule } from './modules/auth-candidate/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { QueuesModule } from './queues/queues.module';
 import { ScoringModule } from './modules/scoring/scoring.module';
