@@ -1,0 +1,111 @@
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import { resetBefore, resetAfter, resetBeforeNoThrottle } from './shared';
+import { AuthService } from '../src/modules/auth/auth.service';
+
+describe('Auth Security (e2e)', () => {
+  let app: INestApplication;
+  let testId: string;
+
+  beforeEach(async () => {
+    const setup = await resetBefore();
+    app = setup.app;
+    testId = setup.id;
+  });
+
+  afterEach(async () => {
+    await resetAfter(app);
+  });
+
+  describe('Rate Limiting', () => {
+    it('should trigger internal rate limit on login after 5 failures', async () => {
+      const setup = await resetBeforeNoThrottle();
+      const email = `fail-${testId}@example.com`;
+
+      let res;
+      for (let i = 0; i < 6; i++) {
+        res = await request(setup.app.getHttpServer())
+          .post('/auth/login')
+          .send({ identifier: email, password: 'wrong-password' });
+        if (i < 5) {
+          expect(res.status).toBe(401);
+          expect(res.body.message).toContain('Invalid credentials');
+        }
+      }
+
+      expect(res.status).toBe(401);
+      expect(res.body.message).toContain('Too many login attempts');
+      await resetAfter(setup.app);
+    });
+
+    it('should trigger ThrottlerGuard on registration', async () => {
+      // Limit is 5 per minute globally, but let's just spam it
+      for (let i = 0; i < 5; i++) {
+        await request(app.getHttpServer())
+          .post('/auth/register')
+          .send({
+            email: `spam-${i}-${testId}@example.com`,
+            password: 'StrongPassword123!',
+            role: 'CANDIDATE',
+          })
+          .expect(201);
+      }
+
+      const res = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({
+          email: `spam-final-${testId}@example.com`,
+          password: 'StrongPassword123!',
+          role: 'CANDIDATE',
+        });
+
+      expect(res.status).toBe(429);
+    });
+  });
+
+  describe('Session Hijack & Reuse', () => {
+    it('should revoke all sessions on refresh token reuse', async () => {
+      const email = `hijack-${testId}@example.com`;
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
+        .expect(201);
+
+      const authService = app.get(AuthService);
+
+      const prisma = (authService as any).prisma;
+      await prisma.user.update({
+        where: { email },
+        data: { isEmailVerified: true } as any,
+      });
+
+      // 1. First login
+      const res1 = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ identifier: email, password: 'StrongPassword123!' })
+        .expect(201);
+      const rt1 = res1.body.refreshToken;
+
+      // 2. Refresh tokens (RT1 is used, RT2 is issued)
+      const res2 = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('Authorization', `Bearer ${rt1}`)
+        .expect(201);
+      const rt2 = res2.body.refreshToken;
+
+      // // 3. Attempt to reuse RT1 (Simulated attacker!)
+      const res3 = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('Authorization', `Bearer ${rt1}`);
+
+      expect(res3.status).toBe(401);
+
+      // // 4. RT2 should now also be invalid because of reuse detection
+      const res4 = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('Authorization', `Bearer ${rt2}`);
+
+      expect(res4.status).toBe(401);
+    });
+  });
+});

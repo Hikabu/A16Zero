@@ -1,0 +1,329 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+
+// ─── Multi-Tenancy ───────────────────────────────────────────
+// PostgreSQL RLS enforced via SET app.tenant_id before every query.
+// Prisma middleware injects SET LOCAL app.tenant_id = $tenantId.
+
+model Organisation {
+  id              String   @id @default(uuid())
+  name            String
+  atsConnector    Json?    // { provider, accessToken (encrypted), refreshToken }
+  priorBlendRatio Float    @default(1.0) // 1.0 = 100% platform prior; shifts as outcomes accumulate
+  createdAt       DateTime @default(now())
+}
+
+// ─── User Hierarchy ──────────────────────────────────────────
+enum UserRole { 
+  CANDIDATE
+  HR  
+  HR_ADMIN  
+  ORG_MANAGER  
+  ADMIN 
+}
+
+enum AccountStatus {
+  ACTIVE  
+  SUSPENDED
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String?        @unique
+  username      String?       @unique
+
+  firstName     String?
+  lastName      String?
+
+  role          UserRole      @default(CANDIDATE)
+  accountStatus AccountStatus @default(ACTIVE)
+
+  isEmailVerified Boolean      @default(false)
+  mfaEnabled      Boolean      @default(false)
+  mfaSecret       String?      // Should be encrypted at rest
+  mfaBackupCodes  String[]     @default([])
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  authAccounts  AuthAccount[]
+  candidate     Candidate?
+}
+
+// ─── User AUTH  ──────────────────────────────────────────
+enum AuthProvider {
+  LOCAL
+  GITHUB
+  GOOGLE
+}
+
+model AuthAccount {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider    AuthProvider
+  providerId  String
+
+  passwordHash String?
+
+  createdAt   DateTime @default(now())
+  @@unique([provider, providerId])
+}
+
+// ─── User Type: CANDIDATE  ──────────────────────────────────────────
+
+
+model Candidate {
+  id           String             @id @default(uuid())
+  userId       String             @unique
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio          String?            @db.VarChar(500)
+  careerPath   Int                @default(1) // bitmask: 1=DEVELOPER
+  devProfile   DeveloperCandidate?
+  applications Application[]
+  vouches         Vouch[]
+  scorecard		Json?
+  createdAt    DateTime           @default(now())
+}
+
+model DeveloperCandidate {
+  id            String            @id @default(uuid())
+  candidateId   String            @unique
+  candidate     Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  githubProfile GithubProfile?
+  web3Profile   Web3Profile?
+  createdAt     DateTime          @default(now())
+}
+
+// ─── GitHub Profile ──────────────────────────────────────────
+enum SyncStatus { 
+  PENDING  
+  IN_PROGRESS
+  RUNNING  
+  DONE  
+  FAILED 
+}
+
+model GithubProfile {
+  id               String             @id @default(uuid())
+  devCandidateId   String             @unique
+  devCandidate     DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+  githubUsername   String             @unique
+  githubUserId     String             @unique
+  encryptedToken   String             // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
+  scopes           String[]
+  lastSyncAt       DateTime?
+  syncStatus       SyncStatus         @default(PENDING)
+  syncProgress     String             @default("0")
+  syncError        String?
+  rawDataSnapshot  Json?
+  createdAt        DateTime           @default(now())
+}
+
+// ─── Web3 Profile (opt-in) ───────────────────────────────────
+// Wallet address submitted by candidate — no signature verification needed.
+// Solana signals use RPC-native methods; there is no Solana equivalent of Etherscan.
+
+model Web3Profile {
+  id               String             @id @default(uuid())
+  devCandidateId   String             @unique
+  devCandidate     DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+  walletAddress    String?
+  // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
+  verifiedContracts Json?
+  onChainMetrics    Json?
+  createdAt         DateTime          @default(now())
+}
+
+//-----Vouchers ---------------------------
+model Vouch {
+  id              String    @id @default(uuid())
+
+  // Candidate side — FK to Candidate, not GithubProfile
+  candidateId     String
+  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Voucher side — wallet proving identity on-chain
+  voucherWallet   String
+  message         String    @db.VarChar(500)
+  txSignature     String    @unique
+
+  // Weight & lifecycle
+  weight          String    @default("standard")  // 'verified' | 'standard' | 'new'
+  isActive        Boolean   @default(true)
+  flag            String?   // 'cluster_detected' | null
+
+  // Timestamps
+  confirmedAt     DateTime  @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+
+  @@unique([candidateId, voucherWallet])
+  @@index([candidateId, isActive, expiresAt])
+  @@index([voucherWallet, isActive, expiresAt])
+}
+
+// ─── Jobs (read-only stub — HR team owns CRUD; same DB) ──────
+
+// ─── Legacy Enums (Marked for potential purge) ─────────────────
+// DEPRECATED: potentially removable after refactor
+enum FraudTier { 
+  CLEAN  
+  FLAGGED  
+  DISQUALIFIED 
+}
+
+// DEPRECATED: potentially removable after refactor
+enum RiskLevel { 
+  LOW_RISK  
+  MEDIUM_RISK 
+  HIGH_RISK  
+  INSUFFICIENT_DATA 
+}
+
+enum ConfidenceTier { 
+  FULL  
+  PARTIAL  
+  LOW  
+  MINIMAL 
+}
+
+enum BehaviorPattern {
+  REVIEW_HEAVY_SENIOR
+  COMMIT_HEAVY_MIDLEVEL
+  BALANCED_CONTRIBUTOR
+  OSS_COLLABORATOR
+  EARLY_CAREER
+  RETURNING_DEVELOPER
+  WEB3_SPECIALIST
+}
+
+enum Seniority { 
+  JUNIOR  
+  MID  
+  SENIOR  
+  LEAD 
+}
+
+enum RoleType {
+  BACKEND  
+  FRONTEND  
+  FULLSTACK  
+  INFRASTRUCTURE  
+  DATA_ML
+  SMART_CONTRACT 
+  WEB3_BACKEND  
+  WEB3_FRONTEND 
+  WEB3_FULLSTACK
+  DEFI_PROTOCOL 
+  SECURITY_WEB3  
+  SECURITY 
+  GENERALIST
+}
+
+model Job {
+  id              String        @id @default(uuid())
+  tenantId        String
+  orgId           String
+  title           String
+  roleType        RoleType
+  seniorityLevel  Seniority?
+  requiredSignals Json?
+  weightOverrides Json?
+  historicalWeight Float?       @default(0.7)
+  recentWeight     Float?       @default(0.3)
+  status          String        @default("OPEN")
+  createdAt       DateTime      @default(now())
+  closesAt        DateTime?
+  applications    Application[]
+  @@index([tenantId, status, roleType])
+}
+
+// ─── Applications ─────────────────────────────────────────────
+enum ApplicationStatus { 
+  PENDING 
+  REVIEWED 
+  SHORTLISTED  
+  REJECTED  
+  HIRED 
+}
+
+enum FitTier { 
+  STRONG  
+  PROBE  
+  PASS 
+}
+
+enum ContestationStatus { 
+  NONE  
+  PENDING  
+  REVIEWED  
+  ACTIONED  
+  DISMISSED 
+}
+
+model Application {
+  id                    String            @id @default(uuid())
+  tenantId              String
+  jobId                 String
+  job                   Job               @relation(fields: [jobId], references: [id])
+  candidateId           String
+  candidate             Candidate         @relation(fields: [candidateId], references: [id])
+  appliedAt             DateTime          @default(now())
+  status                ApplicationStatus @default(PENDING)
+  
+  // Refactored fields will go here in Phase 3
+  // For now, only generic metadata stays
+  
+  roleFitScore          Float             @default(0)
+  fitTier               FitTier           @default(PASS)
+  fraudTier             FraudTier         @default(CLEAN)
+  riskLevel             RiskLevel?
+  confidenceTier        ConfidenceTier?
+  candidateNote         String?           @db.VarChar(280)
+  hrNotes               String?
+  // Contestation (GDPR Article 22)
+  contestation          Json?             // { signalKey, candidateReason, raisedAt }
+  contestationStatus    ContestationStatus @default(NONE)
+  contestationResolvedAt DateTime?
+  contestationActorId   String?
+  @@unique([jobId, candidateId])
+  @@index([tenantId, jobId, roleFitScore(sort: Desc)])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  entityType String
+  entityId   String
+  action     String
+  actorId    String?
+  before     Json?
+  after      Json?
+  timestamp  DateTime @default(now())
+  @@index([tenantId, entityId, timestamp])
+}
+
+// ─── Cache Layer ──────────────────────────────────────────────
+model CachedResult {
+  id         String   @id @default(cuid())
+  cacheKey   String   @unique  // format: 'analysis:{username}' or 'analysis:{username}:{walletAddress}'
+  result     Json
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
