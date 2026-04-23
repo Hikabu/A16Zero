@@ -18,7 +18,7 @@ import { ApiBearerAuth } from '@nestjs/swagger/dist/decorators/api-bearer.decora
 
 @VerifiedAuth()
 @ApiBearerAuth()
-@Controller('me')
+@Controller('me/user')
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
