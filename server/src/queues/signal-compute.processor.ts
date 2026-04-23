@@ -10,6 +10,8 @@ import { SignalExtractorService } from '../scoring/signal-extractor/signal-extra
 import { GithubAdapterService } from '../scoring/github-adapter/github-adapter.service';
 import { CacheService } from '../scoring/cache/cache.service';
 import { OnWorkerEvent } from '@nestjs/bullmq';
+import { SolanaAdapterService } from '../scoring/web3-adapter/solana-adapter.service';
+import { Web3MergeService } from '../scoring/web3-merge/web3-merge.service';
 
 @Processor('signal-compute', { concurrency: 10 })
 export class SignalComputeProcessor extends WorkerHost {
@@ -21,54 +23,87 @@ export class SignalComputeProcessor extends WorkerHost {
     private readonly signalExtractor: SignalExtractorService,
     private readonly githubAdapter: GithubAdapterService,
     private readonly cacheService: CacheService,
+    private readonly solanaAdapter: SolanaAdapterService,
+    private readonly web3MergeService: Web3MergeService,
   ) {
     super();
   }
-//   @OnWorkerEvent('active')
-// onActive(job: Job) {
-//   console.log('ACTIVE:', job.id);
-// }
+  //   @OnWorkerEvent('active')
+  // onActive(job: Job) {
+  //   console.log('ACTIVE:', job.id);
+  // }
 
-// @OnWorkerEvent('completed')
-// onCompleted(job: Job) {
-//   console.log('COMPLETED:', job.id);
-// }
+  // @OnWorkerEvent('completed')
+  // onCompleted(job: Job) {
+  //   console.log('COMPLETED:', job.id);
+  // }
 
-@OnWorkerEvent('failed')
-onFailed(job: Job, err: Error) {
-  console.log('FAILED:', job.id, err.message);
-}
+  @OnWorkerEvent('failed')
+  onFailed(job: Job, err: Error) {
+    console.log('FAILED:', job.id, err.message);
+  }
 
-// @OnWorkerEvent('stalled')
-// onStalled(jobId: string) {
-//   console.log('STALLED:', jobId);
-// }
+  // @OnWorkerEvent('stalled')
+  // onStalled(jobId: string) {
+  //   console.log('STALLED:', jobId);
+  // }
 
-  async process(job: Job<{ 
-    candidateId?: string; 
-    githubProfileId?: string; 
-    githubUsername?: string;
-    cached?: boolean;
-  }>): Promise<AnalysisResult | void> {
+  async process(
+    job: Job<{
+      candidateId?: string;
+      githubProfileId?: string;
+      githubUsername?: string;
+      walletAddress?: string;
+      cached?: boolean;
+    }>,
+  ): Promise<AnalysisResult | void> {
     // console.log("got a job! @signal-compute")
-    const { githubProfileId, githubUsername, cached } = job.data;
-    this.logger.log(`Starting signal pipeline for profile ${githubProfileId || githubUsername}`);
+    const pipelineStart = Date.now();
+    const { githubProfileId, githubUsername, walletAddress, cached } = job.data;
+    this.logger.log(
+      `Starting signal pipeline for profile ${githubProfileId || githubUsername || walletAddress}`,
+    );
+
+    type AnalysisMode = 'github-only' | 'github+wallet' | 'wallet-only';
+    const mode: AnalysisMode =
+      githubUsername && walletAddress
+        ? 'github+wallet'
+        : walletAddress
+          ? 'wallet-only'
+          : 'github-only';
 
     try {
       let profile: any;
       let rawData: any;
       let hasSnapshot = false;
-      // console.log("cached: ", cached);
-      // console.log("githubusername: ", githubUsername);
-      if (cached && githubUsername) {
+
+      if (cached && (githubUsername || walletAddress)) {
         // Return cached result - job should already be marked complete
-        this.logger.log(`Returning cached result for ${githubUsername}`);
-        const cacheKey = this.cacheService.buildCacheKey(githubUsername);
-        const cachedResult = await this.cacheService.get(cacheKey);
-        if (cachedResult) return cachedResult;
+        this.logger.log(
+          `Returning cached result for ${githubUsername || walletAddress}`,
+        );
+        const cacheKey = this.cacheService.buildCacheKey(
+          githubUsername,
+          walletAddress,
+        );
+        let cachedResult = await this.cacheService.get(cacheKey);
+        if (cachedResult) {
+          // S15 — Vouch signal (Always live)
+          cachedResult = await this.applyVouchSignal(cachedResult, job.data);
+
+          this.logger.log(
+            {
+              jobId: job.id,
+              mode,
+              durationMs: Date.now() - pipelineStart,
+            },
+            'analysis_complete',
+          );
+          return cachedResult;
+        }
       }
 
-      // Fetch or get existing profile
+      // Fetch or get existing profile for modes involving GitHub
       if (githubProfileId) {
         profile = await this.prisma.githubProfile.findUnique({
           where: { id: githubProfileId },
@@ -86,24 +121,99 @@ onFailed(job: Job, err: Error) {
         }
       }
 
-      // If no snapshot, we need to fetch from GitHub
+      let web3Data: any = null;
+
+      if (mode === 'wallet-only') {
+        web3Data = await this.solanaAdapter.fetchOnChainData(walletAddress!);
+        let result: AnalysisResult = {
+          capabilities: {
+            backend: { score: 0, confidence: 'low' },
+            frontend: { score: 0, confidence: 'low' },
+            devops: { score: 0, confidence: 'low' },
+          },
+          ownership: {
+            ownedProjects: 0,
+            activelyMaintained: 0,
+            confidence: 'low',
+          },
+          impact: {
+            activityLevel: 'low',
+            consistency: 'sparse',
+            externalContributions: 0,
+            confidence: 'low',
+          },
+          reputation: null,
+          stack: { languages: [], tools: [] },
+          summary:
+            'On-chain developer profile. Insufficient public GitHub data to assess software capabilities.',
+          web3: web3Data,
+        };
+
+        if (web3Data && web3Data.deployedPrograms) {
+          result = this.web3MergeService.applyWalletUpgrades(
+            result,
+            web3Data.deployedPrograms,
+            result.stack.languages,
+          );
+          result.web3 = web3Data;
+        }
+
+        // Cache the base result (NO vouches)
+        if (walletAddress) {
+          const cacheKey = this.cacheService.buildCacheKey(
+            undefined,
+            walletAddress,
+          );
+          await this.cacheService.set(cacheKey, result);
+        }
+
+        // S15 — Vouch signal (Live)
+        result = await this.applyVouchSignal(result, job.data);
+
+        this.logger.log(
+          {
+            jobId: job.id,
+            mode,
+            durationMs: Date.now() - pipelineStart,
+          },
+          'analysis_complete',
+        );
+        return result;
+      }
+
+      // Modes involving GitHub: 'github-only' and 'github+wallet'
       if (!hasSnapshot && githubUsername) {
-        // Update progress: fetching_repos (20%)
         await this.updateProgress(githubProfileId, 'fetching_repos', 20);
-        
+
         try {
-          const token = profile?.encryptedToken ? this.githubAdapter.decryptToken(profile.encryptedToken) : '';
-          rawData = await this.githubAdapter.fetchRawData(githubUsername, token);
-          
-          // Cache the snapshot if we have a profile
+          const token = profile?.encryptedToken
+            ? this.githubAdapter.decryptToken(profile.encryptedToken)
+            : '';
+
+          if (mode === 'github+wallet') {
+            const [gitResponse, w3Response] = await Promise.all([
+              this.githubAdapter.fetchRawData(githubUsername, token),
+              this.solanaAdapter.fetchOnChainData(walletAddress!),
+            ]);
+            rawData = gitResponse;
+            web3Data = w3Response;
+          } else {
+            rawData = await this.githubAdapter.fetchRawData(
+              githubUsername,
+              token,
+            );
+          }
+
           if (profile && githubProfileId) {
             await this.prisma.githubProfile.update({
               where: { id: githubProfileId },
-              data: { rawDataSnapshot: rawData as any },
+              data: { rawDataSnapshot: rawData },
             });
           }
         } catch (error) {
-          this.logger.error(`Failed to fetch GitHub data for ${githubUsername}: ${error.message}`);
+          this.logger.error(
+            `Failed to fetch data for ${githubUsername}: ${error.message}`,
+          );
           throw new Error(`Insufficient public data for ${githubUsername}`);
         }
       }
@@ -122,14 +232,29 @@ onFailed(job: Job, err: Error) {
       await this.updateProgress(githubProfileId, 'building_profile', 75);
 
       // Score
-      const result = this.scoringService.score(rawData);
-    
-      // Cache the result
-      if (githubUsername) {
-        const cacheKey = this.cacheService.buildCacheKey(githubUsername);
-        // console.log("cached !", cacheKey);
+      let result = this.scoringService.score(rawData, walletAddress);
+
+      // Inject web3 data if present
+      if (web3Data) {
+        result = this.web3MergeService.applyWalletUpgrades(
+          result,
+          web3Data.deployedPrograms,
+          result.stack.languages,
+        );
+        result.web3 = web3Data;
+      }
+
+      // Cache the result (NO vouches)
+      if (githubUsername || walletAddress) {
+        const cacheKey = this.cacheService.buildCacheKey(
+          githubUsername,
+          walletAddress,
+        );
         await this.cacheService.set(cacheKey, result);
       }
+
+      // S15 — Vouch signal (Live)
+      result = await this.applyVouchSignal(result, job.data);
 
       // Update progress: complete (100%)
       await this.updateProgress(githubProfileId, 'complete', 100);
@@ -145,38 +270,50 @@ onFailed(job: Job, err: Error) {
         });
       }
 
+      this.logger.log(
+        {
+          jobId: job.id,
+          mode,
+          durationMs: Date.now() - pipelineStart,
+        },
+        'analysis_complete',
+      );
       return result;
-
     } catch (error) {
-      this.logger.error(`Pipeline failed: ${error.message}`);
-      // console.log("FAILURE!");
+      this.logger.error(
+        `Pipeline failed for ${githubUsername || walletAddress}: ${error.message}`,
+        error.stack,
+      );
+
       // Update failure status
       if (githubProfileId) {
-        const updated = await this.prisma.githubProfile.update({
-          where: { id: githubProfileId },
-          data: {
-            syncStatus: SyncStatus.FAILED,
-            syncProgress: JSON.stringify({ 
-              stage: 'failed', 
-              percent: 0,
-              error: (error as Error).message 
-            }),
-          },
-        }).catch(() => {
-          // Ignore update errors during exception handling
-        });
-        // console.log("UPDATED TO FAILED:", updated.syncStatus);
+        try {
+          await this.prisma.githubProfile.update({
+            where: { id: githubProfileId },
+            data: {
+              syncStatus: SyncStatus.FAILED,
+              syncProgress: JSON.stringify({
+                stage: 'failed',
+                percent: 0,
+                error: (error as Error).message,
+              }),
+            },
+          });
+        } catch (updateError) {
+          this.logger.warn(
+            `Failed to update profile status on failure: ${updateError.message}`,
+          );
+        }
       }
-
 
       throw error;
     }
   }
 
   private async updateProgress(
-    profileId: string | undefined, 
-    stage: string, 
-    percent: number
+    profileId: string | undefined,
+    stage: string,
+    percent: number,
   ): Promise<void> {
     if (!profileId) return;
 
@@ -190,6 +327,53 @@ onFailed(job: Job, err: Error) {
     } catch (error) {
       this.logger.warn(`Failed to update progress: ${error.message}`);
     }
+  }
+
+  private async applyVouchSignal(
+    result: AnalysisResult,
+    jobData: { githubUsername?: string; candidateUsername?: string },
+  ): Promise<AnalysisResult> {
+    const now = new Date();
+
+    // Resolve candidateId from job data — vouches are candidate-scoped, not github-scoped
+    const candidate = await this.prisma.candidate.findFirst({
+      where: {
+        OR: [
+          {
+            devProfile: {
+              githubProfile: { githubUsername: jobData.githubUsername },
+            },
+          },
+          { user: { username: jobData.candidateUsername } },
+        ],
+      },
+    });
+
+    const activeVouches = candidate
+      ? await this.prisma.vouch.findMany({
+          where: {
+            candidateId: candidate.id,
+            isActive: true,
+            expiresAt: { gt: now },
+            flag: null,
+            weight: { in: ['verified', 'standard'] },
+          },
+          orderBy: { confirmedAt: 'desc' },
+          take: 10,
+        })
+      : [];
+
+    const vouchCount = activeVouches.length;
+    const verifiedVouchCount = activeVouches.filter(
+      (v) => v.weight === 'verified',
+    ).length;
+
+    return this.web3MergeService.applyVouchUpgrades(
+      result,
+      vouchCount,
+      verifiedVouchCount,
+      activeVouches,
+    );
   }
 
   private buildPlaceholderResult(): AnalysisResult {
@@ -211,6 +395,12 @@ onFailed(job: Job, err: Error) {
         externalContributions: 0,
         confidence: 'low',
       },
+      reputation: null,
+      stack: {
+        languages: [],
+        tools: [],
+      },
+      web3: null,
     };
   }
 }

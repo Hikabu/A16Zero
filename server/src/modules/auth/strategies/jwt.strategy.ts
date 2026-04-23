@@ -7,7 +7,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor() {
     const secret = process.env.JWT_ACCESS_SECRET;
 
-if (!secret) throw new Error('JWT_SECRET missing');
+    if (!secret) throw new Error('JWT_SECRET missing');
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -16,10 +16,10 @@ if (!secret) throw new Error('JWT_SECRET missing');
   }
 
   async validate(payload: any) {
-    return { 
-      id: payload.sub, 
+    return {
+      id: payload.sub,
       isEmailVerified: payload.isEmailVerified,
-      role: payload.role 
+      role: payload.role,
     };
   }
 }

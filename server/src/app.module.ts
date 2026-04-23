@@ -19,15 +19,16 @@ import { WorkerModule } from './queues/worker.module';
 import { ScoringModule } from './scoring/scoring.module';
 import { EmailModule } from './modules/email/email.module';
 import { ScorecardModule } from './scorecard/scorecard.module';
+import { VouchersModule } from './modules/vouchers/vouchers.module';
 
 @Module({
   providers: [
-  {
-    provide: APP_GUARD,
-    useClass: ThrottlerGuard,
-  },
-  ZodValidationPipeProvider,
-],
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    ZodValidationPipeProvider,
+  ],
   imports: [
     ThrottlerModule.forRoot({
       throttlers: [
@@ -39,20 +40,21 @@ import { ScorecardModule } from './scorecard/scorecard.module';
     }),
     LoggerModule.forRoot({
       pinoHttp: {
-        transport: process.env.NODE_ENV !== 'production'
-          ? {
-              target: 'pino-pretty',
-              options: { singleLine: true },
-            }
-          : undefined,
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: { singleLine: true },
+              }
+            : undefined,
       },
     }),
     PrismaModule,
     RedisModule,
-    GithubSyncModule, 
-    JobsModule, 
-    AtsModule, 
-    FairnessModule, 
+    GithubSyncModule,
+    JobsModule,
+    AtsModule,
+    FairnessModule,
     RoiModule,
     AuthModule,
     HealthModule,
@@ -60,8 +62,8 @@ import { ScorecardModule } from './scorecard/scorecard.module';
     ScoringModule,
     EmailModule,
     ScorecardModule,
+    VouchersModule,
     // ...(process.env.RUN_WORKERS === 'true' ? [WorkerModule] : []),
   ],
-
 })
 export class AppModule {}

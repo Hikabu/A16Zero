@@ -7,12 +7,17 @@ import { AnalysisController } from './analysis/analysis.controller';
 import { BullModule } from '@nestjs/bullmq';
 import { ScoringService } from './scoring-service/scoring.service';
 import { SignalExtractorService } from './signal-extractor/signal-extractor.service';
+import { EcosystemClassifierService } from './signal-extractor/ecosystem-clarifier.service';
+import { StackFingerprintService } from './signal-extractor/stack-fingerprint.service';
 import { SummaryGeneratorService } from './summary-generator/summary-generator.service';
+import { SolanaAdapterService } from './web3-adapter/solana-adapter.service';
+import { Web3MergeService } from './web3-merge/web3-merge.service';
+import { AchievementWhitelistService } from './web3-adapter/achievement-whitelist.service';
 
 @Global()
 @Module({
   imports: [
-    PrismaModule, 
+    PrismaModule,
     RedisModule,
     BullModule.registerQueue({ name: 'signal-compute' }),
   ],
@@ -21,15 +26,20 @@ import { SummaryGeneratorService } from './summary-generator/summary-generator.s
     CacheService,
     ScoringService,
     SignalExtractorService,
+    EcosystemClassifierService,
+    StackFingerprintService,
     SummaryGeneratorService,
+    SolanaAdapterService,
+    Web3MergeService,
+    AchievementWhitelistService,
   ],
-  controllers: [
-    AnalysisController,
-  ],
+  controllers: [AnalysisController],
   exports: [
     GithubAdapterService,
     CacheService,
     ScoringService,
+    SolanaAdapterService,
+    Web3MergeService,
     BullModule,
   ],
 })

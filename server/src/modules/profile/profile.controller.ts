@@ -1,33 +1,98 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ProfileService } from './profile.service';
+import { UpdateUserDto} from './dto/update-user.dto';
+import { UpdateCandidateDto } from './dto/update-candidate.dto';
+import { VerifiedAuth } from 'src/shared/decorators/verified.decorator';
+import { ApiBearerAuth } from '@nestjs/swagger/dist/decorators/api-bearer.decorator';
 
 
-@Controller('profile')
-export class ProfileController {}
-//   constructor(private readonly profileService: ProfileService) {}
+@VerifiedAuth()
+@ApiBearerAuth()
+@Controller('me')
+export class ProfileController {
+  constructor(private readonly profileService: ProfileService) {}
 
-//   @Post()
-//   create(@Body() createProfileDto: CreateProfileDto) {
-//     return this.profileService.create(createProfileDto);
-//   }
+  // ─── User Profile ──────────────────────────────────────────────────────────
 
-//   @Get()
-//   findAll() {
-//     return this.profileService.findAll();
-//   }
+  /**
+   * GET /me
+   * Returns the authenticated user's profile + linked auth providers
+   */
+  @Get()
+  getProfile(@Req() req: any) {
+    const userId = req.user.id;
+    return this.profileService.getProfile(userId);
+  }
 
-//   @Get(':id')
-//   findOne(@Param('id') id: string) {
-//     return this.profileService.findOne(+id);
-//   }
+  /**
+   * PATCH /me
+   * Update firstName, lastName, username
+   */
+  @Patch()
+  updateProfile(
+    @Req() req: any,
+    @Body() dto: UpdateUserDto,
+  ) {
+    const userId = req.user.id;
+    return this.profileService.updateProfile(userId, dto);
+  }
 
-//   @Patch(':id')
-//   update(@Param('id') id: string, @Body() updateProfileDto: UpdateProfileDto) {
-//     return this.profileService.update(+id, updateProfileDto);
-//   }
+  /**
+   * DELETE /me
+   * Deactivates the account (sets accountStatus = SUSPENDED)
+   */
+  @Delete()
+  @HttpCode(HttpStatus.OK)
+  deactivateAccount(@Req() req: any) {
+    const userId = req.user.id; 
+    return this.profileService.deactivateAccount(userId);
+  }
 
-//   @Delete(':id')
-//   remove(@Param('id') id: string) {
-//     return this.profileService.remove(+id);
-//   }
-// }
+  // ─── Candidate Profile ─────────────────────────────────────────────────────
+
+  /**
+   * GET /me/candidate
+   * Returns the candidate profile: bio, careerPath, scorecard, devProfile
+   */
+  @Get('candidate')
+  getCandidateProfile(@Req() req: any) {
+    const userId = req.user.id;
+    return this.profileService.getCandidateProfile(userId);
+  }
+
+  /**
+   * PATCH /me/candidate
+   * Update bio and/or careerPath
+   */
+  @Patch('candidate')
+  updateCandidateProfile(
+    @Req() req: any,
+    @Body() dto: UpdateCandidateDto,
+  ) {
+    const userId = req.user.id;
+    return this.profileService.updateCandidateProfile(userId, dto);
+  }
+
+  // ─── GitHub Connection ─────────────────────────────────────────────────────
+
+  /**
+   * GET /me/github
+   * Returns the connected GitHub account info (username, scopes, sync status)
+   * Does NOT expose the encrypted token
+   */
+  @Get('github')
+  getConnectedGithub(@Req() req: any) {
+    const userId = req.user.id;
+    return this.profileService.getConnectedGithub(userId);
+  }
+}

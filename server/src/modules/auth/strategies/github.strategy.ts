@@ -11,15 +11,16 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
       callbackURL: config.get('app.url') + config.get('auth.githubCallback'),
       scope: ['user:email'],
-      passReqToCallback: true
+      passReqToCallback: true,
     });
   }
 
   async validate(accessToken: string, refreshToken: string, profile: any) {
-    // GitHub primary email is usually verified if it's the primary one, 
+    // GitHub primary email is usually verified if it's the primary one,
     // but we check the profile emails array if available.
-    const emailObj = profile.emails?.find((e: any) => e.primary) || profile.emails?.[0];
-    
+    const emailObj =
+      profile.emails?.find((e: any) => e.primary) || profile.emails?.[0];
+
     return {
       githubId: profile.id,
       username: profile.username,

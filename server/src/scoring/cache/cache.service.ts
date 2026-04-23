@@ -15,14 +15,22 @@ export class CacheService {
 
   /**
    * Normalizes and builds a cache key for a given username and optional wallet
+   * Cases:
+   * 1. GitHub only:       'analysis:{githubUsername}'
+   * 2. GitHub + wallet:   'analysis:{githubUsername}:{walletAddress}'
+   * 3. Wallet only:       'analysis:wallet:{walletAddress}'
    */
-  buildCacheKey(username: string, walletAddress?: string): string {
-    let base = `analysis-${username.toLowerCase()}`;
-    if (walletAddress) {
-      base = `${base}-${walletAddress.toLowerCase()}`;
+  buildCacheKey(username?: string, walletAddress?: string): string {
+    if (username && walletAddress) {
+      return `analysis:${username.toLowerCase()}:${walletAddress.toLowerCase()}`;
     }
-    const safeBase = base.replace(/:/g, '-');
-    return safeBase;
+    if (username) {
+      return `analysis:${username.toLowerCase()}`;
+    }
+    if (walletAddress) {
+      return `analysis:wallet:${walletAddress.toLowerCase()}`;
+    }
+    throw new Error('Either username or walletAddress must be provided');
   }
 
   /**
@@ -45,15 +53,19 @@ export class CacheService {
       if (dbEntry) {
         const now = new Date();
         if (dbEntry.expiresAt > now) {
-          this.logger.debug(`Cache hit (Postgres): ${cacheKey}. Restoring to Redis.`);
+          this.logger.debug(
+            `Cache hit (Postgres): ${cacheKey}. Restoring to Redis.`,
+          );
           const result = dbEntry.result as unknown as AnalysisResult;
-          
+
           // Restore to Redis
-          const ttl = Math.floor((dbEntry.expiresAt.getTime() - now.getTime()) / 1000);
+          const ttl = Math.floor(
+            (dbEntry.expiresAt.getTime() - now.getTime()) / 1000,
+          );
           if (ttl > 0) {
             await this.redis.set(cacheKey, JSON.stringify(result), 'EX', ttl);
           }
-          
+
           return result;
         } else {
           // Expired - clean up
@@ -62,7 +74,10 @@ export class CacheService {
         }
       }
     } catch (error) {
-      this.logger.error(`Error retrieving from cache: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error retrieving from cache: ${error.message}`,
+        error.stack,
+      );
     }
 
     return null;
@@ -114,7 +129,10 @@ export class CacheService {
       ]);
       this.logger.debug(`Cache invalidated: ${cacheKey}`);
     } catch (error) {
-      this.logger.error(`Error invalidating cache: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error invalidating cache: ${error.message}`,
+        error.stack,
+      );
     }
   }
 }

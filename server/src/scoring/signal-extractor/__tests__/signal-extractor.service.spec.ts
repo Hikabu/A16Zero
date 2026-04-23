@@ -1,5 +1,8 @@
-import { SignalExtractorService } from './signal-extractor.service';
-import { GitHubRawData, GitHubContributionData } from '../github-adapter/github-data.types';
+import { SignalExtractorService } from '../signal-extractor.service';
+import {
+  GitHubRawData,
+  GitHubContributionData,
+} from '../../github-adapter/github-data.types';
 
 describe('SignalExtractorService', () => {
   let service: SignalExtractorService;
@@ -9,7 +12,10 @@ describe('SignalExtractorService', () => {
     service = new SignalExtractorService();
   });
 
-  const createMockData = (repos: any[], contributions?: Partial<GitHubContributionData>): GitHubRawData => ({
+  const createMockData = (
+    repos: any[],
+    contributions?: Partial<GitHubContributionData>,
+  ): GitHubRawData => ({
     profile: {
       username: 'testuser',
       accountCreatedAt: new Date('2020-01-01'),
@@ -17,7 +23,7 @@ describe('SignalExtractorService', () => {
       publicRepos: repos.length,
       followers: 10,
     },
-    repos: repos.map(r => ({
+    repos: repos.map((r) => ({
       name: r.name || 'repo',
       language: r.language !== undefined ? r.language : 'TypeScript',
       stars: r.stars !== undefined ? r.stars : 10,
@@ -33,6 +39,7 @@ describe('SignalExtractorService', () => {
       activeWeeksCount: contributions?.activeWeeksCount ?? 0,
     },
     externalPRs: { mergedExternalPRCount: 0, externalRepoNames: [] },
+    manifestKeys: {},
     fetchedAt,
   });
 
@@ -85,10 +92,15 @@ describe('SignalExtractorService', () => {
 
   describe('S2: Project Longevity', () => {
     it('should return 24.0 for a single qualifying repo created 24 months ago', () => {
-      // 24 * 30.44 = 730.56 days. 
-      const createdAt = new Date(fetchedAt.getTime() - (24 * 30.44 * 24 * 60 * 60 * 1000));
+      // 24 * 30.44 = 730.56 days.
+      const createdAt = new Date(
+        fetchedAt.getTime() - 24 * 30.44 * 24 * 60 * 60 * 1000,
+      );
       const data = createMockData([
-        { createdAt: createdAt.toISOString(), pushedAt: fetchedAt.toISOString() },
+        {
+          createdAt: createdAt.toISOString(),
+          pushedAt: fetchedAt.toISOString(),
+        },
       ]);
       const signals = service.extract(data);
       expect(signals.projectLongevity).toBe(24.0);
@@ -96,8 +108,12 @@ describe('SignalExtractorService', () => {
 
     it('should average multiple repos correctly and round to 1 decimal', () => {
       // Repos with 12 and 36 months age
-      const date12 = new Date(fetchedAt.getTime() - (12 * 30.44 * 24 * 60 * 60 * 1000));
-      const date36 = new Date(fetchedAt.getTime() - (36 * 30.44 * 24 * 60 * 60 * 1000));
+      const date12 = new Date(
+        fetchedAt.getTime() - 12 * 30.44 * 24 * 60 * 60 * 1000,
+      );
+      const date36 = new Date(
+        fetchedAt.getTime() - 36 * 30.44 * 24 * 60 * 60 * 1000,
+      );
       const data = createMockData([
         { createdAt: date12.toISOString(), pushedAt: fetchedAt.toISOString() },
         { createdAt: date36.toISOString(), pushedAt: fetchedAt.toISOString() },
@@ -109,10 +125,17 @@ describe('SignalExtractorService', () => {
     it('should use a more lenient 6-month activity threshold for S2', () => {
       // Created 1 year ago, pushed 5 months (150 days) ago.
       // Qualifies for S2 (limit 180), NOT for S1 (limit 90).
-      const createdAt = new Date(fetchedAt.getTime() - (365 * 24 * 60 * 60 * 1000));
-      const pushedAt = new Date(fetchedAt.getTime() - (150 * 24 * 60 * 60 * 1000));
+      const createdAt = new Date(
+        fetchedAt.getTime() - 365 * 24 * 60 * 60 * 1000,
+      );
+      const pushedAt = new Date(
+        fetchedAt.getTime() - 150 * 24 * 60 * 60 * 1000,
+      );
       const data = createMockData([
-        { createdAt: createdAt.toISOString(), pushedAt: pushedAt.toISOString() },
+        {
+          createdAt: createdAt.toISOString(),
+          pushedAt: pushedAt.toISOString(),
+        },
       ]);
       const signals = service.extract(data);
       expect(signals.ownershipDepth).toBe(0);
@@ -152,8 +175,11 @@ describe('SignalExtractorService', () => {
       // first 17 avg = 1
       // last 17 block: change to 3
       for (let i = 35; i < 52; i++) weeklyTotals[i] = 3;
-      
-      const trend = service.getTrend({ weeklyTotals, activeWeeksCount: 17 } as any);
+
+      const trend = service.getTrend({
+        weeklyTotals,
+        activeWeeksCount: 17,
+      } as any);
       expect(trend).toBe('ascending');
     });
 
@@ -162,8 +188,11 @@ describe('SignalExtractorService', () => {
       // first 17 avg = 10
       // last 17 block: change to 5
       for (let i = 35; i < 52; i++) weeklyTotals[i] = 5;
-      
-      const trend = service.getTrend({ weeklyTotals, activeWeeksCount: 52 } as any);
+
+      const trend = service.getTrend({
+        weeklyTotals,
+        activeWeeksCount: 52,
+      } as any);
       expect(trend).toBe('declining');
     });
 
@@ -172,22 +201,31 @@ describe('SignalExtractorService', () => {
       // first 17 avg = 10
       // last 17 block: change to 11 (1.1x)
       for (let i = 35; i < 52; i++) weeklyTotals[i] = 11;
-      
-      const trend = service.getTrend({ weeklyTotals, activeWeeksCount: 52 } as any);
+
+      const trend = service.getTrend({
+        weeklyTotals,
+        activeWeeksCount: 52,
+      } as any);
       expect(trend).toBe('stable');
     });
 
     it('should handle first block avg being 0 with simplest high signal approach', () => {
       const weeklyTotals = Array(52).fill(0);
       for (let i = 35; i < 52; i++) weeklyTotals[i] = 1; // Activity in last block
-      
-      const trend = service.getTrend({ weeklyTotals, activeWeeksCount: 17 } as any);
+
+      const trend = service.getTrend({
+        weeklyTotals,
+        activeWeeksCount: 17,
+      } as any);
       expect(trend).toBe('ascending');
     });
 
     it('should return stable if both blocks are all zero', () => {
       const weeklyTotals = Array(52).fill(0);
-      const trend = service.getTrend({ weeklyTotals, activeWeeksCount: 0 } as any);
+      const trend = service.getTrend({
+        weeklyTotals,
+        activeWeeksCount: 0,
+      } as any);
       expect(trend).toBe('stable');
     });
   });
@@ -198,8 +236,8 @@ describe('SignalExtractorService', () => {
         { language: 'TypeScript', isFork: false },
         { language: 'JavaScript', isFork: false },
         { language: 'typescript', isFork: false }, // case-insensitive dedupe
-        { language: 'Python', isFork: true },      // exclude forks
-        { language: null, isFork: false },         // exclude null
+        { language: 'Python', isFork: true }, // exclude forks
+        { language: null, isFork: false }, // exclude null
       ]);
       const signals = service.extract(data);
       expect(signals.techStackBreadth).toBe(2);
@@ -209,7 +247,10 @@ describe('SignalExtractorService', () => {
   describe('S5: External Contributions', () => {
     it('should pass through mergedExternalPRCount', () => {
       const data = createMockData([]);
-      (data as any).externalPRs = { mergedExternalPRCount: 42, externalRepoNames: [] };
+      (data as any).externalPRs = {
+        mergedExternalPRCount: 42,
+        externalRepoNames: [],
+      };
       const signals = service.extract(data);
       expect(signals.externalContributions).toBe(42);
     });
@@ -220,7 +261,7 @@ describe('SignalExtractorService', () => {
       // One repo: ln(10+1)*2 + ln(5+1)*1.5 + 1 = 4.7957 + 2.6876 + 1 = 8.4833
       // Normalization: 8.4833 / (1 * 10) = 0.84833 => 0.848
       const data = createMockData([
-        { stars: 10, forks: 5, topics: ['tag'], isFork: false }
+        { stars: 10, forks: 5, topics: ['tag'], isFork: false },
       ]);
       const signals = service.extract(data);
       expect(signals.projectMeaningfulness).toBe(0.848);

@@ -1,0 +1,676 @@
+
+> colossseum@0.0.1 test:e2e
+> NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand test/stage2-pipeline.e2e-spec.ts
+
+[22:25:30.231] INFO (2703466): request completed {"req":{"id":1,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:33271","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"33","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":42920},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-YKUVLxIpuwxTVCP937ZpooQceDg\""}},"responseTime":14}
+[22:25:30.237] INFO (2703466): request completed {"req":{"id":2,"method":"GET","url":"/api/analysis/1/status","query":{},"params":{"path":["api","analysis","1","status"]},"headers":{"host":"127.0.0.1:35521","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":59784},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-wFZz4oZry8D52uXbZKdgIkQQYBw\""}},"responseTime":2}
+[22:25:30.245] INFO (2703466): request completed {"req":{"id":3,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:34431","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"33","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":44066},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-gwxggn/Qpq0ECGc4vpHLtPIp4Sw\""}},"responseTime":3}
+[22:25:30.256] INFO (2703466): request completed {"req":{"id":4,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:33829","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"34","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":60000},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-4h+tCkV6S0fAMhxradm2p31BPpo\""}},"responseTime":8}
+[22:25:30.259] INFO (2703466): request completed {"req":{"id":5,"method":"GET","url":"/api/analysis/3/status","query":{},"params":{"path":["api","analysis","3","status"]},"headers":{"host":"127.0.0.1:36735","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":44286},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-bwp5ALJLH78WFVb6R+fPzgjZjgI\""}},"responseTime":1}
+[22:25:30.269] INFO (2703466): request completed {"req":{"id":6,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:33533","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"32","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":57598},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-vLSD043nK8821vwtCZGEUr1faAU\""}},"responseTime":8}
+[22:25:30.271] INFO (2703466): request completed {"req":{"id":7,"method":"GET","url":"/api/analysis/4/status","query":{},"params":{"path":["api","analysis","4","status"]},"headers":{"host":"127.0.0.1:38937","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":33526},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"49","etag":"W/\"31-rRBsxUdSkxISkCQhd3M/SXvawhI\""}},"responseTime":1}
+[22:25:30.273] INFO (2703466): request completed {"req":{"id":8,"method":"GET","url":"/api/analysis/4/result","query":{},"params":{"path":["api","analysis","4","result"]},"headers":{"host":"127.0.0.1:42715","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":40604},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"103","etag":"W/\"67-6ikhjmhgz1cwWXLyISZfUP/P2I8\""}},"responseTime":1}
+[22:25:30.278] INFO (2703466): request completed {"req":{"id":9,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:34979","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"33","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":41160},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-bSBOJuMU6HWurvHJXWbzH35pseE\""}},"responseTime":2}
+[22:25:30.281] INFO (2703466): request completed {"req":{"id":10,"method":"GET","url":"/api/analysis/5/status","query":{},"params":{"path":["api","analysis","5","status"]},"headers":{"host":"127.0.0.1:41125","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":51108},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-wFZz4oZry8D52uXbZKdgIkQQYBw\""}},"responseTime":1}
+[22:25:30.283] INFO (2703466): request completed {"req":{"id":11,"method":"GET","url":"/api/analysis/5/result","query":{},"params":{"path":["api","analysis","5","result"]},"headers":{"host":"127.0.0.1:38129","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":47614},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"103","etag":"W/\"67-FvuEp8Hw6A70NSLncVh3UZHREOY\""}},"responseTime":0}
+[22:25:30.291] INFO (2703466): request completed {"req":{"id":12,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:35239","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"36","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":58032},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-OEdKD4V8Shn92Wwas6+6SrpKbg4\""}},"responseTime":8}
+[22:25:30.293] INFO (2703466): request completed {"req":{"id":13,"method":"GET","url":"/api/analysis/6/status","query":{},"params":{"path":["api","analysis","6","status"]},"headers":{"host":"127.0.0.1:40107","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":53958},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"49","etag":"W/\"31-rRBsxUdSkxISkCQhd3M/SXvawhI\""}},"responseTime":1}
+[22:25:30.295] INFO (2703466): request completed {"req":{"id":14,"method":"GET","url":"/api/analysis/6/result","query":{},"params":{"path":["api","analysis","6","result"]},"headers":{"host":"127.0.0.1:36155","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":36428},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"103","etag":"W/\"67-5HvSnuyV+eMe1qkmRNx4NmdKIF0\""}},"responseTime":1}
+[22:25:30.297] INFO (2703466): request completed {"req":{"id":15,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:46351","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"32","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":33802},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-sSPXvpUCJNoxtjNhV9MRGwmU2P0\""}},"responseTime":2}
+[22:25:30.299] INFO (2703466): request completed {"req":{"id":16,"method":"GET","url":"/api/analysis/7/status","query":{},"params":{"path":["api","analysis","7","status"]},"headers":{"host":"127.0.0.1:37097","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":58132},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"62","etag":"W/\"3e-lvNk2d0SaDaMCmq2oeILcycn8fM\""}},"responseTime":0}
+[22:25:30.502] INFO (2703466): request completed {"req":{"id":17,"method":"GET","url":"/api/analysis/7/status","query":{},"params":{"path":["api","analysis","7","status"]},"headers":{"host":"127.0.0.1:34887","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":43468},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0193iT1wjqyfGw72fR8v4nnAiaI\""}},"responseTime":1}
+[22:25:30.504] INFO (2703466): request completed {"req":{"id":18,"method":"GET","url":"/api/analysis/7/result","query":{},"params":{"path":["api","analysis","7","result"]},"headers":{"host":"127.0.0.1:43807","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":59930},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"103","etag":"W/\"67-6ikhjmhgz1cwWXLyISZfUP/P2I8\""}},"responseTime":1}
+[22:25:30.513] INFO (2703466): request completed {"req":{"id":19,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:45135","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"28","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49790},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-PozRRlNQ89Z2llTeiBFYnKDaSzc\""}},"responseTime":8}
+[22:25:30.515] INFO (2703466): request completed {"req":{"id":20,"method":"GET","url":"/api/analysis/8/status","query":{},"params":{"path":["api","analysis","8","status"]},"headers":{"host":"127.0.0.1:43661","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":45288},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"62","etag":"W/\"3e-lvNk2d0SaDaMCmq2oeILcycn8fM\""}},"responseTime":1}
+[22:25:30.718] INFO (2703466): request completed {"req":{"id":21,"method":"GET","url":"/api/analysis/8/status","query":{},"params":{"path":["api","analysis","8","status"]},"headers":{"host":"127.0.0.1:33751","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":35092},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:30.721] INFO (2703466): request completed {"req":{"id":22,"method":"GET","url":"/api/analysis/8/result","query":{},"params":{"path":["api","analysis","8","result"]},"headers":{"host":"127.0.0.1:33585","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":59214},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"103","etag":"W/\"67-wdLUy8iTn5R99Q+Eerq1FPcu80M\""}},"responseTime":1}
+[22:25:30.729] INFO (2703466): request completed {"req":{"id":23,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:44851","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"28","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":57448},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"13","etag":"W/\"d-2g0Nay1tVQXFU4gTP9X1u4pHqGY\""}},"responseTime":5}
+[22:25:30.731] INFO (2703466): request completed {"req":{"id":24,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33327","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":41076},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"62","etag":"W/\"3e-lvNk2d0SaDaMCmq2oeILcycn8fM\""}},"responseTime":1}
+[22:25:30.835] INFO (2703466): request completed {"req":{"id":25,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:41365","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":59014},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":2}
+[22:25:30.938] INFO (2703466): request completed {"req":{"id":26,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45535","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":58978},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.041] INFO (2703466): request completed {"req":{"id":27,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45633","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":37986},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.145] INFO (2703466): request completed {"req":{"id":28,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:46755","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":53402},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.249] INFO (2703466): request completed {"req":{"id":29,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:41751","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49882},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.352] INFO (2703466): request completed {"req":{"id":30,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:43233","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":41556},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.455] INFO (2703466): request completed {"req":{"id":31,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45151","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":37326},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.558] INFO (2703466): request completed {"req":{"id":32,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:44121","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":53488},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.661] INFO (2703466): request completed {"req":{"id":33,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:38637","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":34572},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.765] INFO (2703466): request completed {"req":{"id":34,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40795","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":37106},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:31.869] INFO (2703466): request completed {"req":{"id":35,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:36171","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":55726},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":2}
+[22:25:31.972] INFO (2703466): request completed {"req":{"id":36,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:37837","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":60272},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.076] INFO (2703466): request completed {"req":{"id":37,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:41453","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":57244},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.179] INFO (2703466): request completed {"req":{"id":38,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:44787","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":44896},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.282] INFO (2703466): request completed {"req":{"id":39,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:37819","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":50522},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.386] INFO (2703466): request completed {"req":{"id":40,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:46141","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":51040},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.490] INFO (2703466): request completed {"req":{"id":41,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33073","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":46054},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.594] INFO (2703466): request completed {"req":{"id":42,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33691","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":53808},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.698] INFO (2703466): request completed {"req":{"id":43,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:43931","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":44172},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.802] INFO (2703466): request completed {"req":{"id":44,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:34825","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":40080},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:32.904] INFO (2703466): request completed {"req":{"id":45,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40135","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":37750},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":0}
+[22:25:33.008] INFO (2703466): request completed {"req":{"id":46,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:34423","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":45432},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:33.112] INFO (2703466): request completed {"req":{"id":47,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:39395","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":40436},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:33.216] INFO (2703466): request completed {"req":{"id":48,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45095","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":59250},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:33.320] INFO (2703466): request completed {"req":{"id":49,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33919","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":53506},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":2}
+[22:25:33.423] INFO (2703466): request completed {"req":{"id":50,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:35263","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":48240},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:33.527] INFO (2703466): request completed {"req":{"id":51,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:38819","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":45776},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:33.631] INFO (2703466): request completed {"req":{"id":52,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33949","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":51884},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:33.735] INFO (2703466): request completed {"req":{"id":53,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:36285","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":48144},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":2}
+[22:25:33.838] INFO (2703466): request completed {"req":{"id":54,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:35739","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":47990},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:33.942] INFO (2703466): request completed {"req":{"id":55,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45947","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":37788},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.044] INFO (2703466): request completed {"req":{"id":56,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:34119","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":41628},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.148] INFO (2703466): request completed {"req":{"id":57,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45545","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":40658},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.252] INFO (2703466): request completed {"req":{"id":58,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:38245","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":53576},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.354] INFO (2703466): request completed {"req":{"id":59,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40427","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":51056},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.457] INFO (2703466): request completed {"req":{"id":60,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40505","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":55466},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.561] INFO (2703466): request completed {"req":{"id":61,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45241","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":41552},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":2}
+[22:25:34.664] INFO (2703466): request completed {"req":{"id":62,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:43193","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49286},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.768] INFO (2703466): request completed {"req":{"id":63,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:36695","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":36104},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.871] INFO (2703466): request completed {"req":{"id":64,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:34053","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":44064},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:34.975] INFO (2703466): request completed {"req":{"id":65,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33443","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":41526},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:35.078] INFO (2703466): request completed {"req":{"id":66,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33185","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":53402},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:35.181] INFO (2703466): request completed {"req":{"id":67,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:36025","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":38710},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:35.287] INFO (2703466): request completed {"req":{"id":68,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40933","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":47166},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":2}
+[22:25:35.392] INFO (2703466): request completed {"req":{"id":69,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:44123","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":60236},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":2}
+[22:25:35.495] INFO (2703466): request completed {"req":{"id":70,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:35293","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":47108},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:35.599] INFO (2703466): request completed {"req":{"id":71,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:41949","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":50422},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:35.702] INFO (2703466): request completed {"req":{"id":72,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:37075","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":48024},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:35.734] INFO (2703466): request completed {"req":{"id":73,"method":"POST","url":"/api/analysis/recompute","query":{},"params":{"path":["api","analysis","recompute"]},"headers":{"host":"127.0.0.1:43455","accept-encoding":"gzip, deflate","x-internal-key":"'default_timeout_for_tests';","content-type":"application/json","content-length":"46","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":40998},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"14","etag":"W/\"e-HpkN63QVoeiSkI00c/aDBDSEDdc\""}},"responseTime":8}
+[22:25:35.738] INFO (2703466): request completed {"req":{"id":74,"method":"GET","url":"/api/analysis/10/status","query":{},"params":{"path":["api","analysis","10","status"]},"headers":{"host":"127.0.0.1:38497","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":41400},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"62","etag":"W/\"3e-lvNk2d0SaDaMCmq2oeILcycn8fM\""}},"responseTime":1}
+[22:25:35.805] INFO (2703466): request completed {"req":{"id":75,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33721","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":50810},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:35.909] INFO (2703466): request completed {"req":{"id":76,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33213","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49432},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":2}
+[22:25:35.943] INFO (2703466): request completed {"req":{"id":77,"method":"GET","url":"/api/analysis/10/status","query":{},"params":{"path":["api","analysis","10","status"]},"headers":{"host":"127.0.0.1:40063","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":54388},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"53","etag":"W/\"35-K587U8FhnboZH1ClyeDtGpR8VQ8\""}},"responseTime":2}
+[22:25:35.950] INFO (2703466): request completed {"req":{"id":78,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:34249","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"33","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":40368},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"40","etag":"W/\"28-0gucSJyPJXI4lEJOWTp/Fe48TaI\""}},"responseTime":2}
+[22:25:35.953] INFO (2703466): request completed {"req":{"id":79,"method":"GET","url":"/api/analysis/cached-analysis-alex-backend/status","query":{},"params":{"path":["api","analysis","cached-analysis-alex-backend","status"]},"headers":{"host":"127.0.0.1:34949","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":38408},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"55","etag":"W/\"37-wtiyoAma3Z0Za7BJo2WHfFzFMOA\""}},"responseTime":1}
+[22:25:35.954] INFO (2703466): request completed {"req":{"id":80,"method":"GET","url":"/api/analysis/cached-analysis-alex-backend/result","query":{},"params":{"path":["api","analysis","cached-analysis-alex-backend","result"]},"headers":{"host":"127.0.0.1:46313","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":35926},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"457","etag":"W/\"1c9-DFjV/7fs2UM9pvxHQxzOPWHwpnc\""}},"responseTime":0}
+[22:25:35.959] INFO (2703466): request completed {"req":{"id":81,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:44579","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"36","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":45058},"res":{"statusCode":201,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"14","etag":"W/\"e-hJ1sK4RU39QnGwlnR3FnweM2MsY\""}},"responseTime":2}
+[22:25:35.961] INFO (2703466): request completed {"req":{"id":82,"method":"GET","url":"/api/analysis/12/status","query":{},"params":{"path":["api","analysis","12","status"]},"headers":{"host":"127.0.0.1:45749","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":46300},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"62","etag":"W/\"3e-lvNk2d0SaDaMCmq2oeILcycn8fM\""}},"responseTime":1}
+[22:25:36.012] INFO (2703466): request completed {"req":{"id":83,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40429","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":44758},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:36.116] INFO (2703466): request completed {"req":{"id":84,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45659","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":60378},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-0ruZLi/fNeYEj5oboIROSBiRWr0\""}},"responseTime":1}
+[22:25:36.165] INFO (2703466): request completed {"req":{"id":85,"method":"GET","url":"/api/analysis/12/status","query":{},"params":{"path":["api","analysis","12","status"]},"headers":{"host":"127.0.0.1:41729","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":50708},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"128","etag":"W/\"80-qPJjhUBxIx1FgAhmYzFJfIMhe6E\""}},"responseTime":1}
+[22:25:36.168] INFO (2703466): request completed {"req":{"id":86,"method":"GET","url":"/api/analysis/12/result","query":{},"params":{"path":["api","analysis","12","result"]},"headers":{"host":"127.0.0.1:33109","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":39648},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"103","etag":"W/\"67-5HvSnuyV+eMe1qkmRNx4NmdKIF0\""}},"responseTime":1}
+  console.error
+    Analysis trigger failed: PrismaClientKnownRequestError: 
+    Invalid `this.prisma.web3Profile.findFirst()` invocation in
+    /home/arturo-clavero/projects/stage3/server/src/scoring/analysis/analysis.controller.ts:70:57
+    
+      67 }
+      68 
+      69 if (!devCandidateId && walletAddress) {
+    → 70   const web3Profile = await this.prisma.web3Profile.findFirst(
+    The column `Web3Profile.walletAddress` does not exist in the current database.
+        at $n.handleRequestError (/home/arturo-clavero/projects/stage3/server/node_modules/@prisma/client/runtime/library.js:121:7315)
+        at $n.handleAndLogRequestError (/home/arturo-clavero/projects/stage3/server/node_modules/@prisma/client/runtime/library.js:121:6623)
+        at $n.request (/home/arturo-clavero/projects/stage3/server/node_modules/@prisma/client/runtime/library.js:121:6307)
+        at l (/home/arturo-clavero/projects/stage3/server/node_modules/@prisma/client/runtime/library.js:130:9633)
+        at AnalysisController.createAnalysis (/home/arturo-clavero/projects/stage3/server/src/scoring/analysis/analysis.controller.ts:70:27)
+        at /home/arturo-clavero/projects/stage3/server/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+        at /home/arturo-clavero/projects/stage3/server/node_modules/@nestjs/core/router/router-proxy.js:9:17 {
+      code: 'P2022',
+      clientVersion: '5.22.0',
+      meta: { modelName: 'Web3Profile', column: 'Web3Profile.walletAddress' }
+    }
+
+      141 |     return { jobId: job.id };
+      142 |     } catch (error) {
+    > 143 |       console.error('Analysis trigger failed:', error);
+          |               ^
+      144 |       throw error;
+      145 |     }
+      146 |   }
+
+      at AnalysisController.createAnalysis (../src/scoring/analysis/analysis.controller.ts:143:15)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mPrismaClientKnownRequestError: 
+Invalid `this.prisma.web3Profile.findFirst()` invocation in
+/home/arturo-clavero/projects/stage3/server/src/scoring/analysis/analysis.controller.ts:70:57
+
+  67 }
+  68 
+  69 if (!devCandidateId && walletAddress) {
+→ 70   const web3Profile = await this.prisma.web3Profile.findFirst(
+The column `Web3Profile.walletAddress` does not exist in the current database.
+    at $n.handleRequestError [90m(/home/arturo-clavero/projects/stage3/server/[39mnode_modules/[4m@prisma[24m/client/runtime/library.js:121:7315[90m)[39m
+    at $n.handleAndLogRequestError [90m(/home/arturo-clavero/projects/stage3/server/[39mnode_modules/[4m@prisma[24m/client/runtime/library.js:121:6623[90m)[39m
+    at $n.request [90m(/home/arturo-clavero/projects/stage3/server/[39mnode_modules/[4m@prisma[24m/client/runtime/library.js:121:6307[90m)[39m
+    at l [90m(/home/arturo-clavero/projects/stage3/server/[39mnode_modules/[4m@prisma[24m/client/runtime/library.js:130:9633[90m)[39m
+    at AnalysisController.createAnalysis [90m(/home/arturo-clavero/projects/stage3/server/[39msrc/scoring/analysis/analysis.controller.ts:70:27[90m)[39m
+    at [90m/home/arturo-clavero/projects/stage3/server/[39mnode_modules/[4m@nestjs[24m/core/router/router-execution-context.js:46:28
+    at [90m/home/arturo-clavero/projects/stage3/server/[39mnode_modules/[4m@nestjs[24m/core/router/router-proxy.js:9:17 {
+  code: [32m'P2022'[39m,
+  clientVersion: [32m'5.22.0'[39m,
+  meta: {
+    modelName: [32m'Web3Profile'[39m,
+    column: [32m'Web3Profile.walletAddress'[39m
+  }
+}
+[22:25:36.197] INFO (2703466): request errored {"req":{"id":87,"method":"POST","url":"/api/analysis","query":{},"params":{"path":["api","analysis"]},"headers":{"host":"127.0.0.1:45961","accept-encoding":"gzip, deflate","content-type":"application/json","content-length":"52","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":46386},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":26}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          Error: failed with status code 500
+              at onResFinished (/home/arturo-clavero/projects/stage3/server/node_modules/pino-http/logger.js:115:39)
+              at ServerResponse.onResponseComplete (/home/arturo-clavero/projects/stage3/server/node_modules/pino-http/logger.js:178:14)
+              at ServerResponse.emit (node:events:531:35)
+              at onFinish (node:_http_outgoing:1082:10)
+              at callback (node:internal/streams/writable:766:21)
+              at afterWrite (node:internal/streams/writable:710:5)
+              at afterWriteTick (node:internal/streams/writable:696:10)
+              at processTicksAndRejections (node:internal/process/task_queues:89:21)
+    }
+FAIL test/stage2-pipeline.e2e-spec.ts (6.769 s)
+  Colosseum Stage 2 Pipeline (E2E)
+    TEST E1 — Happy path
+      ✕ should complete analysis for alex-backend (38 ms)
+    TEST E2 — Cache hit path
+      ✕ should return cached job immediately and avoid re-fetch (6 ms)
+    TEST E3 — Zero public data → graceful failure
+      ✕ should fail with Insufficient public data (14 ms)
+    TEST E4 — Private-heavy profile
+      ✕ should include private work note and low devops confidence for maya-devops (14 ms)
+    TEST E5 — Confidence levels map correctly
+      ✕ should only use low, medium, high confidence values (447 ms)
+    TEST E6 — Progress stages in correct order
+      ✕ should transition through stages in order with non-decreasing percentages (5001 ms)
+    TEST E7 — Recompute endpoint
+      ✓ should bypass cache when force=true (218 ms)
+    TEST E8 — Schema contract
+      ✕ should verify contract for all 5 fixtures (224 ms)
+    TEST E9 — Wallet-only path
+      ✕ should support wallet-only analysis with low confidence (30 ms)
+
+  ● Colosseum Stage 2 Pipeline (E2E) › TEST E1 — Happy path › should complete analysis for alex-backend
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "complete"
+    Received: "failed"
+
+      106 |       // console.log("jobid: ", jobId);
+      107 |       const status = await waitForJob(jobId);
+    > 108 |       expect(status.status).toBe('complete');
+          |                             ^
+      109 |
+      110 |       const resultRes = await request(app.getHttpServer())
+      111 |         .get(`/api/analysis/${jobId}/result`)
+
+      at Object.<anonymous> (stage2-pipeline.e2e-spec.ts:108:29)
+
+  ● Colosseum Stage 2 Pipeline (E2E) › TEST E2 — Cache hit path › should return cached job immediately and avoid re-fetch
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "cached-"
+    Received string:    "2"
+
+      156 |       const jobId = res.body.jobId;
+      157 |       // Cached jobs start with 'cached-' in AnalysisController
+    > 158 |       expect(jobId).toContain('cached-');
+          |                     ^
+      159 |
+      160 |       const resultRes = await request(app.getHttpServer())
+      161 |         .get(`/api/analysis/${jobId}/result`)
+
+      at Object.<anonymous> (stage2-pipeline.e2e-spec.ts:158:21)
+
+  ● Colosseum Stage 2 Pipeline (E2E) › TEST E3 — Zero public data → graceful failure › should fail with Insufficient public data
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Insufficient public data"
+    Received string:    "GithubProfile 53867293-5add-42e4-a628-1ac3b221ea4c not found"
+
+      176 |       const status = await waitForJob(res.body.jobId);
+      177 |       expect(status.status).toBe('failed');
+    > 178 |       expect(status.failureReason).toContain('Insufficient public data');
+          |                                    ^
+      179 |     });
+      180 |   });
+      181 |
+
+      at Object.<anonymous> (stage2-pipeline.e2e-spec.ts:178:36)
+
+  ● Colosseum Stage 2 Pipeline (E2E) › TEST E4 — Private-heavy profile › should include private work note and low devops confidence for maya-devops
+
+    TypeError: Cannot read properties of undefined (reading 'privateWorkNote')
+
+      195 |       const result: AnalysisResult = resultRes.body.result;
+      196 |       // Maya has devops focus in fixtures but few public repos
+    > 197 |       expect(result.privateWorkNote).toBeDefined();
+          |                     ^
+      198 |       expect(result.privateWorkNote?.toLowerCase()).toContain('private');
+      199 |       expect(result.capabilities.devops.confidence).toBe('medium');
+      200 |     });
+
+      at Object.<anonymous> (stage2-pipeline.e2e-spec.ts:197:21)
+
+  ● Colosseum Stage 2 Pipeline (E2E) › TEST E5 — Confidence levels map correctly › should only use low, medium, high confidence values
+
+    TypeError: Cannot read properties of undefined (reading 'capabilities')
+
+      218 |       const allConfidenceValues = new Set<string>();
+      219 |       results.forEach(r => {
+    > 220 |         allConfidenceValues.add(r.capabilities.backend.confidence);
+          |                                   ^
+      221 |         allConfidenceValues.add(r.capabilities.frontend.confidence);
+      222 |         allConfidenceValues.add(r.capabilities.devops.confidence);
+      223 |         allConfidenceValues.add(r.ownership.confidence);
+
+      at stage2-pipeline.e2e-spec.ts:220:35
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (stage2-pipeline.e2e-spec.ts:219:15)
+
+  ● Colosseum Stage 2 Pipeline (E2E) › TEST E6 — Progress stages in correct order › should transition through stages in order with non-decreasing percentages
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      237 |
+      238 |   describe('TEST E6 — Progress stages in correct order', () => {
+    > 239 |     it('should transition through stages in order with non-decreasing percentages', async () => {
+          |     ^
+      240 |       const res = await request(app.getHttpServer())
+      241 |         .post('/api/analysis')
+      242 |         .send({ githubUsername: 'new-dev' })
+
+      at stage2-pipeline.e2e-spec.ts:239:5
+      at stage2-pipeline.e2e-spec.ts:238:3
+      at Object.<anonymous> (stage2-pipeline.e2e-spec.ts:19:1)
+
+  ● Colosseum Stage 2 Pipeline (E2E) › TEST E8 — Schema contract › should verify contract for all 5 fixtures
+
+    TypeError: Cannot read properties of undefined (reading 'capabilities')
+
+      311 |
+      312 |         // Capability scores
+    > 313 |         Object.values(result.capabilities).forEach(cap => {
+          |                              ^
+      314 |           // console.log("cap: ", cap);
+      315 |           expect(cap.score).toBeGreaterThanOrEqual(0);
+      316 |           expect(cap.score).toBeLessThanOrEqual(1);
+
+      at Object.<anonymous> (stage2-pipeline.e2e-spec.ts:313:30)
+
+  ● Colosseum Stage 2 Pipeline (E2E) › TEST E9 — Wallet-only path › should support wallet-only analysis with low confidence
+
+    expected 201 "Created", got 500 "Internal Server Error"
+
+      337 |         .post('/api/analysis')
+      338 |         .send({ walletAddress })
+    > 339 |         .expect(HttpStatus.CREATED);
+          |          ^
+      340 |
+      341 |       expect(res.body.jobId).toBeDefined();
+      342 |       const status = await waitForJob(res.body.jobId);
+
+      at Object.<anonymous> (stage2-pipeline.e2e-spec.ts:339:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:309:14)
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+Test Suites: 1 failed, 1 total
+Tests:       8 failed, 1 passed, 9 total
+Snapshots:   0 total
+Time:        7.005 s, estimated 10 s
+Ran all test suites matching test/stage2-pipeline.e2e-spec.ts.
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:36.226] INFO (2703466): request errored {"req":{"id":88,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:46655","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":51306},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:36.330] INFO (2703466): request errored {"req":{"id":89,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:35735","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":52976},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:36.433] INFO (2703466): request errored {"req":{"id":90,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:44019","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":55946},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:36.536] INFO (2703466): request errored {"req":{"id":91,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:38263","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":58594},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:36.639] INFO (2703466): request errored {"req":{"id":92,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:46633","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":40700},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:36.742] INFO (2703466): request errored {"req":{"id":93,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40525","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":44000},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:36.846] INFO (2703466): request errored {"req":{"id":94,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:32959","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":35110},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:36 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:36.949] INFO (2703466): request errored {"req":{"id":95,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:37353","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":47432},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.052] INFO (2703466): request errored {"req":{"id":96,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:35117","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":52194},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.155] INFO (2703466): request errored {"req":{"id":97,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:35443","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":50636},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.257] INFO (2703466): request errored {"req":{"id":98,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33841","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":53294},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.360] INFO (2703466): request errored {"req":{"id":99,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:42223","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":54494},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.462] INFO (2703466): request errored {"req":{"id":100,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:32965","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":56984},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.565] INFO (2703466): request errored {"req":{"id":101,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:42609","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":42330},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.670] INFO (2703466): request errored {"req":{"id":102,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:36657","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":39154},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":2}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.773] INFO (2703466): request errored {"req":{"id":103,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:37029","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49788},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.875] INFO (2703466): request errored {"req":{"id":104,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:34529","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49358},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:37 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:37.978] INFO (2703466): request errored {"req":{"id":105,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40585","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":58634},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.080] INFO (2703466): request errored {"req":{"id":106,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:46233","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":60488},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.184] INFO (2703466): request errored {"req":{"id":107,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:39639","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":38958},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":2}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.296] INFO (2703466): request errored {"req":{"id":108,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:42815","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":46358},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.400] INFO (2703466): request errored {"req":{"id":109,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:42099","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":51474},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.502] INFO (2703466): request errored {"req":{"id":110,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:41077","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":54512},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.604] INFO (2703466): request errored {"req":{"id":111,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:44611","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":57000},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.705] INFO (2703466): request errored {"req":{"id":112,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:37691","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":47618},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.808] INFO (2703466): request errored {"req":{"id":113,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33215","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":59918},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:38 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:38.911] INFO (2703466): request errored {"req":{"id":114,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:44691","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":36406},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":2}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.014] INFO (2703466): request errored {"req":{"id":115,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33521","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":58434},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.118] INFO (2703466): request errored {"req":{"id":116,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:43489","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":48764},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.220] INFO (2703466): request errored {"req":{"id":117,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:42711","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":51294},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.324] INFO (2703466): request errored {"req":{"id":118,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:37723","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":56728},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.427] INFO (2703466): request errored {"req":{"id":119,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:42735","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":33350},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.530] INFO (2703466): request errored {"req":{"id":120,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:40695","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":42950},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.633] INFO (2703466): request errored {"req":{"id":121,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:34791","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":36810},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.737] INFO (2703466): request errored {"req":{"id":122,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:44687","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49788},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.840] INFO (2703466): request errored {"req":{"id":123,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:43317","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":60666},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:39 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:39.943] INFO (2703466): request errored {"req":{"id":124,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:35813","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":46874},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:40 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:40.046] INFO (2703466): request errored {"req":{"id":125,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:37549","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":39022},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:40 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:40.148] INFO (2703466): request errored {"req":{"id":126,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:42995","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":56732},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:40 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:40.251] INFO (2703466): request errored {"req":{"id":127,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:42105","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":37046},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:40 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:40.354] INFO (2703466): request errored {"req":{"id":128,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45723","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":37110},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:40 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:40.458] INFO (2703466): request errored {"req":{"id":129,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:44191","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":33410},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:40 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:40.561] INFO (2703466): request errored {"req":{"id":130,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:45457","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":43324},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":1}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }
+[31m[Nest] 2703466  - [39m04/20/2026, 10:25:40 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39m[Error: Connection is closed.]
+[22:25:40.664] INFO (2703466): request errored {"req":{"id":131,"method":"GET","url":"/api/analysis/9/status","query":{},"params":{"path":["api","analysis","9","status"]},"headers":{"host":"127.0.0.1:33205","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":46270},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","content-length":"52","etag":"W/\"34-rlKccw1E+/fV8niQk4oFitDfPro\""}},"responseTime":0}
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          
+    }

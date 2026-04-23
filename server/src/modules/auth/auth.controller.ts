@@ -1,18 +1,36 @@
-import { Controller, Get, Post, Req, Body, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Req,
+  Body,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { LoginDto } from './schemas/login.schema';
 import { RegisterDto } from './schemas/register.schema';
 import { OnboardingDto } from './schemas/onboarding.schema';
-import { ActivateMfaDto, VerifyMfaDto, VerifyMfaRecoveryDto } from './schemas/mfa.schema';
-import { RequestPasswordResetDto, ResetPasswordDto } from './schemas/password-reset.schema';
+import {
+  ActivateMfaDto,
+  VerifyMfaDto,
+  VerifyMfaRecoveryDto,
+} from './schemas/mfa.schema';
+import {
+  RequestPasswordResetDto,
+  ResetPasswordDto,
+} from './schemas/password-reset.schema';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { GithubLinkGuard } from './guards/github.link.guard';
 import { GoogleLinkGuard } from './guards/google.link.guard';
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { VerifyEmailDto, OAuthCallbackQueryDto } from './schemas/auth-contract.dto';
+import {
+  VerifyEmailDto,
+  OAuthCallbackQueryDto,
+} from './schemas/auth-contract.dto';
 
 @ApiTags('Auth')
 @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -20,7 +38,7 @@ import { VerifyEmailDto, OAuthCallbackQueryDto } from './schemas/auth-contract.d
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private config: ConfigService
+    private config: ConfigService,
   ) {}
 
   @Post('login')
@@ -57,10 +75,7 @@ export class AuthController {
   }
 
   @Post('onboarding')
-  completeOnboarding(
-    @Body() dto: OnboardingDto,
-    @Req() req: any
-  ) {
+  completeOnboarding(@Body() dto: OnboardingDto, @Req() req: any) {
     // The onboarding token is in the Authorization header.
     return this.authService.completeOnboarding(dto, req.headers.authorization);
   }
@@ -69,7 +84,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard('github'))
   @Post('github')
-  githubLogin() {} 
+  githubLogin() {}
 
   @UseGuards(AuthGuard('google'))
   @Post('google')
@@ -84,9 +99,8 @@ export class AuthController {
 
   @UseGuards(AuthGuard('google'))
   @Get('google/callback')
-  @SkipThrottle() 
+  @SkipThrottle()
   googleCallback(@Req() req: any) {
-    
     return this.authService.oauthLogin(req.user, 'GOOGLE');
   }
 
@@ -96,7 +110,6 @@ export class AuthController {
   @Get('github/link')
   async linkGithub(@Req() req: any) {
     return this.authService.githubLink(req.user.id);
-    
   }
 
   @VerifiedAuth()
@@ -106,19 +119,35 @@ export class AuthController {
   }
 
   @VerifiedAuth()
-  @UseGuards(GithubLinkGuard)  
+  @UseGuards(GithubLinkGuard)
   @Get('github/link/callback')
   @SkipThrottle()
-  async linkGithubCallback(@Req() req: any, @Query() query: OAuthCallbackQueryDto) {
-    return this.authService.linkOAuth(req.authUser.id, req.user, 'GITHUB', query.state);
+  async linkGithubCallback(
+    @Req() req: any,
+    @Query() query: OAuthCallbackQueryDto,
+  ) {
+    return this.authService.linkOAuth(
+      req.authUser.id,
+      req.user,
+      'GITHUB',
+      query.state,
+    );
   }
 
   @VerifiedAuth()
-  @UseGuards(GoogleLinkGuard)  
+  @UseGuards(GoogleLinkGuard)
   @Get('google/link/callback')
   @SkipThrottle()
-  async linkGoogleCallback(@Req() req: any, @Query() query: OAuthCallbackQueryDto) {
-    return this.authService.linkOAuth(req.authUser.id, req.user, 'GOOGLE', query.state);
+  async linkGoogleCallback(
+    @Req() req: any,
+    @Query() query: OAuthCallbackQueryDto,
+  ) {
+    return this.authService.linkOAuth(
+      req.authUser.id,
+      req.user,
+      'GOOGLE',
+      query.state,
+    );
   }
 
   // --- Email Verification ---
@@ -149,6 +178,10 @@ export class AuthController {
 
   @Post('mfa/verify-recovery')
   verifyMfaRecovery(@Body() dto: VerifyMfaRecoveryDto) {
-    return this.authService.verifyMfaRecovery(dto.userId, dto.backupCode, dto.mfaToken);
+    return this.authService.verifyMfaRecovery(
+      dto.userId,
+      dto.backupCode,
+      dto.mfaToken,
+    );
   }
 }

@@ -10,7 +10,7 @@ describe('AnalysisController (integration)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let signalQueueMock: any;
-  let internalKey = 'test-internal-key';
+  const internalKey = 'test-internal-key';
 
   beforeAll(async () => {
     process.env.INTERNAL_API_KEY = internalKey;
@@ -34,13 +34,13 @@ describe('AnalysisController (integration)', () => {
 
   afterEach(async () => {
     // Cleanup users created in tests - cascading delete should handle profiles/candidates
-    await prisma.user.deleteMany({ 
-      where: { 
+    await prisma.user.deleteMany({
+      where: {
         OR: [
           { email: { contains: '_test@example.com' } },
-          { username: { contains: 'torvalds_test' } }
-        ]
-      } 
+          { username: { contains: 'torvalds_test' } },
+        ],
+      },
     });
   });
 
@@ -68,17 +68,21 @@ describe('AnalysisController (integration)', () => {
         data: {
           username,
           email,
-        }
+        },
       });
-      const candidate = await prisma.candidate.create({ data: { userId: user.id } });
-      const devCandidate = await prisma.developerCandidate.create({ data: { candidateId: candidate.id } });
+      const candidate = await prisma.candidate.create({
+        data: { userId: user.id },
+      });
+      const devCandidate = await prisma.developerCandidate.create({
+        data: { candidateId: candidate.id },
+      });
       await prisma.githubProfile.create({
         data: {
           devCandidateId: devCandidate.id,
           githubUsername: username, // Use dynamic username
           githubUserId: `id_${ts}`,
           encryptedToken: 'v1:mock:mock:mock',
-        }
+        },
       });
 
       // 2. Clear previous calls
@@ -93,13 +97,13 @@ describe('AnalysisController (integration)', () => {
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('jobId', 'mock-job-id');
       expect(signalQueueMock.add).toHaveBeenCalledWith(
-  'sync-profile',
-  expect.objectContaining({
-    candidateId: expect.any(String),
-    githubProfileId: expect.any(String),
-  }),
-  expect.any(Object) // matches { attempts: 1 }
-);
+        'sync-profile',
+        expect.objectContaining({
+          candidateId: expect.any(String),
+          githubProfileId: expect.any(String),
+        }),
+        expect.any(Object), // matches { attempts: 1 }
+      );
     });
 
     it('should return 404 for missing profile', async () => {
@@ -116,8 +120,9 @@ describe('AnalysisController (integration)', () => {
     it('should return 404 if job not found in queue', async () => {
       signalQueueMock.getJob.mockResolvedValue(null);
 
-      const response = await supertest(app.getHttpServer())
-        .get('/api/analysis/job-999/result');
+      const response = await supertest(app.getHttpServer()).get(
+        '/api/analysis/job-999/result',
+      );
 
       expect(response.status).toBe(404);
     });
@@ -128,8 +133,9 @@ describe('AnalysisController (integration)', () => {
         progress: JSON.stringify({ stage: 'analyzing_projects', percent: 65 }),
       });
 
-      const response = await supertest(app.getHttpServer())
-        .get('/api/analysis/job-123/result');
+      const response = await supertest(app.getHttpServer()).get(
+        '/api/analysis/job-123/result',
+      );
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -146,8 +152,9 @@ describe('AnalysisController (integration)', () => {
         returnvalue: mockResult,
       });
 
-      const response = await supertest(app.getHttpServer())
-        .get('/api/analysis/job-123/result');
+      const response = await supertest(app.getHttpServer()).get(
+        '/api/analysis/job-123/result',
+      );
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({

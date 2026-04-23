@@ -12,12 +12,12 @@ import { CacheService } from '../scoring/cache/cache.service';
 import { GithubAdapterService } from '../scoring/github-adapter/github-adapter.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-import { 
-  ALEX_BACKEND, 
-  SARAH_FULLSTACK, 
-  MAYA_DEVOPS, 
-  NEW_DEV, 
-  GHOST_PROFILE 
+import {
+  ALEX_BACKEND,
+  SARAH_FULLSTACK,
+  MAYA_DEVOPS,
+  NEW_DEV,
+  GHOST_PROFILE,
 } from '../scoring/signal-extractor/__fixtures__/seed-developers';
 import { AnalysisResult } from '../scoring/types/result.types';
 
@@ -26,19 +26,25 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
   let scoringService: ScoringService;
   let signalExtractor: SignalExtractorService;
   let prisma: PrismaService;
-  let internalKey = process.env.INTERNAL_API_KEY || 'test-internal-key';
+  const internalKey = process.env.INTERNAL_API_KEY || 'test-internal-key';
 
   const mockGithubAdapter = {
     fetchRawData: jest.fn().mockImplementation(async (username: string) => {
       switch (username.toLowerCase()) {
-        case 'alex-backend': return ALEX_BACKEND;
-        case 'sarah-fullstack': return SARAH_FULLSTACK;
-        case 'maya-devops': return MAYA_DEVOPS;
-        case 'new-dev': return NEW_DEV;
-        case 'torvalds': return ALEX_BACKEND; // mock for V6
-        case 'ghost-profile': 
+        case 'alex-backend':
+          return ALEX_BACKEND;
+        case 'sarah-fullstack':
+          return SARAH_FULLSTACK;
+        case 'maya-devops':
+          return MAYA_DEVOPS;
+        case 'new-dev':
+          return NEW_DEV;
+        case 'torvalds':
+          return ALEX_BACKEND; // mock for V6
+        case 'ghost-profile':
           throw new Error('Insufficient public data for ghost-profile');
-        default: throw new Error(`User ${username} not found`);
+        default:
+          throw new Error(`User ${username} not found`);
       }
     }),
     decryptToken: jest.fn().mockReturnValue('mock-token'),
@@ -61,6 +67,8 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
+    const { Logger } = await import('nestjs-pino');
+    app.useLogger(app.get(Logger));
     await app.init();
 
     scoringService = app.get<ScoringService>(ScoringService);
@@ -87,11 +95,13 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
   const waitForJob = async (jobId: string, maxSeconds = 10): Promise<any> => {
     const start = Date.now();
     while (Date.now() - start < maxSeconds * 1000) {
-      const res = await request(app.getHttpServer()).get(`/api/analysis/${jobId}/status`);
+      const res = await request(app.getHttpServer()).get(
+        `/api/analysis/${jobId}/status`,
+      );
       if (res.body.status === 'complete' || res.body.status === 'failed') {
         return res.body;
       }
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
     throw new Error(`Job ${jobId} timed out`);
   };
@@ -108,13 +118,13 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     it('All 8 signals return valid values for 5 seed usernames', () => {
       for (const { name, data } of fixtures) {
         const signals = signalExtractor.extract(data);
-        
+
         expect(signals.ownershipDepth).not.toBeNull();
         expect(signals.ownershipDepth).toBeGreaterThanOrEqual(0);
-        
+
         expect(signals.projectLongevity).not.toBeNull();
         expect(signals.projectLongevity).toBeGreaterThanOrEqual(0);
-        
+
         expect(signals.activityConsistency).not.toBeNull();
         expect(signals.activityConsistency).toBeGreaterThanOrEqual(0);
         expect(signals.activityConsistency).toBeLessThanOrEqual(1);
@@ -142,17 +152,27 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     it('Scores correlate with known profiles directionally', () => {
       // alex-backend
       const alexRes = scoringService.score(ALEX_BACKEND);
-      expect(alexRes.capabilities.backend.score).toBeGreaterThan(alexRes.capabilities.frontend.score);
-      expect(alexRes.capabilities.backend.score).toBeGreaterThan(alexRes.capabilities.devops.score);
+      expect(alexRes.capabilities.backend.score).toBeGreaterThan(
+        alexRes.capabilities.frontend.score,
+      );
+      expect(alexRes.capabilities.backend.score).toBeGreaterThan(
+        alexRes.capabilities.devops.score,
+      );
 
       // sarah-fullstack
       const sarahRes = scoringService.score(SARAH_FULLSTACK);
-      expect(sarahRes.capabilities.frontend.score).toBeGreaterThan(sarahRes.capabilities.devops.score);
+      expect(sarahRes.capabilities.frontend.score).toBeGreaterThan(
+        sarahRes.capabilities.devops.score,
+      );
 
       // maya-devops
       const mayaRes = scoringService.score(MAYA_DEVOPS);
-      expect(mayaRes.capabilities.devops.score).toBeGreaterThan(mayaRes.capabilities.frontend.score);
-      expect(mayaRes.capabilities.devops.score).toBeGreaterThan(mayaRes.capabilities.backend.score);
+      expect(mayaRes.capabilities.devops.score).toBeGreaterThan(
+        mayaRes.capabilities.frontend.score,
+      );
+      expect(mayaRes.capabilities.devops.score).toBeGreaterThan(
+        mayaRes.capabilities.backend.score,
+      );
     });
   });
 
@@ -171,7 +191,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     it('New username triggers full pipeline and sets cache on completion', async () => {
       mockGithubAdapter.fetchRawData.mockClear();
       const testUser = `alex-backend`;
-      
+
       const createRes = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({ githubUsername: testUser })
@@ -186,7 +206,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
       const resultRes = await request(app.getHttpServer())
         .get(`/api/analysis/${createRes.body.jobId}/result`)
         .expect(HttpStatus.OK);
-      
+
       expect(resultRes.body.result).toBeDefined();
       expect(mockGithubAdapter.fetchRawData).toHaveBeenCalledTimes(1);
     }, 15000); // specify higher timeout
@@ -222,17 +242,21 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
       // Ensure user exists in db for recompute to pass if schema is enforced
       const username = 'torvalds';
       const user = await prisma.user.create({
-        data: { username, email: 'torvalds@test.com' }
+        data: { username, email: 'torvalds@test.com' },
       });
-      const candidate = await prisma.candidate.create({ data: { userId: user.id } });
-      const devCandidate = await prisma.developerCandidate.create({ data: { candidateId: candidate.id } });
+      const candidate = await prisma.candidate.create({
+        data: { userId: user.id },
+      });
+      const devCandidate = await prisma.developerCandidate.create({
+        data: { candidateId: candidate.id },
+      });
       await prisma.githubProfile.create({
         data: {
           devCandidateId: devCandidate.id,
           githubUsername: username,
           githubUserId: 'id_torvalds',
           encryptedToken: 'mock:mock',
-        }
+        },
       });
 
       // Trigger recompute
@@ -250,7 +274,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
         .expect(HttpStatus.OK);
 
       const result: AnalysisResult = resultRes.body.result;
-      
+
       // Assert result schema
       expect(result).toHaveProperty('summary');
       expect(result).toHaveProperty('capabilities');
@@ -260,7 +284,9 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
       expect(result.capabilities).toHaveProperty('frontend');
       expect(result.capabilities).toHaveProperty('devops');
       expect(typeof result.capabilities.backend.score).toBe('number');
-      expect(['low', 'medium', 'high']).toContain(result.capabilities.backend.confidence);
+      expect(['low', 'medium', 'high']).toContain(
+        result.capabilities.backend.confidence,
+      );
     }, 15000);
   });
 

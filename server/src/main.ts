@@ -20,12 +20,12 @@ async function bootstrap() {
   await app.listen(3000);
 }
 
-function setUpSwagger(app){
+function setUpSwagger(app) {
   const config = new DocumentBuilder()
-  .setTitle('Colosseum API')
-  .setVersion('1.0')
-  .addBearerAuth()
-  .build();
+    .setTitle('Colosseum API')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
 
   const document = SwaggerModule.createDocument(app, config);
   const cleanedDocument = cleanupOpenApiDoc(document);

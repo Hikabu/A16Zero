@@ -94,6 +94,7 @@ model Candidate {
   careerPath   Int                @default(1) // bitmask: 1=DEVELOPER
   devProfile   DeveloperCandidate?
   applications Application[]
+  vouches         Vouch[]
   createdAt    DateTime           @default(now())
 }
 
@@ -139,13 +140,42 @@ model Web3Profile {
   id               String             @id @default(uuid())
   devCandidateId   String             @unique
   devCandidate     DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  evmAddress       String?
-  solanaAddress    String?
+  walletAddress    String?
   // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
   verifiedContracts Json?
   onChainMetrics    Json?
   createdAt         DateTime          @default(now())
 }
+
+//-----Vouchers ---------------------------
+model Vouch {
+  id              String    @id @default(uuid())
+
+  // Candidate side — FK to Candidate, not GithubProfile
+  candidateId     String
+  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Voucher side — wallet proving identity on-chain
+  voucherWallet   String
+  message         String    @db.VarChar(500)
+  txSignature     String    @unique
+
+  // Weight & lifecycle
+  weight          String    @default("standard")  // 'verified' | 'standard' | 'new'
+  isActive        Boolean   @default(true)
+  flag            String?   // 'cluster_detected' | null
+
+  // Timestamps
+  confirmedAt     DateTime  @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+
+  @@unique([candidateId, voucherWallet])
+  @@index([candidateId, isActive, expiresAt])
+  @@index([voucherWallet, isActive, expiresAt])
+}
+
+// ─── Jobs (read-only stub — HR team owns CRUD; same DB) ──────
 
 // ─── Legacy Enums (Marked for potential purge) ─────────────────
 // DEPRECATED: potentially removable after refactor
@@ -203,7 +233,6 @@ enum RoleType {
   GENERALIST
 }
 
-// ─── Jobs (read-only stub — HR team owns CRUD; same DB) ──────
 model Job {
   id              String        @id @default(uuid())
   tenantId        String
@@ -296,3 +325,4 @@ model CachedResult {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
 }
+

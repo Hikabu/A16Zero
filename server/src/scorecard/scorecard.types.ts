@@ -1,4 +1,8 @@
-import { ConfidenceLevel, ActivityLevel, ConsistencyLevel } from '../scoring/types/result.types';
+import {
+  ConfidenceLevel,
+  ActivityLevel,
+  ConsistencyLevel,
+} from '../scoring/types/result.types';
 
 export interface ScorecardResult {
   snapshot: {

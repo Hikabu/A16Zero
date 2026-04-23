@@ -16,15 +16,19 @@ export class ScorecardService {
   ) {}
 
   async computeForCandidate(candidateId: string): Promise<ScorecardResult> {
-    this.logger.log(`Computing scorecard for candidate ${candidateId} (Refactored Placeholder)`);
-    
+    this.logger.log(
+      `Computing scorecard for candidate ${candidateId} (Refactored Placeholder)`,
+    );
+
     // For now, return a placeholder result until Phase 3 implementation
     return this.buildPlaceholderResult();
   }
 
   async previewForUsername(githubUsername: string): Promise<ScorecardResult> {
-    this.logger.log(`Running headless preview for ${githubUsername} (Refactored Placeholder)`);
-    
+    this.logger.log(
+      `Running headless preview for ${githubUsername} (Refactored Placeholder)`,
+    );
+
     const githubToken = this.configService.get<string>('GITHUB_SYSTEM_TOKEN');
     if (!githubToken) {
       throw new Error('GITHUB_SYSTEM_TOKEN not configured');

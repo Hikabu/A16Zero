@@ -21,13 +21,14 @@ describe('AuthController', () => {
     activateMfa: jest.fn(),
     verifyMfa: jest.fn(),
     githubLink: jest.fn(),
-    googleLink: jest.fn()
+    googleLink: jest.fn(),
   };
 
   const mockConfigService = {
     get: jest.fn((key) => {
       if (key === 'app.url') return 'http://localhost:3000';
-      if (key === 'auth.githubLinkCallback') return '/auth/github/link/callback';
+      if (key === 'auth.githubLinkCallback')
+        return '/auth/github/link/callback';
       if (key === 'github.clientID') return 'client_id';
       return null;
     }),
@@ -47,34 +48,34 @@ describe('AuthController', () => {
   });
 
   describe('Secure Linking', () => {
-  it('should generate secure state for link', async () => {
-  const req = { user: { id: 'user_1' } };
+    it('should generate secure state for link', async () => {
+      const req = { user: { id: 'user_1' } };
 
-  const result = await controller.linkGithub(req);
+      const result = await controller.linkGithub(req);
 
-  expect(mockAuthService.githubLink).toHaveBeenCalledWith('user_1');
-});
+      expect(mockAuthService.githubLink).toHaveBeenCalledWith('user_1');
+    });
 
-  it('should verify state in callback', async () => {
-    const req = {
-      authUser: { id: 'user_1' },
-      user: { id: 'user_1' }, // IMPORTANT: callback uses BOTH
-    };
+    it('should verify state in callback', async () => {
+      const req = {
+        authUser: { id: 'user_1' },
+        user: { id: 'user_1' }, // IMPORTANT: callback uses BOTH
+      };
 
-await controller.linkGithubCallback(req, { state: 'mock_state' });
+      await controller.linkGithubCallback(req, { state: 'mock_state' });
 
-    expect(authService.linkOAuth).toHaveBeenCalledWith(
-      'user_1',        // authUser.id
-      req.user,        // profile
-      'GITHUB',
-      'mock_state',
-    );
+      expect(authService.linkOAuth).toHaveBeenCalledWith(
+        'user_1', // authUser.id
+        req.user, // profile
+        'GITHUB',
+        'mock_state',
+      );
+    });
   });
-});
 
   describe('MFA & Verification', () => {
     it('should call verifyEmail', async () => {
-await controller.verifyEmail({ code: '123456' });
+      await controller.verifyEmail({ code: '123456' });
       expect(authService.verifyEmail).toHaveBeenCalledWith('123456');
     });
 

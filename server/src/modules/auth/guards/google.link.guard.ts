@@ -1,4 +1,8 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 // @Injectable()
@@ -12,7 +16,6 @@ import { AuthGuard } from '@nestjs/passport';
 //   }
 // }
 
-
 @Injectable()
 export class GoogleLinkGuard extends AuthGuard('google') {
   getAuthenticateOptions(context: ExecutionContext) {
@@ -23,15 +26,15 @@ export class GoogleLinkGuard extends AuthGuard('google') {
     };
   }
   handleRequest(err, user, info, context: ExecutionContext) {
-  const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest();
 
-  const jwtUser = req.user;
+    const jwtUser = req.user;
 
-  if (err || !user) {
-    throw err || new UnauthorizedException(info?.message || 'OAuth failed');
+    if (err || !user) {
+      throw err || new UnauthorizedException(info?.message || 'OAuth failed');
+    }
+
+    req.authUser = jwtUser; // preserve original user
+    return user; // becomes req.user (GitHub)
   }
-
-  req.authUser = jwtUser; // preserve original user
-  return user;            // becomes req.user (GitHub)
-}
 }

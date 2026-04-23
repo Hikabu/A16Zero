@@ -9,10 +9,12 @@ const SEED_DEVELOPERS = ['torvalds', 'gaearon', 'yyx990803', 'antirez', 'dhh'];
 
 async function bootstrap() {
   const logger = new Logger('PreloadCache');
-  
+
   // Disable logging from other modules to keep output clean
-  const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn', 'log'] });
-  
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  });
+
   const githubAdapter = app.get(GithubAdapterService);
   const scoringService = app.get(ScoringService);
   const cacheService = app.get(CacheService);
@@ -24,22 +26,24 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  logger.log(`Starting cache preload for ${SEED_DEVELOPERS.length} developers...`);
+  logger.log(
+    `Starting cache preload for ${SEED_DEVELOPERS.length} developers...`,
+  );
 
   for (const username of SEED_DEVELOPERS) {
     try {
       logger.log(`Processing ${username}...`);
-      
+
       // 1. Fetch
       const rawData = await githubAdapter.fetchRawData(username, token);
-      
+
       // 2. Score
       const result = scoringService.score(rawData);
-      
+
       // 3. Cache
       const cacheKey = cacheService.buildCacheKey(username);
       await cacheService.set(cacheKey, result);
-      
+
       logger.log(`Successfully preloaded cache for ${username}`);
     } catch (error) {
       logger.error(`Failed to preload ${username}: ${error.message}`);

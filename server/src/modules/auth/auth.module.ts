@@ -19,20 +19,18 @@ import authConfig from './auth.config';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [authConfig]
+      load: [authConfig],
     }),
   ],
-  controllers: [
-    AuthController
-  ],
+  controllers: [AuthController],
   providers: [
-    AuthService, 
+    AuthService,
     GithubStrategy,
     GoogleStrategy,
     JwtStrategy,
     GithubLinkGuard,
     GoogleLinkGuard,
-    RefreshStrategy
+    RefreshStrategy,
   ],
 })
 export class AuthModule {}

@@ -4,18 +4,22 @@ import { resetBefore, resetAfter } from '../../../test/shared';
 import { App } from 'supertest/types';
 import Redis from 'ioredis';
 
-jest.mock('otplib', () => {
-  return {
-    TOTP: jest.fn().mockImplementation(() => ({
-      generate: jest.fn().mockReturnValue('123456'),
-      verify: jest.fn().mockReturnValue(true),
-      generateSecret: jest.fn().mockReturnValue('mock_secret'),
-      keyuri: jest.fn().mockReturnValue('otp_uri'),
-    })),
-    NobleCryptoPlugin: jest.fn(),
-    ScureBase32Plugin: jest.fn(),
-  };
-}, { virtual: true });
+jest.mock(
+  'otplib',
+  () => {
+    return {
+      TOTP: jest.fn().mockImplementation(() => ({
+        generate: jest.fn().mockReturnValue('123456'),
+        verify: jest.fn().mockReturnValue(true),
+        generateSecret: jest.fn().mockReturnValue('mock_secret'),
+        keyuri: jest.fn().mockReturnValue('otp_uri'),
+      })),
+      NobleCryptoPlugin: jest.fn(),
+      ScureBase32Plugin: jest.fn(),
+    };
+  },
+  { virtual: true },
+);
 
 describe('AuthService (Integration)', () => {
   let app: INestApplication<App>;
@@ -37,33 +41,35 @@ describe('AuthService (Integration)', () => {
 
   describe('Registration & Constraints', () => {
     it('should prevent duplicate email registration', async () => {
-      const dto = { 
-        email: `dup-${testId}@example.com`, 
-        username: `user1-${testId}`, 
-        password: 'Password123!', 
-        role: 'CANDIDATE' 
+      const dto = {
+        email: `dup-${testId}@example.com`,
+        username: `user1-${testId}`,
+        password: 'Password123!',
+        role: 'CANDIDATE',
       };
-      
+
       await service.register(dto);
-      
+
       // Attempting same email
-      await expect(service.register({ ...dto, username: `user2-${testId}` }))
-        .rejects.toThrow('Email already exists');
+      await expect(
+        service.register({ ...dto, username: `user2-${testId}` }),
+      ).rejects.toThrow('Email already exists');
     });
 
     it('should prevent duplicate username registration', async () => {
-      const dto = { 
-        email: `user1-${testId}@example.com`, 
-        username: `dup-${testId}`, 
-        password: 'Password123!', 
-        role: 'CANDIDATE' 
+      const dto = {
+        email: `user1-${testId}@example.com`,
+        username: `dup-${testId}`,
+        password: 'Password123!',
+        role: 'CANDIDATE',
       };
-      
+
       await service.register(dto);
-      
+
       // Attempting same username
-      await expect(service.register({ ...dto, email: `user2-${testId}@example.com` }))
-        .rejects.toThrow('Username already exists');
+      await expect(
+        service.register({ ...dto, email: `user2-${testId}@example.com` }),
+      ).rejects.toThrow('Username already exists');
     });
   });
 
@@ -71,9 +77,18 @@ describe('AuthService (Integration)', () => {
     it('should store encrypted MFA secret in DB and decrypt correctly', async () => {
       // 1. Register and verify email
       const email = `mfa-${testId}@example.com`;
-      await service.register({ email, password: 'Password123!', role: 'CANDIDATE' });
-      const user = await (service as any).prisma.user.findUnique({ where: { email } });
-      await (service as any).prisma.user.update({ where: { id: user.id }, data: { isEmailVerified: true } as any });
+      await service.register({
+        email,
+        password: 'Password123!',
+        role: 'CANDIDATE',
+      });
+      const user = await (service as any).prisma.user.findUnique({
+        where: { email },
+      });
+      await (service as any).prisma.user.update({
+        where: { id: user.id },
+        data: { isEmailVerified: true } as any,
+      });
 
       // 2. Setup MFA
       const { secret } = await service.setupMfa(user.id);
@@ -83,11 +98,13 @@ describe('AuthService (Integration)', () => {
       // Since it's integration, we can't easily generate a real TOTP code without otplib helper
       const authenticator = (service as any).getAuthenticator();
       const code = authenticator.generate(secret);
-      
+
       await service.activateMfa(user.id, code);
 
       // 4. Verify DB state - secret should be encrypted
-      const updatedUser = await (service as any).prisma.user.findUnique({ where: { id: user.id } });
+      const updatedUser = await (service as any).prisma.user.findUnique({
+        where: { id: user.id },
+      });
       expect(updatedUser.mfaEnabled).toBe(true);
       expect(updatedUser.mfaSecret).toContain(':'); // IV:TAG:ENC format
       expect(updatedUser.mfaSecret).not.toEqual(secret);
@@ -97,21 +114,26 @@ describe('AuthService (Integration)', () => {
   describe('Password Reset & Session Invalidation', () => {
     it('should manage password reset tokens in Redis', async () => {
       const email = `reset-${testId}@example.com`;
-      await service.register({ email, username: `reset-${testId}`, password: 'Password123!', role: 'CANDIDATE' });
-      
+      await service.register({
+        email,
+        username: `reset-${testId}`,
+        password: 'Password123!',
+        role: 'CANDIDATE',
+      });
+
       await service.requestPasswordReset({ email });
-      
+
       // Check Redis for token (we have to find it since it's random)
       const keys = await redis.keys('password_reset:*');
       expect(keys.length).toBe(1);
-      
+
       const token = keys[0].split(':')[1];
       const ttl = await redis.ttl(keys[0]);
       expect(ttl).toBeGreaterThan(3500); // Close to 1h
-      
+
       // Reset password
       await service.resetPassword({ token, newPassword: 'NewPassword123!' });
-      
+
       // Token should be deleted
       const exists = await redis.exists(keys[0]);
       expect(exists).toBe(0);
@@ -119,12 +141,24 @@ describe('AuthService (Integration)', () => {
 
     it('should invalidate all sessions on password reset', async () => {
       const email = `inv-${testId}@example.com`;
-      await service.register({ email, password: 'Password123!', role: 'CANDIDATE' });
-      const user = await (service as any).prisma.user.findUnique({ where: { email } });
-      await (service as any).prisma.user.update({ where: { id: user.id }, data: { isEmailVerified: true } as any });
+      await service.register({
+        email,
+        password: 'Password123!',
+        role: 'CANDIDATE',
+      });
+      const user = await (service as any).prisma.user.findUnique({
+        where: { email },
+      });
+      await (service as any).prisma.user.update({
+        where: { id: user.id },
+        data: { isEmailVerified: true } as any,
+      });
 
       // 1. Initial Login to get tokens
-      const loginResult = await service.login({ identifier: email, password: 'Password123!' });
+      const loginResult = await service.login({
+        identifier: email,
+        password: 'Password123!',
+      });
       expect(await redis.exists(`refresh:${user.id}`)).toBe(1);
 
       // 2. Reset password
