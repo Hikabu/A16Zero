@@ -51,6 +51,7 @@ export class ScoringService {
       ownership,
       impact,
       stack: { languages: signals.stackIdentity, tools },
+	  reputation: null,
       web3: null,
     };
 

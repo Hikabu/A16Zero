@@ -25,6 +25,7 @@ const MOCK_GITHUB_ONLY: AnalysisResult = {
     externalContributions: 7,
     confidence: 'high',
   },
+  reputation: null,
   stack: {
     languages: ['TypeScript', 'Rust', 'Go'],
     tools: ['Docker', 'Anchor', 'Prisma', 'Redis'],
@@ -54,6 +55,7 @@ const MOCK_WALLET: AnalysisResult = {
     externalContributions: 7,
     confidence: 'high',
   },
+  reputation: null,
   stack: {
     languages: ['Rust', 'TypeScript', 'Go'],
     tools: ['Anchor', 'Docker', 'Prisma', 'Redis'],
@@ -133,6 +135,7 @@ const MOCK_WALLET_ONLY: AnalysisResult = {
     languages: ['Rust'],
     tools: ['Anchor'],
   },
+  reputation: null,
   web3: {
     ecosystem: 'solana',
     ecosystemPRs: 0,

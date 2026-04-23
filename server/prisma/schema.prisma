@@ -95,6 +95,7 @@ model Candidate {
   devProfile   DeveloperCandidate?
   applications Application[]
   vouches         Vouch[]
+  scorecard		Json?
   createdAt    DateTime           @default(now())
 }
 

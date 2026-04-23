@@ -1,0 +1,30 @@
+CHECK WALLET EVERYTIME UPSERTING, CREATING OR USING WALLET ADDRES, 
+MEANING CHEKC WALLET SIGNATURE IN BACKED.... OR SHOULD IT BE CHECKED IN FRONTED?
+> src/modules/vouchers/voucher.service.ts Line 87
+> src/scoring/analysis/analysis.controller.ts Line 128
+> src/scoring/analysis/analysis.controller.ts Line 137
+
+WHAT SHOULD ANALYSIS VS SYNC BE SUED FOR?
+Previously with just github the prupose was that analysis was for non users to get an overall scorecard to try it out...
+And then ingithub sync we acc connect the github link it and create the prisma profile and generate and save the scorecard properly
+But now there is ofc no wallet involved in "github sync" so it truned effetively from this si teh way authenticated user get a verified to scorecard to this is github only i guess 
+and then the analysis creates a web3 profile if there isnt one and allows wallet so what is the point of this ?
+this needs to be redesigned either we keep it at jsut that, analysis for non users and sync for users or leave sync ust for actualy syncing github and let the analysis call the actually processing instead of the sync doing it but only for github
+so whats the user flow if we want authenticated users to build up their scorecard then what is the endpoint they hit github sync and then api analysis?
+also in analysis we check for the combo of having saved the wallet and github but only if onely one is saved then its invalid do we relaod github all over agian or ereaload wallet allover agian if we already ahve thos individually?
+or hsould github sync not go firectly to make a scorecard and only sync? and then the frontend can call analysis? and also then just add wallet sync?
+> src/scoring/analysis/analysis.controller.ts
+> src/modules/github-sync/github-sync.controller.ts
+
+
+
+VOUCHER AUTH IS IT USER OR WALLET?
+SHOULD THE VOUCHER USE THE JWT AS AUTH OR THE ACTUAL WALLET ALREADY TIED TO A WALLECT ACCOUNT? SHOULD A WALLET/WEB3 ACCOUNT BE CREATED FIRST WHAT ABOUT MULTIPLE WALLETS SHOUDL WE SUPPORT THAT OR IRRELVANT FOR MVP?
+> src/modules/voucher/vouches.controller.ts
+
+THESE ENDPOINTS ARE NOT SPECIFIED IN CURRENT BUILD:
+GET/api/actions/vouch/:username — returns Blink Action card JSON for Phantom/Backpack to unfurl
+POST/api/actions/vouch/:username — receives voucher wallet + message, returns unsigned tx as base64
+GET/actions.json — static file at root, tells Blink clients which routes are Blink-enabled
+Is it necessary?
+

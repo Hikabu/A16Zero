@@ -84,6 +84,8 @@ export class VouchesService {
       );
     }
 
+	//TODO check wallet
+
     // ── Step 2: Hard block — self-vouch ───────────────────────────────────
     const candidateWallet = candidate.devProfile?.web3Profile?.walletAddress;
     if (candidateWallet && candidateWallet === voucherWallet) {

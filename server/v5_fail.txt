@@ -1,8 +1,0 @@
-No tests found, exiting with code 1
-Run with `--passWithNoTests` to exit with code 0
-In /home/arturo-clavero/projects/stage3/server/test
-  14 files checked.
-  testMatch:  - 0 matches
-  testPathIgnorePatterns: /node_modules/ - 14 matches
-  testRegex: .e2e-spec.ts$ - 10 matches
-Pattern: src/__tests__/stage2-verification-plan.spec.ts - 0 matches
