@@ -2,9 +2,9 @@ import { Controller, Post, Body, Headers, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { BaseController } from '../common/base.controller';
+import { BaseController } from '../../shared/config/common/base.controller';
 import { Public } from './decorators/public.decorator';
-import { AppException } from '../common/app.exception';
+import { AppException } from '../../shared/config/common/app.exception';
 
 @ApiTags('Authentication')
 @Controller('auth')

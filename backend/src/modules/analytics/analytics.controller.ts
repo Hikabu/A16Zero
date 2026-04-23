@@ -1,7 +1,7 @@
 import { Controller, Get, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
-import { BaseController } from '../common/base.controller';
+import { BaseController } from '../../shared/config/common/base.controller';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
