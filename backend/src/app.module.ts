@@ -9,16 +9,15 @@ import { RedisModule } from './redis/redis.module';
 
 import { GithubSyncModule } from './modules/github-sync/github-sync.module';
 import { JobsModule } from './modules/jobs/jobs.module';
-import { AtsModule } from './modules/ats/ats.module';
-import { FairnessModule } from './modules/fairness/fairness.module';
 import { HealthModule } from './modules/health/health.module';
 import { QueuesModule } from './queues/queues.module';
 import { ScoringModule } from './modules/scoring/scoring.module';
 import { EmailModule } from './modules/email/email.module';
 import { ScorecardModule } from './modules/scorecard/scorecard.module';
-import { ProfileModule } from './modules/profile/profile.module';
-import { AuthEmployerModule } from './modules/auth_employer/auth.employer.module';
+import { ProfileModule } from './modules/profile-candidate/profile.module';
+import { AuthEmployerModule } from './modules/auth-employer/auth.employer.module';
 import { AuthCandidateModule } from './modules/auth-candidate/auth.candidate.module';
+import { CompaniesModule } from './modules/profile-employer/companies.module';
 
 @Module({
   providers: [
@@ -51,10 +50,9 @@ import { AuthCandidateModule } from './modules/auth-candidate/auth.candidate.mod
     RedisModule,
     GithubSyncModule, 
     JobsModule, 
-    AtsModule, 
-    FairnessModule, 
     AuthEmployerModule,
 	AuthCandidateModule,
+	CompaniesModule,
     HealthModule,
     QueuesModule,
     ScoringModule,
