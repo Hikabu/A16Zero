@@ -1,15 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { GitHubRawData, GitHubRepo } from '../github-adapter/github-data.types';
-import {
-  ExtractedSignals,
-  AnalysisResult,
-  ConfidenceLevel,
-  ConsistencyLevel,
-} from '../types/result.types';
-import { SignalExtractorService } from '../signal-extractor/signal-extractor.service';
-import { SummaryGeneratorService } from '../summary-generator/summary-generator.service';
 import { EcosystemClassifierService } from '../signal-extractor/ecosystem-clarifier.service';
 import { StackFingerprintService } from '../signal-extractor/stack-fingerprint.service';
+import { ExtractedSignals, AnalysisResult, ConfidenceLevel, ConsistencyLevel } from '../types/result.types';
+import { SignalExtractorService } from '../signal-extractor/signal-extractor.service';
+import { SummaryGeneratorService } from '../summary-generator/summary-generator.service';
 import { LANGUAGE_CAPABILITY_WEIGHTS } from './language-weights';
 
 @Injectable()
@@ -25,8 +20,9 @@ export class ScoringService {
    * Main entry point to score a developer.
    */
   score(data: GitHubRawData, walletAddress?: string | null): AnalysisResult {
-    const signals = this.signalExtractor.extract(data);
 
+    const signals = this.signalExtractor.extract(data);
+    
     const capabilities = this.computeCapabilities(signals);
     const ownership = this.computeOwnership(data);
     const impact = this.computeImpact(signals, data);
@@ -68,6 +64,11 @@ export class ScoringService {
     if (this.signalExtractor.detectPrivateWorkIndicators(signals)) {
       result.privateWorkNote =
         'This profile shows high activity but low public artifact density, which typically indicates significant work in private repositories.';
+    };
+
+    // Add private work note if applicable
+    if (this.signalExtractor.detectPrivateWorkIndicators(signals)) {
+      result.privateWorkNote = "This profile shows high activity but low public artifact density, which typically indicates significant work in private repositories.";
     }
 
     // Generate summary
@@ -85,7 +86,7 @@ export class ScoringService {
     const { stackIdentity, techStackBreadth, dataCompleteness } = signals;
 
     const scores = { backend: 0, frontend: 0, devops: 0 };
-
+    
     if (stackIdentity.length === 0) {
       const fallback = LANGUAGE_CAPABILITY_WEIGHTS['_unknown'];
       scores.backend = fallback.backend;
@@ -98,6 +99,7 @@ export class ScoringService {
         LANGUAGE_CAPABILITY_WEIGHTS[primaryLang] ||
         LANGUAGE_CAPABILITY_WEIGHTS['_unknown'];
 
+      
       scores.backend += primaryWeights.backend * 0.7;
       scores.frontend += primaryWeights.frontend * 0.7;
       scores.devops += primaryWeights.devops * 0.7;
@@ -105,9 +107,7 @@ export class ScoringService {
       // Weight 2: Secondary language (30%)
       const secondaryLang = stackIdentity[1];
       if (secondaryLang) {
-        const secondaryWeights =
-          LANGUAGE_CAPABILITY_WEIGHTS[secondaryLang] ||
-          LANGUAGE_CAPABILITY_WEIGHTS['_unknown'];
+        const secondaryWeights = LANGUAGE_CAPABILITY_WEIGHTS[secondaryLang] || LANGUAGE_CAPABILITY_WEIGHTS['_unknown'];
         scores.backend += secondaryWeights.backend * 0.3;
         scores.frontend += secondaryWeights.frontend * 0.3;
         scores.devops += secondaryWeights.devops * 0.3;
@@ -137,8 +137,8 @@ export class ScoringService {
       backend: { score: round(scores.backend), confidence },
       frontend: { score: round(scores.frontend), confidence },
       devops: { score: round(scores.devops), confidence },
-    };
   }
+}
 
   /**
    * Computes ownership metrics.
@@ -152,7 +152,7 @@ export class ScoringService {
     const activelyMaintained = nonForkRepos.filter((r: GitHubRepo) => {
       const pushedAt = new Date(r.pushedAt);
       return fetchedAt.getTime() - pushedAt.getTime() < thresholdMs;
-    }).length;
+        }).length;
 
     return {
       ownedProjects: nonForkRepos.length,
@@ -169,12 +169,9 @@ export class ScoringService {
   /**
    * Computes impact metrics.
    */
-  private computeImpact(
-    signals: ExtractedSignals,
-    data: GitHubRawData,
-  ): AnalysisResult['impact'] {
+  private computeImpact(signals: ExtractedSignals, data: GitHubRawData): AnalysisResult['impact'] {
     const { activityConsistency, externalContributions } = signals;
-
+    
     // Activity Level mapping
     let activityLevel: 'low' | 'medium' | 'high' = 'low';
     if (activityConsistency > 0.7) activityLevel = 'high';

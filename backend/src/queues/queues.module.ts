@@ -9,10 +9,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        prefix:
-          process.env.NODE_ENV === 'test'
-            ? `{test-bull-${Date.now()}}`
-            : 'bull',
         connection: {
           host: config.get('REDIS_HOST') || 'localhost',
           port: config.get('REDIS_PORT') || 6379,
@@ -31,8 +27,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     BullModule.registerQueue(
       { name: 'github-sync' },
       { name: 'signal-compute' },
-      { name: 'notification' },
-      { name: 'ats-sync' },
       { name: 'email' },
     ),
   ],

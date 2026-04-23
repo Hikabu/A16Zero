@@ -4,7 +4,7 @@ import { GithubSyncController } from './github-sync.controller';
 import { GithubSyncProcessor } from '../../queues/github-sync.processor';
 
 @Module({
-  providers: [GithubSyncService, GithubSyncProcessor],
+  providers: [GithubSyncService],
   controllers: [GithubSyncController],
 })
 export class GithubSyncModule {}

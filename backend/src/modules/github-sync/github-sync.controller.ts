@@ -1,26 +1,130 @@
-import { Controller, Post, Get, Req } from '@nestjs/common';
-import { GithubSyncService } from './github-sync.service';
-import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
-import { UserRole } from '@prisma/client';
-import { ApiTags } from '@nestjs/swagger';
-
-@ApiTags('Me')
-@Controller('me/github/sync')
-export class GithubSyncController {
-  constructor(private readonly githubSyncService: GithubSyncService) {}
-
-  @VerifiedAuth(UserRole.CANDIDATE)
-  @Post()
-  async triggerSync(@Req() req: any) {
-    // req.user or req.authUser is set by guards
-    const user = req.authUser || req.user;
-    return this.githubSyncService.triggerSync(user.id);
+import {
+	Controller,
+	Post,
+	Get,
+	Req,
+	Res,
+	UseGuards,
+	Query,
+  } from '@nestjs/common';
+  import { Request, Response } from 'express';
+  import { AuthGuard } from '@nestjs/passport';
+  import {
+	ApiTags,
+	ApiBearerAuth,
+	ApiOperation,
+	ApiOkResponse,
+	ApiUnauthorizedResponse,
+	ApiBadRequestResponse,
+	ApiConflictResponse,
+	ApiQuery,
+  } from '@nestjs/swagger';
+  
+  import { GithubSyncService } from './github-sync.service';
+  import { GithubSyncConnectGuard } from '../auth-candidate/guards/github.sync.connect.guard';
+  
+  @ApiTags('GitHub Sync')
+  @Controller('me/github/sync')
+  export class GithubSyncController {
+	constructor(private readonly githubSyncService: GithubSyncService) {}
+  
+	// ─────────────────────────────────────────────
+	// CONNECT FLOW (Step 1)
+	// ─────────────────────────────────────────────
+  
+	@Get('connect')
+	@UseGuards(AuthGuard('jwt'))
+	@ApiBearerAuth()
+	@ApiOperation({
+	  summary: 'Start GitHub connection',
+	  description:
+		'Generates a GitHub OAuth URL for the authenticated user and redirects them to GitHub authorization.',
+	})
+	@ApiOkResponse({
+	  description: 'Redirects user to GitHub OAuth consent screen',
+	})
+	async startConnect(@Req() req: any, @Res() res: Response) {
+	  const url = await this.githubSyncService.startConnect(req.user.id);
+	  return res.redirect(url);
+	}
+  
+	// ─────────────────────────────────────────────
+	// CONNECT CALLBACK (Step 2)
+	// ─────────────────────────────────────────────
+  
+	@Get('connect/callback')
+	@UseGuards(GithubSyncConnectGuard)
+	@ApiOperation({
+	  summary: 'GitHub OAuth callback (connect flow)',
+	  description:
+		'Handles GitHub OAuth callback and links GitHub account to the user profile, then triggers initial sync.',
+	})
+	@ApiQuery({
+	  name: 'state',
+	  required: true,
+	  description: 'OAuth state parameter used for CSRF protection',
+	  example: '9f8a3c2d1b...',
+	})
+	@ApiOkResponse({
+	  description: 'Redirects user to frontend sync progress page',
+	})
+	@ApiUnauthorizedResponse({
+	  description: 'Invalid or expired OAuth state',
+	})
+	async connectCallback(
+	  @Req() req: any,
+	  @Res() res: Response,
+	  @Query('state') state: string,
+	) {
+	  await this.githubSyncService.connectGithub(req.user, state);
+  
+	  return res.redirect(
+		`${process.env.FRONTEND_URL}/dashboard/github/syncing`,
+	  );
+	}
+  
+	// ─────────────────────────────────────────────
+	// TRIGGER SYNC
+	// ─────────────────────────────────────────────
+  
+	@Post()
+	@UseGuards(AuthGuard('jwt'))
+	@ApiBearerAuth()
+	@ApiOperation({
+	  summary: 'Generate scorecard for authenticated user',
+	  description:
+		'Manually triggers a sync of GitHub data + scorecard generation, for the authenticated user. Requires GitHub to be connected.',
+	})
+	@ApiOkResponse({
+	  description: 'Sync job successfully queued or executed',
+	})
+	@ApiConflictResponse({
+	  description:
+		'GitHub account not connected. Frontend should redirect to connect flow.',
+	})
+	@ApiUnauthorizedResponse({
+	  description: 'Invalid or missing JWT token',
+	})
+	async triggerSync(@Req() req: any) {
+	  return this.githubSyncService.triggerSync(req.user.id);
+	}
+  
+	// ─────────────────────────────────────────────
+	// SYNC STATUS
+	// ─────────────────────────────────────────────
+  
+	@Get('status')
+	@UseGuards(AuthGuard('jwt'))
+	@ApiBearerAuth()
+	@ApiOperation({
+	  summary: 'Get GitHub sync status',
+	  description:
+		'Returns current sync state including progress, errors, and last sync timestamp.',
+	})
+	@ApiOkResponse({
+	  description: 'Current sync status retrieved successfully',
+	})
+	async getSyncStatus(@Req() req: any) {
+	  return this.githubSyncService.getSyncStatus(req.user.id);
+	}
   }
-
-  @VerifiedAuth(UserRole.CANDIDATE)
-  @Get('status')
-  async getSyncStatus(@Req() req: any) {
-    const user = req.authUser || req.user;
-    return this.githubSyncService.getSyncStatus(user.id);
-  }
-}

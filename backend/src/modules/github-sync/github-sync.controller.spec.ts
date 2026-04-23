@@ -11,15 +11,15 @@ describe('GithubSyncController', () => {
   let controller: GithubSyncController;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [GithubSyncController],
-      providers: [
-        {
-          provide: GithubSyncService,
-          useValue: mockGithubSyncService,
-        },
-      ],
-    }).compile();
+   const module: TestingModule = await Test.createTestingModule({
+  controllers: [GithubSyncController],
+  providers: [
+    {
+      provide: GithubSyncService,
+      useValue: mockGithubSyncService,
+    },
+  ],
+}).compile();
 
     controller = module.get<GithubSyncController>(GithubSyncController);
   });

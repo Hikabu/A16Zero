@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  GitHubRawData,
-  GitHubContributionData,
-  GitHubRepo,
-} from '../github-adapter/github-data.types';
+import { GitHubRawData, GitHubContributionData, GitHubRepo } from '../github-adapter/github-data.types';
 import { ExtractedSignals } from '../types/result.types';
 
 @Injectable()
@@ -44,14 +40,12 @@ export class SignalExtractorService {
 
     return data.repos.filter((repo: GitHubRepo) => {
       if (repo.isFork) return false;
-
+      
       const createdAt = new Date(repo.createdAt);
       const pushedAt = new Date(repo.pushedAt);
 
-      const isOldEnough =
-        fetchedAt.getTime() - createdAt.getTime() > thresholdMs;
-      const isRecentlyPushed =
-        fetchedAt.getTime() - pushedAt.getTime() < thresholdMs;
+      const isOldEnough = (fetchedAt.getTime() - createdAt.getTime()) > thresholdMs;
+      const isRecentlyPushed = (fetchedAt.getTime() - pushedAt.getTime()) < thresholdMs;
 
       return isOldEnough && isRecentlyPushed;
     }).length;
@@ -69,14 +63,12 @@ export class SignalExtractorService {
 
     const qualifyingRepos = data.repos.filter((repo: GitHubRepo) => {
       if (repo.isFork) return false;
-
+      
       const createdAt = new Date(repo.createdAt);
       const pushedAt = new Date(repo.pushedAt);
 
-      const isOldEnough =
-        fetchedAt.getTime() - createdAt.getTime() > ageThresholdMs;
-      const wasRecentlyMaintained =
-        fetchedAt.getTime() - pushedAt.getTime() < activityThresholdMs;
+      const isOldEnough = (fetchedAt.getTime() - createdAt.getTime()) > ageThresholdMs;
+      const wasRecentlyMaintained = (fetchedAt.getTime() - pushedAt.getTime()) < activityThresholdMs;
 
       return isOldEnough && wasRecentlyMaintained;
     });
@@ -85,9 +77,8 @@ export class SignalExtractorService {
 
     const totalMonths = qualifyingRepos.reduce((acc, repo) => {
       const createdAt = new Date(repo.createdAt);
-      const ageDays =
-        (fetchedAt.getTime() - createdAt.getTime()) / (24 * 60 * 60 * 1000);
-      return acc + ageDays / DAYS_PER_MONTH;
+      const ageDays = (fetchedAt.getTime() - createdAt.getTime()) / (24 * 60 * 60 * 1000);
+      return acc + (ageDays / DAYS_PER_MONTH);
     }, 0);
 
     return Math.round((totalMonths / qualifyingRepos.length) * 10) / 10;
@@ -99,10 +90,10 @@ export class SignalExtractorService {
    */
   private calculateS3(contributions: GitHubContributionData): number {
     if (contributions.activeWeeksCount === 0) return 0;
-
+    
     const ratio = contributions.activeWeeksCount / 52;
     const clamped = Math.min(Math.max(ratio, 0.0), 1.0);
-
+    
     return Math.round(clamped * 1000) / 1000;
   }
 
@@ -112,7 +103,7 @@ export class SignalExtractorService {
    */
   private calculateS4(repos: GitHubRepo[]): number {
     const uniqueLanguages = new Set<string>();
-    repos.forEach((repo) => {
+    repos.forEach(repo => {
       if (!repo.isFork && repo.language) {
         uniqueLanguages.add(repo.language.toLowerCase());
       }
@@ -133,13 +124,13 @@ export class SignalExtractorService {
    * Based on stars, forks, and topics on non-fork repos.
    */
   private calculateS6(repos: GitHubRepo[]): number {
-    const nonForkRepos = repos.filter((r) => !r.isFork);
+    const nonForkRepos = repos.filter(r => !r.isFork);
     if (nonForkRepos.length === 0) return 0;
 
     const totalRawScore = nonForkRepos.reduce((acc, repo) => {
       const starScore = Math.log((repo.stars || 0) + 1) * 2;
       const forkScore = Math.log((repo.forks || 0) + 1) * 1.5;
-      const topicScore = repo.topics && repo.topics.length > 0 ? 1 : 0;
+      const topicScore = (repo.topics && repo.topics.length > 0) ? 1 : 0;
       return acc + starScore + forkScore + topicScore;
     }, 0);
 
@@ -154,7 +145,7 @@ export class SignalExtractorService {
    */
   private calculateS7(repos: GitHubRepo[]): string[] {
     const counts: Record<string, number> = {};
-    repos.forEach((repo) => {
+    repos.forEach(repo => {
       if (!repo.isFork && repo.language) {
         // We use the language as provided by GitHub but count consistently
         counts[repo.language] = (counts[repo.language] || 0) + 1;
@@ -167,7 +158,7 @@ export class SignalExtractorService {
         return a[0].localeCompare(b[0]); // Alphabetical tie-breaking
       })
       .slice(0, 2)
-      .map((entry) => entry[0]);
+      .map(entry => entry[0]);
   }
 
   /**
@@ -175,10 +166,7 @@ export class SignalExtractorService {
    * Based on public repo count, account age, and active weeks.
    * Calibrated for high signal on public artifact density.
    */
-  private calculateS8(
-    profile: any,
-    contributions: GitHubContributionData,
-  ): number {
+  private calculateS8(profile: any, contributions: GitHubContributionData): number {
     // Factor A: Public repo count (weight 0.7)
     let factorA = 0.0;
     if (profile.publicRepos >= 10) factorA = 1.0;
@@ -195,7 +183,7 @@ export class SignalExtractorService {
     if (contributions.activeWeeksCount > 12) factorC = 1.0;
     else if (contributions.activeWeeksCount >= 4) factorC = 0.5;
 
-    const score = factorA * 0.7 + factorB * 0.15 + factorC * 0.15;
+    const score = (factorA * 0.70) + (factorB * 0.15) + (factorC * 0.15);
     return Math.round(Math.min(Math.max(score, 0.0), 1.0) * 1000) / 1000;
   }
 
@@ -210,9 +198,7 @@ export class SignalExtractorService {
    * Trend analysis for S3: 'ascending' | 'declining' | 'stable'
    * Splits 52 weeks into [17, 18, 17] and compares first and last blocks.
    */
-  getTrend(
-    contributions: GitHubContributionData,
-  ): 'ascending' | 'declining' | 'stable' {
+  getTrend(contributions: GitHubContributionData): 'ascending' | 'declining' | 'stable' {
     const weeklyTotals = contributions.weeklyTotals;
     if (!weeklyTotals || weeklyTotals.length !== 52) return 'stable';
 

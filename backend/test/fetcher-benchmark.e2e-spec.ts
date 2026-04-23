@@ -14,22 +14,22 @@ jest.mock('octokit', () => {
       rest: {
         users: {
           getByUsername: jest.fn().mockImplementation(async () => {
-            await new Promise((r) => setTimeout(r, 5));
+            await new Promise(r => setTimeout(r, 5));
             return {
               data: {
                 login: ALEX_BACKEND.profile.username,
                 created_at: ALEX_BACKEND.profile.accountCreatedAt.toISOString(),
                 public_repos: ALEX_BACKEND.profile.publicRepos,
                 followers: ALEX_BACKEND.profile.followers,
-              },
+              }
             };
           }),
         },
         repos: {
           listForUser: jest.fn().mockImplementation(async () => {
-            await new Promise((r) => setTimeout(r, 5));
+            await new Promise(r => setTimeout(r, 5));
             return {
-              data: ALEX_BACKEND.repos.map((r) => ({
+              data: ALEX_BACKEND.repos.map(r => ({
                 name: r.name,
                 language: r.language,
                 stargazers_count: r.stars,
@@ -39,34 +39,34 @@ jest.mock('octokit', () => {
                 pushed_at: r.pushedAt.toISOString(),
                 fork: r.isFork,
                 description: r.description,
-              })),
+              }))
             };
           }),
-        },
+        }
       },
       graphql: jest.fn().mockImplementation(async () => {
-        await new Promise((r) => setTimeout(r, 5));
+        await new Promise(r => setTimeout(r, 5));
         return {
           user: {
             contributionsCollection: {
               contributionCalendar: {
-                weeks: ALEX_BACKEND.contributions.weeklyTotals.map((t) => ({
-                  contributionDays: [{ contributionCount: t }],
-                })),
-              },
+                weeks: ALEX_BACKEND.contributions.weeklyTotals.map(t => ({
+                  contributionDays: [{ contributionCount: t }]
+                }))
+              }
             },
             pullRequests: {
-              nodes: ALEX_BACKEND.externalPRs.externalRepoNames.map((name) => ({
+              nodes: ALEX_BACKEND.externalPRs.externalRepoNames.map(name => ({
                 repository: {
                   name,
-                  owner: { login: 'external' },
-                },
-              })),
-            },
-          },
+                  owner: { login: 'external' }
+                }
+              }))
+            }
+          }
         };
-      }),
-    })),
+      })
+    }))
   };
 });
 
@@ -84,12 +84,12 @@ describe('Fetcher Performance Benchmark', () => {
         ScoringService,
         {
           provide: PrismaService,
-          useValue: { githubProfile: { findUnique: jest.fn() } },
+          useValue: { githubProfile: { findUnique: jest.fn() } }
         },
         {
           provide: 'REDIS',
-          useValue: { get: jest.fn().mockResolvedValue(null), set: jest.fn() },
-        },
+          useValue: { get: jest.fn().mockResolvedValue(null), set: jest.fn() }
+        }
       ],
     }).compile();
 
@@ -102,11 +102,8 @@ describe('Fetcher Performance Benchmark', () => {
     const start = performance.now();
 
     // 1. Fetch
-    const rawData = await githubAdapter.fetchRawData(
-      'alex-backend',
-      'mock-token',
-    );
-
+    const rawData = await githubAdapter.fetchRawData('alex-backend', 'mock-token');
+    
     // 2. Extract
     const signals = signalExtractor.extract(rawData);
     expect(signals).toBeDefined();
@@ -119,7 +116,7 @@ describe('Fetcher Performance Benchmark', () => {
     const duration = end - start;
 
     // console.log(`[BENCHMARK] Total Pipeline Time: ${duration.toFixed(2)}ms`);
-
+    
     // Assert < 2000ms
     expect(duration).toBeLessThan(2000);
   });

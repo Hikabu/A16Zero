@@ -40,7 +40,7 @@ export class JobResultResponseDto {
   error?: string;
 }
 
-export class ErrorResponseDto {
+export class AnalysisErrorResponseDto {
   @ApiProperty({ example: 400 })
   statusCode: number;
 
