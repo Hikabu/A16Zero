@@ -6,6 +6,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
+import { ZodValidationPipe } from 'nestjs-zod';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -18,14 +19,8 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Global Validation
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  app.useGlobalPipes(new ZodValidationPipe());
+
 
   app.useStaticAssets(join(__dirname, 'static'), {
     prefix: '/',
