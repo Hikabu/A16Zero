@@ -1,10 +1,10 @@
-import { writeFileSync } from "fs";
-import { envSchema } from "src/shared/config/env.schema";
+// import { writeFileSync } from "fs";
+// import { envSchema } from "src/shared/config/env.schema";
 
-const shape = envSchema.shape;
+// const shape = envSchema.shape;
 
-const output = Object.keys(shape)
-  .map((key) => `${key}=`)
-  .join("\n");
+// const output = Object.keys(shape)
+//   .map((key) => `${key}=`)
+//   .join("\n");
 
-writeFileSync(".env.example", output);
+// writeFileSync(".env.example", output);
