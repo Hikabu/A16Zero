@@ -12,13 +12,17 @@ export class EmailService {
     if (apiKey) {
       this.resend = new Resend(apiKey);
     } else {
-      this.logger.warn('RESEND_API_KEY is not defined. Email service will run in stub mode.');
+      this.logger.warn(
+        'RESEND_API_KEY is not defined. Email service will run in stub mode.',
+      );
     }
   }
 
   async sendEmail(to: string, subject: string, html: string) {
     if (!this.resend) {
-      this.logger.log(`[MAIL STUB] To: ${to}, Subject: ${subject}, Content: ${html}`);
+      this.logger.log(
+        `[MAIL STUB] To: ${to}, Subject: ${subject}, Content: ${html}`,
+      );
       return;
     }
 

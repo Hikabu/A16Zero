@@ -10,11 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ProfileService } from './profile.service';
-import { UpdateUserDto} from './dto/update-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
 import { VerifiedAuth } from 'src/shared/decorators/verified.decorator';
 import { ApiBearerAuth } from '@nestjs/swagger/dist/decorators/api-bearer.decorator';
-
 
 @VerifiedAuth()
 @ApiBearerAuth()
@@ -39,10 +38,7 @@ export class ProfileController {
    * Update firstName, lastName, username
    */
   @Patch()
-  updateProfile(
-    @Req() req: any,
-    @Body() dto: UpdateUserDto,
-  ) {
+  updateProfile(@Req() req: any, @Body() dto: UpdateUserDto) {
     const userId = req.user.id;
     return this.profileService.updateProfile(userId, dto);
   }
@@ -54,7 +50,7 @@ export class ProfileController {
   @Delete()
   @HttpCode(HttpStatus.OK)
   deactivateAccount(@Req() req: any) {
-    const userId = req.user.id; 
+    const userId = req.user.id;
     return this.profileService.deactivateAccount(userId);
   }
 
@@ -75,10 +71,7 @@ export class ProfileController {
    * Update bio and/or careerPath
    */
   @Patch('candidate')
-  updateCandidateProfile(
-    @Req() req: any,
-    @Body() dto: UpdateCandidateDto,
-  ) {
+  updateCandidateProfile(@Req() req: any, @Body() dto: UpdateCandidateDto) {
     const userId = req.user.id;
     return this.profileService.updateCandidateProfile(userId, dto);
   }

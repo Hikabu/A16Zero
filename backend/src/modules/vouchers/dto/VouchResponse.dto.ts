@@ -38,4 +38,3 @@ export class VouchResponseDto {
   })
   expiresAt: string;
 }
-

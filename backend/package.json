@@ -47,6 +47,7 @@
 		"@privy-io/server-auth": "^1.32.5",
 		"argon2": "^0.44.0",
 		"bcrypt": "^6.0.0",
+		"bs58": "^6.0.0",
 		"bullmq": "^5.74.1",
 		"class-transformer": "^0.5.1",
 		"class-validator": "^0.15.1",

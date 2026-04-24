@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { VouchesService } from '../vouches.service';
 import { VoucherQualityService } from '../voucher-quality.service';
@@ -40,7 +44,7 @@ const TX_SIG = 'sig_test_signature';
 const CANDIDATE = {
   id: 'cand-1UUID',
   devProfile: {
-    web3Profile: { walletAddress: CANDIDATE_WALLET },
+    web3Profile: { solanaAddress: CANDIDATE_WALLET },
     githubProfile: { githubUsername: 'alice' },
   },
 };
@@ -84,9 +88,11 @@ describe('VouchesService', () => {
       vouch: {
         findUnique: jest.fn().mockResolvedValue(null),
         findMany: jest.fn().mockResolvedValue([]),
-        create: jest.fn().mockImplementation((args) =>
-          Promise.resolve({ id: 'vouch-1', ...args.data }),
-        ),
+        create: jest
+          .fn()
+          .mockImplementation((args) =>
+            Promise.resolve({ id: 'vouch-1', ...args.data }),
+          ),
         count: jest.fn().mockResolvedValue(0),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         update: jest.fn().mockResolvedValue({ id: 'vouch-1', isActive: false }),
@@ -119,20 +125,29 @@ describe('VouchesService', () => {
     // 7. voucherWallet === candidate.devProfile.web3Profile.walletAddress → 400 self-vouch
     it('throws BadRequestException for self-vouching', async () => {
       await expect(
-        service.confirmVouch({ ...BASE_INPUT, voucherWallet: CANDIDATE_WALLET }),
+        service.confirmVouch({
+          ...BASE_INPUT,
+          voucherWallet: CANDIDATE_WALLET,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     // 8. Same wallet already vouched for candidate (same candidateId) → 400 duplicate
     it('throws BadRequestException for duplicate vouch', async () => {
-      mockPrisma.vouch.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'existing' });
-      await expect(service.confirmVouch(BASE_INPUT)).rejects.toThrow(BadRequestException);
+      mockPrisma.vouch.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'existing' });
+      await expect(service.confirmVouch(BASE_INPUT)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     // 9. voucherWallet has 5 active non-expired vouches → 400 budget exhausted
     it('throws BadRequestException when budget (5) is exhausted', async () => {
       mockPrisma.vouch.count.mockResolvedValue(5);
-      await expect(service.confirmVouch(BASE_INPUT)).rejects.toThrow(BadRequestException);
+      await expect(service.confirmVouch(BASE_INPUT)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     // 10. voucherWallet has 4 active + 1 expired → budget check passes (5 slots, 1 free)
@@ -150,9 +165,9 @@ describe('VouchesService', () => {
         { id: 'v3', voucherWallet: 'w3' },
       ]);
       mockQuality.assessVoucherWallet.mockResolvedValue('new');
-      
+
       await service.runClusterCheck('cand-1UUID', 'w4');
-      
+
       expect(mockPrisma.vouch.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: { isActive: false, flag: 'cluster_detected' },
@@ -179,9 +194,9 @@ describe('VouchesService', () => {
     // 13. Valid vouch saved correctly
     it('saves a valid vouch with correct weight and expiration', async () => {
       mockQuality.assessVoucherWallet.mockResolvedValue('verified');
-      
+
       const res = await service.confirmVouch(BASE_INPUT);
-      
+
       expect(res.weight).toBe('verified');
       expect(res.candidateId).toBe('cand-1UUID');
       const expectedExpiryThreshold = Date.now() + 179 * 86400 * 1000;
@@ -210,15 +225,18 @@ describe('VouchesService', () => {
       );
     });
 
-    // 15. Invalid signature → 401
-    it('throws UnauthorizedException for invalid signature', async () => {
-      mockNaclVerify.mockReturnValue(false);
-      await expect(service.revokeVouch(VOUCH_ID, VOUCHER_WALLET, 'bad_sig')).rejects.toThrow(UnauthorizedException);
+    // 15. voucherWallet empty → 401
+    it('throws UnauthorizedException if no wallet provided', async () => {
+      await expect(service.revokeVouch(VOUCH_ID, '', 'sig')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     // 16. voucherWallet mismatch → 404
     it('throws NotFoundException if wallet does not own the vouch', async () => {
-      await expect(service.revokeVouch(VOUCH_ID, 'WrongWallet', 'sig')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.revokeVouch(VOUCH_ID, 'WrongWallet', 'sig'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     // 17. Already inactive vouch → 400
@@ -228,7 +246,9 @@ describe('VouchesService', () => {
         voucherWallet: VOUCHER_WALLET,
         isActive: false,
       });
-      await expect(service.revokeVouch(VOUCH_ID, VOUCHER_WALLET, 'sig')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.revokeVouch(VOUCH_ID, VOUCHER_WALLET, 'sig'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

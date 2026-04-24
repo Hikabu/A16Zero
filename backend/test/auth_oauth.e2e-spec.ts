@@ -21,26 +21,26 @@ describe('Auth OAuth (e2e)', () => {
   //   testShortId = setup.shortId;
   // });
   beforeEach(async () => {
-  const moduleFixture = await Test.createTestingModule({
-    imports: [AppModule],
-  })
-    .overrideGuard(GithubLinkGuard) // 👈 THIS is the key
-    .useClass(MockGithubGuard)
-    .compile();
+    const moduleFixture = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideGuard(GithubLinkGuard) // 👈 THIS is the key
+      .useClass(MockGithubGuard)
+      .compile();
 
-  app = moduleFixture.createNestApplication();
-  await app.init();
+    app = moduleFixture.createNestApplication();
+    await app.init();
 
-  const prisma = app.get(PrismaService);
-  await prisma.$connect();
+    const prisma = app.get(PrismaService);
+    await prisma.$connect();
 
-  testId = crypto.randomBytes(16).toString('hex');
-  testShortId = crypto
-    .createHash('md5')
-    .update(testId)
-    .digest('hex')
-    .slice(0, 8);
-});
+    testId = crypto.randomBytes(16).toString('hex');
+    testShortId = crypto
+      .createHash('md5')
+      .update(testId)
+      .digest('hex')
+      .slice(0, 8);
+  });
 
   afterEach(async () => {
     await resetAfter(app);
@@ -49,14 +49,14 @@ describe('Auth OAuth (e2e)', () => {
   describe('Claim-based Onboarding', () => {
     it('should issue an onboarding token for new social users', async () => {
       // Mocking the behavior of callback which calls oauthLogin
-      const authService : AuthService = app.get(AuthService);
-      const profile = { 
-        id: 'external-id', 
-        email: `social-${testShortId}@example.com`, 
-        firstName: 'Social', 
-        lastName: 'User' 
+      const authService: AuthService = app.get(AuthService);
+      const profile = {
+        id: 'external-id',
+        email: `social-${testShortId}@example.com`,
+        firstName: 'Social',
+        lastName: 'User',
       };
-      
+
       const res: any = await authService.oauthLogin(profile, 'GITHUB');
 
       expect(res.needsOnboarding).toBe(true);
@@ -69,7 +69,7 @@ describe('Auth OAuth (e2e)', () => {
         .set('Authorization', `Bearer ${res.tempToken}`)
         .send({ username: `socialuser-${testShortId}` })
         .expect(201);
-      
+
       expect(onboardingRes.status).toBe(201);
       expect(onboardingRes.body.accessToken).toBeDefined();
     });
@@ -84,22 +84,25 @@ describe('Auth OAuth (e2e)', () => {
         .post('/auth/register')
         .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
         .expect(201);
-      
+
       const loginRes = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ identifier: email, password: 'StrongPassword123!' })
         .expect(201);
-      
+
       // Verification stub
       const authService = app.get(AuthService);
-      const prisma = (authService as any).prisma;
-      await prisma.user.update({ where: { email }, data: { isEmailVerified: true } as any });
-      
+      const prisma = authService.prisma;
+      await prisma.user.update({
+        where: { email },
+        data: { isEmailVerified: true } as any,
+      });
+
       const verifiedLogin = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ identifier: email, password: 'StrongPassword123!' })
         .expect(201);
-      
+
       const accessToken = verifiedLogin.body.accessToken;
 
       // 2. Try to link with invalid state
@@ -107,8 +110,8 @@ describe('Auth OAuth (e2e)', () => {
         .get('/auth/github/link/callback')
         .set('Authorization', `Bearer ${accessToken}`)
         .query({ state: 'invalid-state', code: 'some-code' });
-      
-      // Passport or our controller should reject it. 
+
+      // Passport or our controller should reject it.
       // Our controller uses generateLinkState and verifies it.
       expect(linkRes.status).toBe(401);
     });
@@ -124,10 +127,10 @@ describe('Auth OAuth (e2e)', () => {
       // 2. External provider returns same email
       const authService = app.get(AuthService);
       const profile = { id: 'ext-123', email, email_verified: true };
-      
-      
-      await expect(authService.oauthLogin(profile, 'GITHUB'))
-        .rejects.toThrow('Email is already registered but not verified');
+
+      await expect(authService.oauthLogin(profile, 'GITHUB')).rejects.toThrow(
+        'Email is already registered but not verified',
+      );
     });
   });
 });

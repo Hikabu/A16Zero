@@ -33,9 +33,7 @@ export const RawScorecardSchema = z.object({
   }),
 });
 
-
 export type RawScorecard = z.infer<typeof RawScorecardSchema>;
-
 
 /**
  * Capability item (from raw.capabilities)

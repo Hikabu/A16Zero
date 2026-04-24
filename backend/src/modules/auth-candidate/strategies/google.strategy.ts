@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
-constructor(private config: ConfigService) {
+  constructor(private config: ConfigService) {
     super({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -14,16 +14,13 @@ constructor(private config: ConfigService) {
     });
   }
 
-  async validate(
-    accessToken: string,
-    refreshToken: string,
-    profile: any,
-  ) {
-    console.log("Google profile:", profile); // Debug log to check the profile object
+  async validate(accessToken: string, refreshToken: string, profile: any) {
+    console.log('Google profile:', profile); // Debug log to check the profile object
     return {
       googleId: profile.id,
       email: profile.emails?.[0]?.value,
-      email_verified: profile.emails?.[0]?.verified || profile._json?.email_verified,
+      email_verified:
+        profile.emails?.[0]?.verified || profile._json?.email_verified,
       username: profile.displayName,
       firstName: profile.name?.givenName,
       lastName: profile.name?.familyName,

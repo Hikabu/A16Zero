@@ -5,7 +5,6 @@ import { PrivyService } from './privy.service';
 import { LoginDto } from './dto/login.dto';
 import { UnauthorizedException } from '@nestjs/common';
 
-
 /*
   Login via Privy on the frontend to get the accessToken
 
@@ -24,7 +23,7 @@ export class AuthEmployerService {
   ) {}
 
   async login(token: string, body: LoginDto) {
-    console.log("LOGIN: ", token,"body:", body);
+    console.log('LOGIN: ', token, 'body:', body);
     const { privyId, email } = await this.privyService.verifyToken(token);
 
     if (!privyId) {
@@ -34,13 +33,13 @@ export class AuthEmployerService {
     // Always fetch user from Privy to sync/verify privyId and get wallet address
     const privyUser = await this.privyService.getUser(privyId);
     const walletAccount = privyUser.linked_accounts?.find(
-      (acc ) => acc.type === 'wallet'
+      (acc) => acc.type === 'wallet',
     );
     // Type guard: ensure walletAccount has address property
-    const walletAddress = (walletAccount && 'address' in walletAccount) 
-      ? walletAccount.address 
-      : null;
- 
+    const walletAddress =
+      walletAccount && 'address' in walletAccount
+        ? walletAccount.address
+        : null;
 
     if (!walletAddress) {
       throw new UnauthorizedException('No wallet linked to Privy user');
@@ -64,12 +63,12 @@ export class AuthEmployerService {
       },
     });
 
-    console.log("Logged in company: ", company);
+    console.log('Logged in company: ', company);
 
-    const payload = { 
-      sub: company.id, 
+    const payload = {
+      sub: company.id,
       walletAddress: company.walletAddress,
-      privyId: company.privyId 
+      privyId: company.privyId,
     };
 
     return {

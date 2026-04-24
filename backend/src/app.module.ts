@@ -21,15 +21,16 @@ import { CompaniesModule } from './modules/profile-employer/companies.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ApplicantsModule } from './modules/applicants/applicants.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
+import { WalletSyncModule } from './modules/wallet-sync/wallet-sync.module';
 
 @Module({
   providers: [
-  {
-    provide: APP_GUARD,
-    useClass: ThrottlerGuard,
-  },
-  ZodValidationPipeProvider,
-],
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    ZodValidationPipeProvider,
+  ],
   imports: [
     ThrottlerModule.forRoot({
       throttlers: [
@@ -41,33 +42,33 @@ import { VouchersModule } from './modules/vouchers/vouchers.module';
     }),
     LoggerModule.forRoot({
       pinoHttp: {
-        transport: process.env.NODE_ENV !== 'production'
-          ? {
-              target: 'pino-pretty',
-              options: { singleLine: true },
-            }
-          : undefined,
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: { singleLine: true },
+              }
+            : undefined,
       },
     }),
     PrismaModule,
     RedisModule,
-	AnalyticsModule,
-	ApplicantsModule,
-    GithubSyncModule, 
-    JobsModule, 
+    AnalyticsModule,
+    ApplicantsModule,
+    GithubSyncModule,
+    JobsModule,
     AuthEmployerModule,
-	AuthCandidateModule,
-	CompaniesModule,
+    AuthCandidateModule,
+    CompaniesModule,
     HealthModule,
     QueuesModule,
     ScoringModule,
     EmailModule,
     ScorecardModule,
     ProfileModule,
-	CompaniesModule,
-	VouchersModule
-
+    CompaniesModule,
+    VouchersModule,
+    WalletSyncModule,
   ],
-
 })
 export class AppModule {}

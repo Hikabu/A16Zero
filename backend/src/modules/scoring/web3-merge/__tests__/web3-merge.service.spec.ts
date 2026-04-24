@@ -13,7 +13,9 @@ describe('Web3MergeService.applyVouchUpgrades', () => {
     service = module.get<Web3MergeService>(Web3MergeService);
   });
 
-  const baseResult = (confidence: 'low' | 'medium' | 'high' = 'low'): AnalysisResult => ({
+  const baseResult = (
+    confidence: 'low' | 'medium' | 'high' = 'low',
+  ): AnalysisResult => ({
     summary: 'Test summary',
     capabilities: {
       backend: { score: 0.5, confidence: 'medium' },

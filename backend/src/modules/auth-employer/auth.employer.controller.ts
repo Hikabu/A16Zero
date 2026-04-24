@@ -44,7 +44,8 @@ export class AuthEmployerController extends BaseController {
   })
   @ApiBody({
     type: LoginDto,
-    description: 'Optional login metadata used during company creation or update',
+    description:
+      'Optional login metadata used during company creation or update',
     examples: {
       default: {
         value: {

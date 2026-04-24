@@ -18,7 +18,9 @@ export class GithubSyncProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<{ candidateId: string; githubProfileId: string }>): Promise<any> {
+  async process(
+    job: Job<{ candidateId: string; githubProfileId: string }>,
+  ): Promise<any> {
     const { candidateId, githubProfileId } = job.data;
     this.logger.log(`Starting GitHub sync for profile ${githubProfileId}`);
 
@@ -37,24 +39,40 @@ export class GithubSyncProcessor extends WorkerHost {
         where: { id: githubProfileId },
         data: {
           syncStatus: SyncStatus.IN_PROGRESS,
-          syncProgress: JSON.stringify({ stage: 'fetching_repos', percent: 20 }),
+          syncProgress: JSON.stringify({
+            stage: 'fetching_repos',
+            percent: 20,
+          }),
         },
       });
 
       // (c) Call consolidated fetcher
-      const token = await this.githubAdapter.decryptToken(profile.encryptedToken); 
-      const rawData = await this.githubAdapter.fetchRawData(profile.githubUsername, token);
+      const token = await this.githubAdapter.decryptToken(
+        profile.encryptedToken,
+      );
+      const rawData = await this.githubAdapter.fetchRawData(
+        profile.githubUsername,
+        token,
+      );
 
       // (d) Set syncProgress = analyzing_projects (40% - interim)
       // Note: We'll jump to 60% in signal-compute processor
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          syncProgress: JSON.stringify({ stage: 'analyzing_projects', percent: 40 }),
+          syncProgress: JSON.stringify({
+            stage: 'analyzing_projects',
+            percent: 40,
+          }),
         },
       });
 
-      console.log("Fetched raw data for profile ", githubProfileId, ": ", JSON.stringify(rawData, null, 2));
+      console.log(
+        'Fetched raw data for profile ',
+        githubProfileId,
+        ': ',
+        JSON.stringify(rawData, null, 2),
+      );
 
       // (e) Save raw data, keep status = IN_PROGRESS, lastSyncAt
       await this.prisma.githubProfile.update({
@@ -66,21 +84,23 @@ export class GithubSyncProcessor extends WorkerHost {
         },
       });
 
-      // (f) Enqueue signal-compute
-      await this.signalQueue.add('compute-signals', { 
-          candidateId, 
-  githubProfileId, 
-  githubUsername: profile.githubUsername,
-  cached: false,
-       },
-      {
-        attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
-      });
+      // (f) Enqueue signal-compute NOT ANYMORE!
+      //     await this.signalQueue.add('compute-signals', {
+      //         candidateId,
+      // githubProfileId,
+      // githubUsername: profile.githubUsername,
+      // cached: false,
+      //      },
+      //     {
+      //       attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
+      //     });
 
       this.logger.log(`GitHub sync completed for profile ${githubProfileId}`);
     } catch (error) {
-      this.logger.error(`GitHub sync failed for profile ${githubProfileId}: ${error.message}`);
-      
+      this.logger.error(
+        `GitHub sync failed for profile ${githubProfileId}: ${error.message}`,
+      );
+
       // (g) On error: set status = FAILED, syncError = error.message
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
@@ -89,7 +109,7 @@ export class GithubSyncProcessor extends WorkerHost {
           syncError: error.message,
         },
       });
-      
+
       throw error;
     }
   }

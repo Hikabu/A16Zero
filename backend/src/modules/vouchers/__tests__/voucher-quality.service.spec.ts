@@ -52,14 +52,19 @@ describe('VoucherQualityService', () => {
     mockGetSignatures.mockResolvedValue([]);
     const result = await service.assessVoucherWallet('empty-wallet');
     expect(result).toBe('new');
-    expect(mockRedis.set).toHaveBeenCalledWith(expect.any(String), 'new', 'EX', 86400);
+    expect(mockRedis.set).toHaveBeenCalledWith(
+      expect.any(String),
+      'new',
+      'EX',
+      86400,
+    );
   });
 
   // 2. Wallet age 15 days → 'new'
   it('returns "new" if wallet is less than 30 days old', async () => {
     const fifteenDaysAgo = Date.now() / 1000 - 15 * 86400;
     mockGetSignatures.mockResolvedValue([{ blockTime: fifteenDaysAgo }]);
-    
+
     const result = await service.assessVoucherWallet('young-wallet');
     expect(result).toBe('new');
   });
@@ -87,7 +92,7 @@ describe('VoucherQualityService', () => {
   // 5. RPC throws → 'standard' (fail open)
   it('fails open and returns "standard" if RPC call fails', async () => {
     mockGetSignatures.mockRejectedValue(new Error('RPC Down'));
-    
+
     const result = await service.assessVoucherWallet('error-wallet');
     expect(result).toBe('standard');
   });
@@ -95,7 +100,7 @@ describe('VoucherQualityService', () => {
   // 6. Cache hit → returns cached, no RPC call
   it('returns cached value on hit without calling RPC', async () => {
     mockRedis.get.mockResolvedValue('verified');
-    
+
     const result = await service.assessVoucherWallet('cached-wallet');
     expect(result).toBe('verified');
     expect(mockGetSignatures).not.toHaveBeenCalled();

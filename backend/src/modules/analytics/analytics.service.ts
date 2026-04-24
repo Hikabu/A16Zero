@@ -11,7 +11,7 @@ export class AnalyticsService {
     });
 
     const activeJobs = await this.prisma.jobPost.count({
-      where: { 
+      where: {
         companyId,
         status: JobStatus.ACTIVE,
       },

@@ -1,4 +1,10 @@
-import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -18,7 +24,8 @@ export class UpdateUserDto {
   @MinLength(3)
   @MaxLength(32)
   @Matches(/^[a-zA-Z0-9_.-]+$/, {
-    message: 'Username can only contain letters, numbers, underscores, dots, and hyphens',
+    message:
+      'Username can only contain letters, numbers, underscores, dots, and hyphens',
   })
   username?: string;
 }

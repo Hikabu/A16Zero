@@ -4,7 +4,10 @@ import { Strategy, ExtractJwt } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class OnboardingStrategy extends PassportStrategy(Strategy, 'onboarding') {
+export class OnboardingStrategy extends PassportStrategy(
+  Strategy,
+  'onboarding',
+) {
   constructor(private config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([

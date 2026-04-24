@@ -198,6 +198,9 @@ model User {
 
   authAccounts AuthAccount[]
   candidate    Candidate?
+  web3Profile  Web3Profile?
+  githubProfile GithubProfile?
+  analysisJobs AnalysisJob[]
 }
 
 // ─── User AUTH  ──────────────────────────────────────────
@@ -259,6 +262,10 @@ model GithubProfile {
   id              String             @id @default(uuid())
   devCandidateId  String             @unique
   devCandidate    DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+  
+  userId          String?            @unique
+  user            User?              @relation(fields: [userId], references: [id])
+
   githubUsername  String             @unique
   githubUserId    String             @unique
   encryptedToken  String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
@@ -279,7 +286,11 @@ model Web3Profile {
   id                String             @id @default(uuid())
   devCandidateId    String             @unique
   devCandidate      DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  walletAddress String?
+  
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  solanaAddress     String?
   // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
   verifiedContracts Json?
   onChainMetrics    Json?
@@ -320,4 +331,18 @@ model CachedResult {
   result    Json
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model AnalysisJob {
+  id        String   @id @default(uuid())
+  status    String   @default("pending")
+  input     Json     // { githubUsername, walletAddress, mode, useGithubCache }
+  result    Json?
+  error     String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("analysis_jobs")
 }

@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { UpdateUserDto} from './dto/update-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
 import { AccountStatus } from '@prisma/client';
 

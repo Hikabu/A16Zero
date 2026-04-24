@@ -1,6 +1,9 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-
 
 @Injectable()
 export class GithubSyncConnectGuard extends AuthGuard('githubSyncConnect') {
@@ -22,7 +25,7 @@ export class GithubSyncConnectGuard extends AuthGuard('githubSyncConnect') {
       throw err || new UnauthorizedException(info?.message || 'OAuth failed');
     }
 
-    req.authUser = jwtUser;     //  store original user
-    return user;                // becomes req.user (GitHub)
+    req.authUser = jwtUser; //  store original user
+    return user; // becomes req.user (GitHub)
   }
 }

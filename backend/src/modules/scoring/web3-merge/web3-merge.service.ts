@@ -102,4 +102,3 @@ export class Web3MergeService {
     return updatedResult;
   }
 }
-
