@@ -21,7 +21,7 @@ import {
 } from '@nestjs/swagger';
 
 import { GithubSyncService } from './github-sync.service';
-import { GithubSyncConnectGuard } from '../../auth-candidate/guards/github.sync.connect.guard';
+import { GithubSyncConnectGuard } from '../auth-candidate/guards/github.sync.connect.guard';
 
 @ApiTags('GitHub Sync')
 @Controller('sync/github')
@@ -89,9 +89,9 @@ export class GithubSyncController {
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Generate scorecard for authenticated user',
+    summary: 'Sync Github before scorecard generation',
     description:
-      'Manually triggers a sync of GitHub data + scorecard generation, for the authenticated user. Requires GitHub to be connected.',
+      'Manually triggers a sync of GitHub data for the authenticated user. Requires GitHub to be connected. This step is required before generating a scorecard for a signed in user',
   })
   @ApiOkResponse({
     description: 'Sync job successfully queued or executed',
