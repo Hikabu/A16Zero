@@ -7,11 +7,13 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { ZodValidationPipe } from 'nestjs-zod';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  app.use(cookieParser());
   // Security
   app.use(helmet());
   app.enableCors({
