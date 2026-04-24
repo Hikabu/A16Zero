@@ -1,34 +1,137 @@
-import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { WalletSyncService } from './wallet-sync.service';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-
-@ApiTags('Wallet Sync')
-@ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
-@Controller('sync/wallet')
-export class WalletSyncController {
-  constructor(private readonly walletSyncService: WalletSyncService) {}
-
-  @Get('challenge')
-  @ApiOperation({ summary: 'Generate a wallet linking challenge' })
-  async getChallenge(@Req() req: any) {
-    const challenge = await this.walletSyncService.generateChallenge(
-      req.user.id,
-    );
-    return { challenge };
+import {
+	Controller,
+	Get,
+	Post,
+	Body,
+	UseGuards,
+	Req,
+  } from '@nestjs/common';
+  import { AuthGuard } from '@nestjs/passport';
+  import {
+	ApiTags,
+	ApiOperation,
+	ApiBearerAuth,
+	ApiOkResponse,
+	ApiCreatedResponse,
+	ApiBadRequestResponse,
+	ApiUnauthorizedResponse,
+	ApiNotFoundResponse,
+	ApiBody,
+  } from '@nestjs/swagger';
+  
+  import { WalletSyncService } from './wallet-sync.service';
+  import {
+	ChallengeResponseDto,
+	LinkWalletRequestDto,
+	LinkWalletResponseDto,
+	WalletSyncErrorResponseDto,
+  } from './dto/wallet-sync.dto';
+  
+  @ApiTags('Wallet Sync')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Controller('sync/wallet')
+  export class WalletSyncController {
+	constructor(private readonly walletSyncService: WalletSyncService) {}
+  
+	/**
+	 * Generate wallet linking challenge
+	 */
+	@Get('challenge')
+	@ApiOperation({
+	  summary: 'Generate wallet linking challenge',
+	  description:
+		'Creates a time-limited cryptographic challenge used to verify wallet ownership before linking a Solana wallet to the user account. Flow [server gives you a challenge-message >>> wallet signs challenge-message >>> server verifies signature match for challenge-message] This is step 1 in the flow ',
+	})
+	@ApiOkResponse({
+	  description: 'Challenge successfully generated',
+	  type: ChallengeResponseDto,
+	  example: {
+		challenge: 'link-wallet:user123:1713940000000:a1b2c3',
+	  },
+	})
+	@ApiUnauthorizedResponse({
+	  description: 'User is not authenticated',
+	  type: WalletSyncErrorResponseDto,
+	  example: {
+		statusCode: 401,
+		message: 'Unauthorized',
+		error: 'Unauthorized',
+	  },
+	})
+	async getChallenge(@Req() req: any): Promise<ChallengeResponseDto> {
+	  const challenge = await this.walletSyncService.generateChallenge(
+		req.user.id,
+	  );
+  
+	  return { challenge };
+	}
+  
+	/**
+	 * Link Solana wallet to authenticated user
+	 */
+	@Post()
+	@ApiOperation({
+	  summary: 'Verify wallet signature and link wallet',
+	  description:
+		'Verifies a Solana wallet signature against a previously generated challenge and links the wallet to the authenticated user account.',
+	})
+	@ApiBody({
+	  type: LinkWalletRequestDto,
+	  description: 'Wallet address and cryptographic signature',
+	  examples: {
+		example1: {
+		  summary: 'Valid request example',
+		  value: {
+			walletAddress: '7Gg3...SolanaAddressExample...',
+			signature: '5hK9...Base58Signature...',
+		  },
+		},
+	  },
+	})
+	@ApiOkResponse({
+	  description: 'Wallet successfully linked',
+	  type: LinkWalletResponseDto,
+	  example: {
+		linked: true,
+		solanaAddress: '7Gg3...SolanaAddressExample...',
+	  },
+	})
+	@ApiBadRequestResponse({
+	  description: 'Invalid wallet address format',
+	  type: WalletSyncErrorResponseDto,
+	  example: {
+		statusCode: 400,
+		message: 'Invalid Solana wallet address',
+		error: 'Bad Request',
+	  },
+	})
+	@ApiNotFoundResponse({
+	  description: 'Challenge expired or candidate profile missing',
+	  type: WalletSyncErrorResponseDto,
+	  example: {
+		statusCode: 404,
+		message: 'Challenge expired or not found',
+		error: 'Not Found',
+	  },
+	})
+	@ApiUnauthorizedResponse({
+	  description: 'Signature verification failed',
+	  type: WalletSyncErrorResponseDto,
+	  example: {
+		statusCode: 401,
+		message: 'Wallet signature invalid',
+		error: 'Unauthorized',
+	  },
+	})
+	async linkWallet(
+	  @Req() req: any,
+	  @Body() body: LinkWalletRequestDto,
+	): Promise<LinkWalletResponseDto> {
+	  return this.walletSyncService.linkWallet(
+		req.user.id,
+		body.walletAddress,
+		body.signature,
+	  );
+	}
   }
-
-  @Post()
-  @ApiOperation({ summary: 'Verify signature and link wallet' })
-  async linkWallet(
-    @Req() req: any,
-    @Body() body: { walletAddress: string; signature: string },
-  ) {
-    return this.walletSyncService.linkWallet(
-      req.user.id,
-      body.walletAddress,
-      body.signature,
-    );
-  }
-}

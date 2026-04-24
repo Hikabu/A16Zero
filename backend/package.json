@@ -27,7 +27,8 @@
 		"worker": "ts-node src/worker.ts",
 		"worker:dev": "ts-node-dev --respawn --transpile-only src/worker.ts",
 		"env:sync": "ts-node scripts/sync-env.ts",
-		"preload:cache": "ts-node -r tsconfig-paths/register src/scripts/preload-cache.ts"
+		"preload:cache": "ts-node -r tsconfig-paths/register src/scripts/preload-cache.ts",
+		"wallet:sign": "ts-node scripts/test-sign-message.ts"
 	},
 	"dependencies": {
 		"@alchemy/aa-accounts": "^3.19.0",

@@ -1,15 +1,13 @@
-import { GithubSyncConnectStrategy } from './strategies/github.sync.connect.strategy';
-
 export default () => ({
   app: {
     url: process.env.SERVER_URL || 'http://localhost:8000',
   },
   auth: {
-    githubCallback: '/auth/github/callback',
-    githubLinkCallback: '/auth/github/link/callback',
+    githubCallback: '/auth/candidate/github/callback',
+    githubLinkCallback: '/auth/candidate/github/link/callback',
     githubSyncConnectCallback: '/me/github/sync/connect/callback',
-    googleCallback: '/auth/google/callback',
-    googleLinkCallback: '/auth/google/link/callback',
+    googleCallback: '/auth/candidate/google/callback',
+    googleLinkCallback: '/auth/candidate/google/link/callback',
     encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
   },
   jwt_secret: {
