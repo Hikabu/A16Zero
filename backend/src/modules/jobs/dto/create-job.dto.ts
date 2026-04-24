@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { RoleType } from '@prisma/client';
@@ -9,7 +15,9 @@ export class CreateJobDto {
   @IsNotEmpty()
   title: string;
 
-  @ApiProperty({ example: 'We are looking for a senior engineer to join our team.' })
+  @ApiProperty({
+    example: 'We are looking for a senior engineer to join our team.',
+  })
   @IsString()
   @IsNotEmpty()
   description: string;

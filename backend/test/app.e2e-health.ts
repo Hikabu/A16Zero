@@ -7,14 +7,14 @@ describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
-    ({app} = await resetBefore());
+    ({ app } = await resetBefore());
   });
 
   it('/ (GET)', () => {
     return request(app.getHttpServer())
       .get('/health')
       .expect(200)
-      .expect({"status":"ok"});
+      .expect({ status: 'ok' });
   });
 
   afterEach(async () => {

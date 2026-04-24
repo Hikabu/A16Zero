@@ -33,20 +33,26 @@ describe('GithubSync (e2e)', () => {
   beforeAll(async () => {
     // Setup Test DB
     process.env.DATABASE_URL = testDbUrl;
-    
+
     // Create DB if not exists (Postgres specific)
     try {
       const dbName = testDbUrl.split('/').pop()?.split('?')[0];
-      const baseConnectionString = originalDbUrl?.substring(0, originalDbUrl.lastIndexOf('/')) + '/postgres';
+      const baseConnectionString =
+        originalDbUrl?.substring(0, originalDbUrl.lastIndexOf('/')) +
+        '/postgres';
       // Simple raw command to create DB
       // Note: This might need adjustments depending on the environment, but it's a standard approach for CI
-      execSync(`psql ${baseConnectionString} -c "CREATE DATABASE ${dbName};" || true`);
+      execSync(
+        `psql ${baseConnectionString} -c "CREATE DATABASE ${dbName};" || true`,
+      );
     } catch (e) {
       console.log('Database might already exist or psql not available');
     }
 
     // Run migrations
-    execSync('npx prisma migrate deploy', { env: { ...process.env, DATABASE_URL: testDbUrl } });
+    execSync('npx prisma migrate deploy', {
+      env: { ...process.env, DATABASE_URL: testDbUrl },
+    });
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -105,9 +111,9 @@ describe('GithubSync (e2e)', () => {
     await prisma.user.deleteMany();
     await prisma.$disconnect();
     const signalQueue = app.get(getQueueToken('signal-compute'));
-await signalQueue.close?.();
+    await signalQueue.close?.();
     const redis = app.get('REDIS');
-await redis.quit();
+    await redis.quit();
     await app.close();
     process.env.DATABASE_URL = originalDbUrl;
   });
@@ -138,7 +144,10 @@ await redis.quit();
       },
     });
 
-    const encryptedToken = encrypt('fake-token', process.env.AUTH_ENCRYPTION_KEY!);
+    const encryptedToken = encrypt(
+      'fake-token',
+      process.env.AUTH_ENCRYPTION_KEY!,
+    );
 
     testGithubProfile = await prisma.githubProfile.create({
       data: {
@@ -152,7 +161,7 @@ await redis.quit();
 
     accessToken = jwt.sign(
       { sub: testUser.id, isEmailVerified: true, role: UserRole.CANDIDATE },
-      { secret: process.env.JWT_ACCESS_SECRET }
+      { secret: process.env.JWT_ACCESS_SECRET },
     );
   });
 
@@ -161,8 +170,8 @@ await redis.quit();
       .post('/me/github/sync')
       .set('Authorization', `Bearer ${accessToken}`);
 
-      expect(response.status).toBe(201); // Triggering sync returns 201 for Created (job queued)
-    
+    expect(response.status).toBe(201); // Triggering sync returns 201 for Created (job queued)
+
     const profile = await prisma.githubProfile.findUnique({
       where: { id: testGithubProfile.id },
     });
@@ -186,7 +195,7 @@ await redis.quit();
 
     // Check status - In stage 2, status remains IN_PROGRESS until signals are computed
     expect(updatedProfile?.syncStatus).toBe(SyncStatus.IN_PROGRESS);
-    
+
     // Check JSON-encoded progress
     const progress = JSON.parse(updatedProfile?.syncProgress || '{}');
     expect(progress).toHaveProperty('stage', 'analyzing_projects');
@@ -201,16 +210,17 @@ await redis.quit();
     expect(snapshot.repos.length).toBe(GITHUB_REST_FIXTURE.repos.length);
     expect(snapshot.contributions.activeWeeksCount).toBe(52);
 
-    expect(new Date(updatedProfile!.lastSyncAt!).getTime())
-      .toBeGreaterThan(Date.now() - 5000);
+    expect(new Date(updatedProfile!.lastSyncAt!).getTime()).toBeGreaterThan(
+      Date.now() - 5000,
+    );
 
     expect(signalQueueMock.add).toHaveBeenCalledWith(
-  'compute-signals',
-  expect.objectContaining({
-    githubProfileId: testGithubProfile.id,
-  }),
-  expect.any(Object) // matches { attempts: 1 }
-);
+      'compute-signals',
+      expect.objectContaining({
+        githubProfileId: testGithubProfile.id,
+      }),
+      expect.any(Object), // matches { attempts: 1 }
+    );
   });
 
   it('Step 6: POST /api/me/github/sync again (Rate Limit)', async () => {

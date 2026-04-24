@@ -1,4 +1,4 @@
-import { Processor } from '@nestjs/bullmq'; 
+import { Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,7 +11,6 @@ import { GithubAdapterService } from '../modules/scoring/github-adapter/github-a
 import { CacheService } from '../modules/scoring/cache/cache.service';
 import { SolanaAdapterService } from '../modules/scoring/web3-adapter/solana-adapter.service';
 import { Web3MergeService } from '../modules/scoring/web3-merge/web3-merge.service';
-
 
 @Processor('signal-compute', { concurrency: 10 })
 export class SignalComputeProcessor {
@@ -27,79 +26,53 @@ export class SignalComputeProcessor {
     private readonly web3MergeService: Web3MergeService,
   ) {}
 
-
   async process(
     job: Job<{
-      candidateId?: string;
-      githubProfileId?: string;
+      jobId: string;
       githubUsername?: string;
       walletAddress?: string;
-      cached?: boolean;
+      mode: 'github-only' | 'github+wallet' | 'wallet-only';
+      useGithubCache?: boolean;
     }>,
   ): Promise<AnalysisResult | void> {
     const pipelineStart = Date.now();
-    const { githubProfileId, githubUsername, walletAddress, cached } = job.data;
+    const {
+      jobId: recordId,
+      githubUsername,
+      walletAddress,
+      useGithubCache,
+      mode,
+    } = job.data;
 
     this.logger.log(
       `Starting signal pipeline for profile ${
-        githubProfileId || githubUsername || walletAddress
-      }`,
+        githubUsername || walletAddress
+      } in mode ${mode}`,
     );
 
-	type AnalysisMode = 'github-only' | 'github+wallet' | 'wallet-only';
-    const mode: AnalysisMode =
-      githubUsername && walletAddress
-        ? 'github+wallet'
-        : walletAddress
-          ? 'wallet-only'
-          : 'github-only';
+    let profile: any;
+    let rawData: any;
+    let hasSnapshot = false;
 
     try {
-      let profile: any;
-      let rawData: any;
-      let hasSnapshot = false;
-
-      if (cached && (githubUsername || walletAddress)) {
-        // Return cached result - job should already be marked complete
-        this.logger.log(
-          `Returning cached result for ${githubUsername || walletAddress}`,
-        );
-        const cacheKey = this.cacheService.buildCacheKey(
-          githubUsername,
-          walletAddress,
-        );
-        let cachedResult = await this.cacheService.get(cacheKey);
-        if (cachedResult) {
-          // S15 — Vouch signal (Always live)
-          cachedResult = await this.applyVouchSignal(cachedResult, job.data);
-
-          this.logger.log(
-            {
-              jobId: job.id,
-              mode,
-              durationMs: Date.now() - pipelineStart,
-            },
-            'analysis_complete',
-          );
-          return cachedResult;
-        }
-      }
+      // Update DB job record to processing
+      await this.prisma.analysisJob.update({
+        where: { id: recordId },
+        data: { status: 'processing' },
+      });
 
       // Fetch or get existing profile for modes involving GitHub
-      if (githubProfileId) {
+      if (mode !== 'wallet-only' && githubUsername) {
         profile = await this.prisma.githubProfile.findUnique({
-          where: { id: githubProfileId },
+          where: { githubUsername },
           include: { devCandidate: true },
         });
 
-        if (!profile) {
-          throw new Error(`GithubProfile ${githubProfileId} not found`);
-        }
-
-        // Check if we have a cached snapshot
-        if (profile.rawDataSnapshot) {
+        // If we want to use cache, check if snapshot exists
+        if (useGithubCache && profile?.rawDataSnapshot) {
           rawData = profile.rawDataSnapshot as unknown as GithubRawDataSnapshot;
           hasSnapshot = true;
+          this.logger.log(`Using cached GitHub snapshot for ${githubUsername}`);
         }
       }
 
@@ -150,7 +123,16 @@ export class SignalComputeProcessor {
         }
 
         // S15 — Vouch signal (Live)
-        result = await this.applyVouchSignal(result, job.data);
+        result = await this.applyVouchSignal(result, { githubUsername });
+
+        // Update AnalysisJob status to completed
+        await this.prisma.analysisJob.update({
+          where: { id: recordId },
+          data: {
+            status: 'completed',
+            result: result as any,
+          },
+        });
 
         this.logger.log(
           {
@@ -165,7 +147,7 @@ export class SignalComputeProcessor {
 
       // Modes involving GitHub: 'github-only' and 'github+wallet'
       if (!hasSnapshot && githubUsername) {
-        await this.updateProgress(githubProfileId, 'fetching_repos', 20);
+        await this.updateProgress(profile?.id, 'fetching_repos', 20);
 
         try {
           const token = profile?.encryptedToken
@@ -186,10 +168,13 @@ export class SignalComputeProcessor {
             );
           }
 
-          if (profile && githubProfileId) {
+          if (profile) {
             await this.prisma.githubProfile.update({
-              where: { id: githubProfileId },
-              data: { rawDataSnapshot: rawData },
+              where: { id: profile.id },
+              data: {
+                rawDataSnapshot: rawData,
+                lastSyncAt: new Date(),
+              },
             });
           }
         } catch (error) {
@@ -205,13 +190,13 @@ export class SignalComputeProcessor {
       }
 
       // Update progress: analyzing_projects (50%)
-      await this.updateProgress(githubProfileId, 'analyzing_projects', 50);
+      await this.updateProgress(profile?.id, 'analyzing_projects', 50);
 
       // Extract signals
       const signals = this.signalExtractor.extract(rawData);
 
       // Update progress: building_profile (75%)
-      await this.updateProgress(githubProfileId, 'building_profile', 75);
+      await this.updateProgress(profile?.id, 'building_profile', 75);
 
       // Score
       let result = this.scoringService.score(rawData, walletAddress);
@@ -236,15 +221,24 @@ export class SignalComputeProcessor {
       }
 
       // S15 — Vouch signal (Live)
-      result = await this.applyVouchSignal(result, job.data);
+      result = await this.applyVouchSignal(result, { githubUsername });
 
       // Update progress: complete (100%)
-      await this.updateProgress(githubProfileId, 'complete', 100);
+      await this.updateProgress(profile?.id, 'complete', 100);
+
+      // Update AnalysisJob
+      await this.prisma.analysisJob.update({
+        where: { id: recordId },
+        data: {
+          status: 'completed',
+          result: result as any,
+        },
+      });
 
       // Update profile status
-      if (githubProfileId) {
+      if (profile) {
         await this.prisma.githubProfile.update({
-          where: { id: githubProfileId },
+          where: { id: profile.id },
           data: {
             syncStatus: SyncStatus.DONE,
             syncProgress: JSON.stringify({ stage: 'complete', percent: 100 }),
@@ -268,10 +262,22 @@ export class SignalComputeProcessor {
       );
 
       // Update failure status
-      if (githubProfileId) {
+      if (recordId) {
+        await this.prisma.analysisJob
+          .update({
+            where: { id: recordId },
+            data: {
+              status: 'failed',
+              error: (error as Error).message,
+            },
+          })
+          .catch(() => {});
+      }
+
+      if (profile) {
         try {
           await this.prisma.githubProfile.update({
-            where: { id: githubProfileId },
+            where: { id: profile.id },
             data: {
               syncStatus: SyncStatus.FAILED,
               syncProgress: JSON.stringify({
@@ -356,33 +362,5 @@ export class SignalComputeProcessor {
       verifiedVouchCount,
       activeVouches,
     );
-  }
-
-  private buildPlaceholderResult(): AnalysisResult {
-    return {
-      summary: 'Placeholder summary for the refactored scoring engine.',
-      capabilities: {
-        backend: { score: 0, confidence: 'low' },
-        frontend: { score: 0, confidence: 'low' },
-        devops: { score: 0, confidence: 'low' },
-      },
-      ownership: {
-        ownedProjects: 0,
-        activelyMaintained: 0,
-        confidence: 'low',
-      },
-      impact: {
-        activityLevel: 'low',
-        consistency: 'sparse',
-        externalContributions: 0,
-        confidence: 'low',
-      },
-      reputation: null,
-      stack: {
-        languages: [],
-        tools: [],
-      },
-      web3: null,
-    };
   }
 }

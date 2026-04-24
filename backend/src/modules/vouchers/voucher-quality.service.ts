@@ -33,7 +33,9 @@ export class VoucherQualityService {
 
     const rpcUrl = this.config.get<string>('SOLANA_RPC_URL');
     if (!rpcUrl) {
-      this.logger.warn('SOLANA_RPC_URL not configured — defaulting to standard');
+      this.logger.warn(
+        'SOLANA_RPC_URL not configured — defaulting to standard',
+      );
       return 'standard';
     }
 

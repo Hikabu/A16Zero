@@ -4,12 +4,12 @@ import Redis from 'ioredis';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { decrypt } from '../../../shared/utils/crypto.utils';
 import { SyncStatus } from '@prisma/client';
-import { 
-  GitHubRawData, 
-  GitHubRepo, 
-  GitHubUserProfile, 
-  GitHubContributionData, 
-  GitHubExternalPRData 
+import {
+  GitHubRawData,
+  GitHubRepo,
+  GitHubUserProfile,
+  GitHubContributionData,
+  GitHubExternalPRData,
 } from './github-data.types';
 
 const MAX_REPOS = 30;
@@ -54,7 +54,9 @@ export class GithubAdapterService {
         },
       });
     } catch (error) {
-      this.logger.error(`Sync failed for profile ${githubProfileId}: ${error.message}`);
+      this.logger.error(
+        `Sync failed for profile ${githubProfileId}: ${error.message}`,
+      );
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: { syncStatus: SyncStatus.FAILED },
@@ -66,7 +68,10 @@ export class GithubAdapterService {
   /**
    * Fetches the minimal audited data required for scoring.
    */
-  async fetchRawData(githubUsername: string, token: string): Promise<GitHubRawData> {
+  async fetchRawData(
+    githubUsername: string,
+    token: string,
+  ): Promise<GitHubRawData> {
     return this.withCache(`github:v2:raw:${githubUsername}`, async () => {
       const octokit = new Octokit({ auth: token });
 
@@ -76,33 +81,42 @@ export class GithubAdapterService {
       // 2. Fetch Repos (limited to MAX_REPOS)
       const repos = await this.fetchRepos(octokit, githubUsername);
 
-	  const manifestKeys = await this.fetchManifests(
+      const manifestKeys = await this.fetchManifests(
         octokit,
         githubUsername,
         repos,
       );
 
-
       // 3. Fetch GraphQL data (Contributions & External PRs)
-      const { contributions, externalPRs } = await this.fetchGraphQLData(octokit, githubUsername);
+      const { contributions, externalPRs } = await this.fetchGraphQLData(
+        octokit,
+        githubUsername,
+      );
 
       return {
         profile: profileData,
         repos,
         contributions,
         externalPRs,
-		manifestKeys,
+        manifestKeys,
         fetchedAt: new Date(),
       };
     });
   }
 
-  private async fetchProfile(octokit: Octokit, username: string): Promise<GitHubUserProfile> {
-    const res = await this.withRetry(() => octokit.rest.users.getByUsername({ username }));
+  private async fetchProfile(
+    octokit: Octokit,
+    username: string,
+  ): Promise<GitHubUserProfile> {
+    const res = await this.withRetry(() =>
+      octokit.rest.users.getByUsername({ username }),
+    );
     const data = res.data;
 
     const accountCreatedAt = new Date(data.created_at);
-    const monthsDiff = (new Date().getTime() - accountCreatedAt.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+    const monthsDiff =
+      (new Date().getTime() - accountCreatedAt.getTime()) /
+      (1000 * 60 * 60 * 24 * 30.44);
 
     return {
       username: data.login,
@@ -113,20 +127,23 @@ export class GithubAdapterService {
     };
   }
 
-  private async fetchRepos(octokit: Octokit, username: string): Promise<GitHubRepo[]> {
-    const res = await this.withRetry(() => 
+  private async fetchRepos(
+    octokit: Octokit,
+    username: string,
+  ): Promise<GitHubRepo[]> {
+    const res = await this.withRetry(() =>
       octokit.rest.repos.listForUser({
         username,
         sort: 'pushed',
         per_page: 100, // We fetch 100 but only take MAX_REPOS
         headers: {
-          'accept': 'application/vnd.github.mercy-preview+json'
-        }
-      })
+          accept: 'application/vnd.github.mercy-preview+json',
+        },
+      }),
     );
 
     const rawRepos = res.data as any[];
-    return rawRepos.slice(0, MAX_REPOS).map(r => ({
+    return rawRepos.slice(0, MAX_REPOS).map((r) => ({
       name: r.name,
       language: r.language,
       stars: r.stargazers_count,
@@ -139,7 +156,13 @@ export class GithubAdapterService {
     }));
   }
 
-  private async fetchGraphQLData(octokit: Octokit, username: string): Promise<{ contributions: GitHubContributionData, externalPRs: GitHubExternalPRData }> {
+  private async fetchGraphQLData(
+    octokit: Octokit,
+    username: string,
+  ): Promise<{
+    contributions: GitHubContributionData;
+    externalPRs: GitHubExternalPRData;
+  }> {
     const query = `
       query($login: String!) {
         user(login: $login) {
@@ -164,18 +187,23 @@ export class GithubAdapterService {
       }
     `;
 
-    const result: any = await this.withRetry(() => 
+    const result: any = await this.withRetry(() =>
       octokit.graphql(query, {
         login: username,
-      })
+      }),
     );
 
     const user = result.user;
 
     // Process Contributions
-    const weeklyTotals: number[] = (user.contributionsCollection.contributionCalendar.weeks || [])
-      .map((week: any) => 
-        week.contributionDays.reduce((sum: number, day: any) => sum + day.contributionCount, 0)
+    const weeklyTotals: number[] = (
+      user.contributionsCollection.contributionCalendar.weeks || []
+    )
+      .map((week: any) =>
+        week.contributionDays.reduce(
+          (sum: number, day: any) => sum + day.contributionCount,
+          0,
+        ),
       )
       .slice(-52); // Ensure exactly 52 weeks
 
@@ -184,11 +212,12 @@ export class GithubAdapterService {
       weeklyTotals.unshift(0);
     }
 
-    const activeWeeksCount = weeklyTotals.filter(total => total > 0).length;
+    const activeWeeksCount = weeklyTotals.filter((total) => total > 0).length;
 
     // Process External PRs
-    const externalPRs = user.pullRequests.nodes.filter((pr: any) => 
-      pr.repository.owner.login.toLowerCase() !== username.toLowerCase()
+    const externalPRs = user.pullRequests.nodes.filter(
+      (pr: any) =>
+        pr.repository.owner.login.toLowerCase() !== username.toLowerCase(),
     );
 
     return {
@@ -198,26 +227,33 @@ export class GithubAdapterService {
       },
       externalPRs: {
         mergedExternalPRCount: externalPRs.length,
-        externalRepoNames: Array.from(new Set(externalPRs.map((pr: any) => pr.repository.name))) as string[],
-      }
+        externalRepoNames: Array.from(
+          new Set(externalPRs.map((pr: any) => pr.repository.name)),
+        ),
+      },
     };
   }
 
   public decryptToken(encryptedToken: string): string {
-    console.log(`Decrypting token, length: ${encryptedToken.length}, startsWith v1: ${encryptedToken.startsWith('v1:')}`);
+    console.log(
+      `Decrypting token, length: ${encryptedToken.length}, startsWith v1: ${encryptedToken.startsWith('v1:')}`,
+    );
     const key = process.env.AUTH_ENCRYPTION_KEY;
     if (!key) throw new Error('AUTH_ENCRYPTION_KEY not set');
-    
-    const data = encryptedToken.startsWith('v1:') 
-      ? encryptedToken.substring(3) 
+
+    const data = encryptedToken.startsWith('v1:')
+      ? encryptedToken.substring(3)
       : encryptedToken;
 
-    const decripted =  decrypt(data, key);
+    const decripted = decrypt(data, key);
     console.log(`Decrypted token, length: ${decripted.length}`);
     return decripted;
   }
 
-  private async withCache<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  private async withCache<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+  ): Promise<T> {
     const cached = await this.redis.get(key);
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -234,25 +270,27 @@ export class GithubAdapterService {
       return await fn();
     } catch (error: any) {
       const status = error.status || (error.response && error.response.status);
-      const isRateLimit = status === 429 || (status === 403 && error.message?.toLowerCase().includes('rate limit'));
-      
+      const isRateLimit =
+        status === 429 ||
+        (status === 403 && error.message?.toLowerCase().includes('rate limit'));
+
       if (attempts > 1 && isRateLimit) {
         this.logger.warn(`GitHub API rate limit hit. Retrying in 2 seconds...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         return this.withRetry(fn, attempts - 1);
       }
 
       if (isRateLimit) {
-        throw new Error('GitHub API rate limit exceeded — please retry in a few minutes');
+        throw new Error(
+          'GitHub API rate limit exceeded — please retry in a few minutes',
+        );
       }
-      
+
       throw error;
     }
   }
 
-
-
-private async fetchManifests(
+  private async fetchManifests(
     octokit: Octokit,
     username: string,
     repos: GitHubRepo[],

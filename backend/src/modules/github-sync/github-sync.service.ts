@@ -14,7 +14,7 @@ import { SyncStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import * as crypto from 'crypto';
-import { encrypt } from 'src/shared/utils/crypto.utils';
+import { encrypt } from '../../shared/utils/crypto.utils';
 
 @Injectable()
 export class GithubSyncService {
@@ -55,7 +55,7 @@ export class GithubSyncService {
 
     const clientId = this.config.get('GITHUB_CLIENT_ID');
     const callbackUrl = `${this.config.get('app.url')}${this.config.get('auth.githubSyncConnectCallback')}`;
-console.log("callback url: ", callbackUrl);
+    console.log('callback url: ', callbackUrl);
     const scopes = encodeURIComponent('read:user repo');
 
     return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scopes}&state=${state}`;
@@ -63,25 +63,36 @@ console.log("callback url: ", callbackUrl);
 
   // ─── Connect step 2: OAuth callback → create GithubProfile ───────
   async connectGithub(
-    githubData: { githubId: string; login: string; accessToken: string; scopes: string[] },
+    githubData: {
+      githubId: string;
+      login: string;
+      accessToken: string;
+      scopes: string[];
+    },
     state: string,
   ) {
     // Recover userId from Redis state — same pattern as linkOAuth
     const userId = await this.redis.get(`github_sync_state:${state}`);
     if (!userId) {
-      throw new UnauthorizedException('Invalid or expired connect state. Please try again.');
+      throw new UnauthorizedException(
+        'Invalid or expired connect state. Please try again.',
+      );
     }
     await this.redis.del(`github_sync_state:${state}`);
 
-const candidate = await this.ensureDevCandidate(userId);
-if (!candidate?.devProfile) {
-  throw new InternalServerErrorException('Failed to ensure developer profile.');
-}
-const key = this.config.get<string>('AUTH_ENCRYPTION_KEY');
-if (!key) {
-  throw new InternalServerErrorException('Encryption key is not configured.');
-}
-const encryptedToken = encrypt(githubData.accessToken, key);
+    const candidate = await this.ensureDevCandidate(userId);
+    if (!candidate?.devProfile) {
+      throw new InternalServerErrorException(
+        'Failed to ensure developer profile.',
+      );
+    }
+    const key = this.config.get<string>('AUTH_ENCRYPTION_KEY');
+    if (!key) {
+      throw new InternalServerErrorException(
+        'Encryption key is not configured.',
+      );
+    }
+    const encryptedToken = encrypt(githubData.accessToken, key);
 
     await this.prisma.githubProfile.upsert({
       where: { devCandidateId: candidate.devProfile.id },
@@ -123,28 +134,33 @@ const encryptedToken = encrypt(githubData.accessToken, key);
     }
 
     // Rate limit: 24h (skip if called internally from connectGithub — lastSyncAt is null on first sync)
-    // if (githubProfile.lastSyncAt) {
-    //   const diffHours =
-    //     (Date.now() - new Date(githubProfile.lastSyncAt).getTime()) / (1000 * 60 * 60);
+    if (githubProfile.lastSyncAt) {
+      const diffHours =
+        (Date.now() - new Date(githubProfile.lastSyncAt).getTime()) /
+        (1000 * 60 * 60);
 
-    //   if (diffHours < 24) {
-    //     throw new HttpException(
-    //       {
-    //         code: 'RATE_LIMITED',
-    //         message: 'You can only sync once every 24 hours.',
-    //         retryAfter: Math.ceil(24 - diffHours),
-    //       },
-    //       HttpStatus.TOO_MANY_REQUESTS,
-    //     );
-    //   }
-    // }
+      if (diffHours < 24) {
+        throw new HttpException(
+          {
+            code: 'RATE_LIMITED',
+            message: 'You can only sync once every 24 hours.',
+            retryAfter: Math.ceil(24 - diffHours),
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
 
     const updated = await this.prisma.githubProfile.update({
       where: { id: githubProfile.id },
-      data: { syncStatus: SyncStatus.PENDING, syncProgress: '0', syncError: null },
+      data: {
+        syncStatus: SyncStatus.PENDING,
+        syncProgress: '0',
+        syncError: null,
+      },
     });
 
-    console.log("addign sync job to queue with data" );
+    console.log('addign sync job to queue with data');
 
     await this.githubSyncQueue.add('sync-profile', {
       candidateId: candidate.id,
@@ -152,7 +168,10 @@ const encryptedToken = encrypt(githubData.accessToken, key);
       githubProfileId: githubProfile.id,
     });
 
-    return updated;
+    return {
+      synced: true,
+      githubUsername: updated.githubUsername,
+    };
   }
 
   // ─── Status ───────────────────────────────────────────────────────

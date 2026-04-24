@@ -7,22 +7,23 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor() {
     const secret = process.env.JWT_ACCESS_SECRET;
 
-if (!secret) throw new Error('JWT_ACCESS_SECRET missing');
+    if (!secret) throw new Error('JWT_ACCESS_SECRET missing');
 
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-  (req) => req?.cookies?.access_token,
-  ExtractJwt.fromAuthHeaderAsBearerToken(),
-]),
+        (req) => req?.cookies?.access_token,
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       secretOrKey: secret,
     });
   }
 
   async validate(payload: any) {
-    return { 
-      id: payload.sub, 
+    return {
+      id: payload.sub,
       isEmailVerified: payload.isEmailVerified,
-      role: payload.role 
+      role: payload.role,
+      web3Profile: payload.web3Profile || null,
     };
   }
 }

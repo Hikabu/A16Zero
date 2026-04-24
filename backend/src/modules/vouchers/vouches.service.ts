@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import nacl from 'tweetnacl';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -48,12 +48,21 @@ export class VouchesService {
   async confirmVouch(input: ConfirmVouchInput) {
     const { candidateIdentifier, voucherWallet, message, txSignature } = input;
 
+    if (!voucherWallet) {
+      throw new UnauthorizedException(
+        'No linked wallet found for this account',
+      );
+    }
+
     // ── Step 0: Idempotency — bail early if tx already recorded ──────────
     const existing = await this.prisma.vouch.findUnique({
       where: { txSignature },
     });
     if (existing) {
-      this.logger.log({ txSignature }, 'vouch_already_confirmed — idempotent return');
+      this.logger.log(
+        { txSignature },
+        'vouch_already_confirmed — idempotent return',
+      );
       return existing;
     }
 
@@ -84,10 +93,10 @@ export class VouchesService {
       );
     }
 
-	//TODO check wallet
+    //TODO check wallet
 
     // ── Step 2: Hard block — self-vouch ───────────────────────────────────
-    const candidateWallet = candidate.devProfile?.web3Profile?.walletAddress;
+    const candidateWallet = candidate.devProfile?.web3Profile?.solanaAddress;
     if (candidateWallet && candidateWallet === voucherWallet) {
       throw new BadRequestException('Cannot vouch for yourself');
     }
@@ -162,26 +171,12 @@ export class VouchesService {
   async revokeVouch(
     vouchId: string,
     voucherWallet: string,
-    signedMessage: string,
+    _signedMessage?: string,
   ): Promise<void> {
-    // ── 1. Signature Verification ────────────────────────────────────────
-    try {
-      const expectedMsg = Buffer.from(`revoke-vouch:${vouchId}`);
-      const sigBytes = bs58.decode(signedMessage);
-      const pubkeyBytes = new PublicKey(voucherWallet).toBytes();
-
-      const isValid = nacl.sign.detached.verify(
-        expectedMsg,
-        sigBytes,
-        pubkeyBytes,
+    if (!voucherWallet) {
+      throw new UnauthorizedException(
+        'No linked wallet found for this account',
       );
-
-      if (!isValid) {
-        throw new UnauthorizedException('Invalid wallet signature');
-      }
-    } catch (err) {
-      if (err instanceof UnauthorizedException) throw err;
-      throw new BadRequestException(`Signature decoding failed: ${(err as Error).message}`);
     }
 
     // ── 2. Ownership & Status Checks ──────────────────────────────────────
@@ -277,8 +272,10 @@ export class VouchesService {
     // ── 2. Memo instruction check ────────────────────────────────────────
     // compiledInstructions exists on versioned messages (MessageV0);
     // instructions exists on legacy messages.
-    const instructions: Array<{ programIdIndex: number; data: Uint8Array | string }> =
-      msg.compiledInstructions ?? msg.instructions ?? [];
+    const instructions: Array<{
+      programIdIndex: number;
+      data: Uint8Array | string;
+    }> = msg.compiledInstructions ?? msg.instructions ?? [];
 
     const memoMatch = instructions.some((ix) => {
       const programId = accountKeys[ix.programIdIndex]?.toBase58();
@@ -288,7 +285,7 @@ export class VouchesService {
       const memoText =
         ix.data instanceof Uint8Array || Buffer.isBuffer(ix.data)
           ? Buffer.from(ix.data).toString('utf8')
-          : Buffer.from(bs58.decode(ix.data as string)).toString('utf8');
+          : Buffer.from(bs58.decode(ix.data)).toString('utf8');
 
       return memoText === message;
     });
@@ -299,10 +296,7 @@ export class VouchesService {
       );
     }
 
-    this.logger.debug(
-      { txSignature, voucherWallet },
-      'on_chain_verify_ok',
-    );
+    this.logger.debug({ txSignature, voucherWallet }, 'on_chain_verify_ok');
   }
 
   /**
@@ -352,5 +346,52 @@ export class VouchesService {
         'cluster_detected',
       );
     }
+  }
+
+  /**
+   * Builds an unsigned serialized transaction for a Solana Action (Blink).
+   * Uses the SPL Memo program to record the vouch endorsement.
+   */
+  async buildVouchTransaction(
+    username: string,
+    account: string,
+    message: string,
+  ): Promise<string> {
+    const rpcUrl = this.config.get<string>('SOLANA_RPC_URL');
+    if (!rpcUrl) {
+      throw new BadRequestException('SOLANA_RPC_URL not configured');
+    }
+    const connection = new Connection(rpcUrl, 'confirmed');
+
+    const memoData = JSON.stringify({
+      type: 'vouch',
+      v: 1,
+      candidate: username,
+      msg: message,
+    });
+
+    const tx = new Transaction();
+    tx.add(
+      new TransactionInstruction({
+        keys: [
+          {
+            pubkey: new PublicKey(account),
+            isSigner: true,
+            isWritable: false,
+          },
+        ],
+        programId: new PublicKey(MEMO_V2),
+        data: Buffer.from(memoData, 'utf8'),
+      }),
+    );
+
+    tx.feePayer = new PublicKey(account);
+    const { blockhash } = await connection.getLatestBlockhash('finalized');
+    tx.recentBlockhash = blockhash;
+
+    // Serialize without requiring all signatures (wallet will sign next)
+    return tx
+      .serialize({ requireAllSignatures: false })
+      .toString('base64');
   }
 }

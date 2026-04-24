@@ -56,7 +56,10 @@ export const GITHUB_REST_FIXTURE: GithubRestData = {
     '105': { TypeScript: 10000 },
   },
   commits: {
-    '101': [{ sha: 'c1', commit: { message: 'feat: init' } }, { sha: 'c2', commit: { message: 'fix: bug' } }],
+    '101': [
+      { sha: 'c1', commit: { message: 'feat: init' } },
+      { sha: 'c2', commit: { message: 'fix: bug' } },
+    ],
     '102': [{ sha: 't1', commit: { message: 'tutorial start' } }],
     '103': [], // Pure fork with 0 original commits
     '104': [{ sha: 'f1', commit: { message: 'fork commit' } }],

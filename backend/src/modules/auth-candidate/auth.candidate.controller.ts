@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Req, Res, Body, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  Body,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthCandidateService } from './auth.candidate.service';
@@ -6,20 +15,30 @@ import { AuthGuard } from '@nestjs/passport';
 import { LoginDtoSchema } from './schemas/login.schema';
 import { RegisterDto } from './schemas/register.schema';
 import { OnboardingDto } from './schemas/onboarding.schema';
-import { ActivateMfaDto, VerifyMfaDto, VerifyMfaRecoveryDto } from './schemas/mfa.schema';
-import { RequestPasswordResetDto, ResetPasswordDto } from './schemas/password-reset.schema';
+import {
+  ActivateMfaDto,
+  VerifyMfaDto,
+  VerifyMfaRecoveryDto,
+} from './schemas/mfa.schema';
+import {
+  RequestPasswordResetDto,
+  ResetPasswordDto,
+} from './schemas/password-reset.schema';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { GithubLinkGuard } from './guards/github.link.guard';
 import { GoogleLinkGuard } from './guards/google.link.guard';
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
-import { VerifyEmailDto, OAuthCallbackQueryDto } from './schemas/auth-contract.dto';
+import {
+  VerifyEmailDto,
+  OAuthCallbackQueryDto,
+} from './schemas/auth-contract.dto';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiBody,
   ApiQuery,
-  ApiOkResponse
+  ApiOkResponse,
 } from '@nestjs/swagger';
 import { OnboardingGuard } from './guards/onboarding.guard';
 import { AuthState } from './schemas/auth-result.dto';
@@ -30,29 +49,38 @@ import { AuthState } from './schemas/auth-result.dto';
 export class AuthCandidateController {
   constructor(private readonly authService: AuthCandidateService) {}
 
-  private handleAuthResponse(res: Response, result: any, successRedirect?: string) {
-	switch (result.type) {
-	  case AuthState.SUCCESS: {
-		res.cookie('access_token', result.data.accessToken, { httpOnly: true });
-		res.cookie('refresh_token', result.data.refreshToken, { httpOnly: true });
-		return res.status(200).json({ success: true });
-	  }
-  
-	  case AuthState.NEEDS_VERIFICATION:
-		return res.redirect(`http://localhost:3001/verify?email=${result.data.email}`);
-  
-	  case AuthState.MFA_REQUIRED:
-		return res.redirect(`http://localhost:3001/mfa?token=${result.data.mfaToken}`);
-  
-	  case AuthState.NEEDS_ONBOARDING:
-		res.cookie('temp_auth', result.data.tempToken, { httpOnly: true });
-		return res.redirect('http://localhost:3001/onboarding');
-  
-	  default:
-		return res.status(401).json({ message: 'Invalid auth state' });
-	}
-  }
+  private handleAuthResponse(
+    res: Response,
+    result: any,
+    successRedirect?: string,
+  ) {
+    switch (result.type) {
+      case AuthState.SUCCESS: {
+        res.cookie('access_token', result.data.accessToken, { httpOnly: true });
+        res.cookie('refresh_token', result.data.refreshToken, {
+          httpOnly: true,
+        });
+        return res.status(200).json({ success: true });
+      }
 
+      case AuthState.NEEDS_VERIFICATION:
+        return res.redirect(
+          `http://localhost:3001/verify?email=${result.data.email}`,
+        );
+
+      case AuthState.MFA_REQUIRED:
+        return res.redirect(
+          `http://localhost:3001/mfa?token=${result.data.mfaToken}`,
+        );
+
+      case AuthState.NEEDS_ONBOARDING:
+        res.cookie('temp_auth', result.data.tempToken, { httpOnly: true });
+        return res.redirect('http://localhost:3001/onboarding');
+
+      default:
+        return res.status(401).json({ message: 'Invalid auth state' });
+    }
+  }
 
   // ---------------- REGISTER ----------------
 
@@ -168,8 +196,15 @@ export class AuthCandidateController {
     description: 'Finalizes onboarding using temporary auth token.',
   })
   @ApiBody({ type: OnboardingDto })
-  async completeOnboarding(@Body() dto: OnboardingDto, @Req() req: any, @Res() res: Response) {
-    const result = await this.authService.completeOnboarding(dto, req.onboarding);
+  async completeOnboarding(
+    @Body() dto: OnboardingDto,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const result = await this.authService.completeOnboarding(
+      dto,
+      req.onboarding,
+    );
     return this.handleAuthResponse(res, result);
   }
 
@@ -196,8 +231,16 @@ export class AuthCandidateController {
     name: 'state',
     required: true,
   })
-  async linkGithubCallback(@Req() req: any, @Query() query: OAuthCallbackQueryDto) {
-    await this.authService.linkOAuth(req.authUser.id, req.user, 'GITHUB', query.state);
+  async linkGithubCallback(
+    @Req() req: any,
+    @Query() query: OAuthCallbackQueryDto,
+  ) {
+    await this.authService.linkOAuth(
+      req.authUser.id,
+      req.user,
+      'GITHUB',
+      query.state,
+    );
     return { success: true };
   }
 
@@ -224,8 +267,16 @@ export class AuthCandidateController {
     name: 'state',
     required: true,
   })
-  async linkGoogleCallback(@Req() req: any, @Query() query: OAuthCallbackQueryDto) {
-    await this.authService.linkOAuth(req.authUser.id, req.user, 'GOOGLE', query.state);
+  async linkGoogleCallback(
+    @Req() req: any,
+    @Query() query: OAuthCallbackQueryDto,
+  ) {
+    await this.authService.linkOAuth(
+      req.authUser.id,
+      req.user,
+      'GOOGLE',
+      query.state,
+    );
     return { success: true };
   }
 
@@ -262,13 +313,20 @@ export class AuthCandidateController {
   @Post('mfa/verify')
   @ApiBody({ type: VerifyMfaDto })
   async verifyMfa(@Body() dto: VerifyMfaDto, @Res() res: Response) {
-    const result = await this.authService.verifyMfa(dto.userId, dto.code, dto.mfaToken);
+    const result = await this.authService.verifyMfa(
+      dto.userId,
+      dto.code,
+      dto.mfaToken,
+    );
     return this.handleAuthResponse(res, result);
   }
 
   @Post('mfa/verify-recovery')
   @ApiBody({ type: VerifyMfaRecoveryDto })
-  async verifyMfaRecovery(@Body() dto: VerifyMfaRecoveryDto, @Res() res: Response) {
+  async verifyMfaRecovery(
+    @Body() dto: VerifyMfaRecoveryDto,
+    @Res() res: Response,
+  ) {
     const result = await this.authService.verifyMfaRecovery(
       dto.userId,
       dto.backupCode,

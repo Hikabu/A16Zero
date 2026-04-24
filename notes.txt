@@ -26,5 +26,5 @@ THESE ENDPOINTS ARE NOT SPECIFIED IN CURRENT BUILD:
 GET/api/actions/vouch/:username — returns Blink Action card JSON for Phantom/Backpack to unfurl
 POST/api/actions/vouch/:username — receives voucher wallet + message, returns unsigned tx as base64
 GET/actions.json — static file at root, tells Blink clients which routes are Blink-enabled
-Is it necessary?
+There is missing backend implemntation 
 

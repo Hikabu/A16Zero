@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { SignalComputeProcessor } from './signal-compute.processor';
 import { EmailProcessor } from './email.processor';
-import {GithubSyncProcessor} from './github-sync.processor';
-import {PrismaModule} from '../prisma/prisma.module';
+import { GithubSyncProcessor } from './github-sync.processor';
+import { PrismaModule } from '../prisma/prisma.module';
 import { ScoringModule } from '../modules/scoring/scoring.module';
 import { SignalExtractorModule } from '../modules/scoring/signal-extractor/signal-extractor.module';
 import { CacheModule } from '../modules/scoring/cache/cache.module';
@@ -21,10 +21,6 @@ import { ConfigModule } from '@nestjs/config';
     EmailModule,
     ConfigModule,
   ],
-  providers: [
-    SignalComputeProcessor,
-    EmailProcessor,
-    GithubSyncProcessor,
-  ],
+  providers: [SignalComputeProcessor, EmailProcessor, GithubSyncProcessor],
 })
 export class WorkerModule {}

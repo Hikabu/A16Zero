@@ -1,4 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserRole } from '@prisma/client';
 import { ROLES_KEY } from '../../../shared/decorators/verified.decorator';
@@ -22,17 +28,19 @@ export class VerifiedGuard implements CanActivate {
     }
 
     // Role check
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
     if (!requiredRoles.includes(user.role)) {
-      throw new ForbiddenException(`Access denied: required one of [${requiredRoles.join(', ')}]`);
+      throw new ForbiddenException(
+        `Access denied: required one of [${requiredRoles.join(', ')}]`,
+      );
     }
 
     return true;

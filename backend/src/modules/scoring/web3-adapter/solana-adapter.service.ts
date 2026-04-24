@@ -133,9 +133,12 @@ export class SolanaAdapterService {
         [programPubkey.toBuffer()],
         this.BPF_LOADER_UPGRADEABLE,
       );
-      const sigs = await connection.getSignaturesForAddress(programDataAddress, {
-        limit: 100,
-      });
+      const sigs = await connection.getSignaturesForAddress(
+        programDataAddress,
+        {
+          limit: 100,
+        },
+      );
       return sigs.length;
     } catch (err) {
       this.logger.warn({ programId, err }, 'fetchUpgradeCount_fail');

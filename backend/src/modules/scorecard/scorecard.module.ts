@@ -13,4 +13,3 @@ import { PrismaModule } from '../../prisma/prisma.module';
   exports: [ScorecardService],
 })
 export class ScorecardModule {}
-

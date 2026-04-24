@@ -184,7 +184,8 @@ describe('SolanaAdapterService', () => {
   describe('fetchUpgradeCount', () => {
     beforeEach(() => {
       // Make findProgramAddressSync available on the mocked PublicKey constructor
-      const { PublicKey: MockedPublicKey } = jest.requireMock('@solana/web3.js');
+      const { PublicKey: MockedPublicKey } =
+        jest.requireMock('@solana/web3.js');
       MockedPublicKey.findProgramAddressSync = jest
         .fn()
         .mockReturnValue([{ toBase58: () => 'mock-program-data-address' }]);
@@ -194,7 +195,10 @@ describe('SolanaAdapterService', () => {
       connectionInstance.getSignaturesForAddress.mockResolvedValue(
         Array.from({ length: 10 }, (_, i) => ({ signature: `sig${i}` })),
       );
-      const count = await service.fetchUpgradeCount('mock-program', connectionInstance);
+      const count = await service.fetchUpgradeCount(
+        'mock-program',
+        connectionInstance,
+      );
       expect(count).toBe(10);
     });
 
@@ -202,7 +206,10 @@ describe('SolanaAdapterService', () => {
       connectionInstance.getSignaturesForAddress.mockRejectedValue(
         new Error('RPC Error'),
       );
-      const count = await service.fetchUpgradeCount('mock-program', connectionInstance);
+      const count = await service.fetchUpgradeCount(
+        'mock-program',
+        connectionInstance,
+      );
       expect(count).toBe(0);
     });
   });
