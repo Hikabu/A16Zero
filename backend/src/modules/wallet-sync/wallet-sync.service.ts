@@ -10,11 +10,13 @@ import Redis from 'ioredis';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PublicKey } from '@solana/web3.js';
+import { ProfileResolverService } from '../profile-candidate/profile-resolver.service';
 
 @Injectable()
 export class WalletSyncService {
   constructor(
     private readonly prisma: PrismaService,
+	private readonly profileResolver: ProfileResolverService,
     @Inject('REDIS') private readonly redis: Redis,
   ) {}
 
@@ -62,30 +64,24 @@ export class WalletSyncService {
 
     // Step 4 — delete challenge
     await this.redis.del(`wallet-challenge:${userId}`);
+console.log("userid: ", userId);
+    // Step 5 — ensure Candidate + DeveloperCandidate exist
 
-    // Step 5 — upsert Web3Profile
-    // We need to make sure the developerCandidate exists first
-    const candidate = await this.prisma.candidate.findUnique({
-      where: { userId },
-      include: { devProfile: true },
-    });
+	// Step 5 — ensure stack + upsert Web3Profile
+const { devProfile } = await this.profileResolver.ensureDevStack(userId);
 
-    if (!candidate || !candidate.devProfile) {
-      throw new NotFoundException('Candidate profile not found');
-    }
+await this.prisma.web3Profile.upsert({
+  where: { userId },
+  create: {
+    userId,
+    solanaAddress: walletAddress,
+    devCandidateId: devProfile.id,
+  },
+  update: {
+    solanaAddress: walletAddress,
+  },
+});
 
-    await this.prisma.web3Profile.upsert({
-      where: { userId },
-      create: {
-        userId,
-        solanaAddress: walletAddress,
-        devCandidateId: candidate.devProfile.id,
-      },
-      update: {
-        solanaAddress: walletAddress,
-      },
-    });
-
-    return { linked: true, solanaAddress: walletAddress };
+return { linked: true, solanaAddress: walletAddress };
   }
 }
