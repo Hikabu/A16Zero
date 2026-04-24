@@ -15,37 +15,17 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import * as crypto from 'crypto';
 import { encrypt } from '../../shared/utils/crypto.utils';
+import { ProfileResolverService } from '../profile-candidate/profile-resolver.service';
 
 @Injectable()
 export class GithubSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+	private readonly profileResolver: ProfileResolverService,
     @Inject('REDIS') private readonly redis: Redis,
     @InjectQueue('github-sync') private readonly githubSyncQueue: Queue,
   ) {}
-
-  // ─── Shared: lazily create Candidate + DeveloperCandidate ────────
-  private async ensureDevCandidate(userId: string) {
-    const candidate = await this.prisma.candidate.upsert({
-      where: { userId },
-      create: { user: { connect: { id: userId } }, careerPath: 1 },
-      update: {},
-      include: { devProfile: { include: { githubProfile: true } } },
-    });
-
-    if (!candidate.devProfile) {
-      await this.prisma.developerCandidate.create({
-        data: { candidate: { connect: { id: candidate.id } } },
-      });
-      return this.prisma.candidate.findUnique({
-        where: { userId },
-        include: { devProfile: { include: { githubProfile: true } } },
-      });
-    }
-
-    return candidate;
-  }
 
   // ─── Connect step 1: generate state, return OAuth URL ────────────
   async startConnect(userId: string): Promise<string> {
@@ -80,8 +60,9 @@ export class GithubSyncService {
     }
     await this.redis.del(`github_sync_state:${state}`);
 
-    const candidate = await this.ensureDevCandidate(userId);
-    if (!candidate?.devProfile) {
+    // const candidate = await this.ensureDevCandidate(userId);
+	const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+    if (!devProfile) {
       throw new InternalServerErrorException(
         'Failed to ensure developer profile.',
       );
@@ -95,9 +76,9 @@ export class GithubSyncService {
     const encryptedToken = encrypt(githubData.accessToken, key);
 
     await this.prisma.githubProfile.upsert({
-      where: { devCandidateId: candidate.devProfile.id },
+      where: { devCandidateId: devProfile.id },
       create: {
-        devCandidate: { connect: { id: candidate.devProfile.id } },
+        devCandidate: { connect: { id: devProfile.id } },
         githubUsername: githubData.login,
         githubUserId: githubData.githubId,
         encryptedToken,
@@ -121,8 +102,8 @@ export class GithubSyncService {
 
   // ─── Trigger sync ─────────────────────────────────────────────────
   async triggerSync(userId: string) {
-    const candidate = await this.ensureDevCandidate(userId);
-    const githubProfile = candidate?.devProfile?.githubProfile;
+	const { devProfile } = await this.profileResolver.ensureDevStack(userId);    
+	const githubProfile = devProfile?.githubProfile;
 
     if (!githubProfile) {
       // Frontend should redirect to /me/github/sync/connect on this code
@@ -163,8 +144,8 @@ export class GithubSyncService {
     console.log('addign sync job to queue with data');
 
     await this.githubSyncQueue.add('sync-profile', {
-      candidateId: candidate.id,
-      devCandidateId: candidate?.devProfile?.id,
+      candidateId: devProfile.candidateId,
+      devCandidateId: devProfile.id,
       githubProfileId: githubProfile.id,
     });
 
