@@ -28,7 +28,6 @@ export const envSchema = z.object({
   ENCRYPTION_KEY: z.string().optional(),
   INTERNAL_API_KEY: z.string().optional(),
 
-  EVM_RPC_URL: z.string().optional(),
   SOLANA_RPC_URL: z.string().optional(),
   HELIUS_API_KEY: z.string().optional(),
   WALLET_CHALLENGE_SECRET: z.string().optional(),

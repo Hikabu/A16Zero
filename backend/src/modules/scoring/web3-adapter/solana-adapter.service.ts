@@ -35,7 +35,10 @@ export class SolanaAdapterService {
     private readonly config: ConfigService,
     @Inject('REDIS') private readonly redis: Redis,
     private readonly achievementWhitelist: AchievementWhitelistService,
-  ) {}
+  ) {
+	  console.log('HELIUS KEY:', this.config.get('HELIUS_API_KEY'));
+
+  }
 
   async fetchProgramsByAuthority(
     walletAddress: string,
@@ -159,6 +162,7 @@ export class SolanaAdapterService {
     }
 
     const apiKey = this.config.get<string>('HELIUS_API_KEY');
+	console.log("HELIUS API KEY:", apiKey);
     if (!apiKey) {
       this.logger.warn('HELIUS_API_KEY is not configured');
       return [];
@@ -224,6 +228,7 @@ export class SolanaAdapterService {
   }
 
   async fetchOnChainData(walletAddress: string) {
+	console.log("fetching on chain data ");
     const [deployedPrograms, achievements] = await Promise.all([
       this.fetchProgramsByAuthority(walletAddress),
       this.fetchAchievements(walletAddress),

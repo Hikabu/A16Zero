@@ -30,13 +30,21 @@ async function bootstrap() {
 
   // Swagger Documentation
   const config = new DocumentBuilder()
-    .setTitle('a16zero Employer API')
-    .setDescription(
-      'Backend MVP for Employer platform features and Account Abstraction auth verification.',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  .setTitle('a16zero Employer API')
+  .setDescription('...')
+  .setVersion('1.0')
+  .addApiKey(
+    {
+      type: 'apiKey',
+      name: 'x-internal-api-key', // must match your guard
+      in: 'header',
+      description: 'Internal API key',
+    },
+    'internal-api-key',
+  )
+  .build();
+
+  console.log(JSON.stringify(config, null, 2));
 
   const document = SwaggerModule.createDocument(app, config);
   const cleanedDocument = cleanupOpenApiDoc(document);
