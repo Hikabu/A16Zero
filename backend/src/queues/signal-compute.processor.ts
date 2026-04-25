@@ -1,4 +1,4 @@
-import { Processor } from '@nestjs/bullmq';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,7 +13,7 @@ import { SolanaAdapterService } from '../modules/scoring/web3-adapter/solana-ada
 import { Web3MergeService } from '../modules/scoring/web3-merge/web3-merge.service';
 
 @Processor('signal-compute', { concurrency: 10 })
-export class SignalComputeProcessor {
+export class SignalComputeProcessor extends WorkerHost {
   private readonly logger = new Logger(SignalComputeProcessor.name);
 
   constructor(
@@ -24,7 +24,9 @@ export class SignalComputeProcessor {
     private readonly cacheService: CacheService,
     private readonly solanaAdapter: SolanaAdapterService,
     private readonly web3MergeService: Web3MergeService,
-  ) {}
+  ) {
+	super();
+  }
 
   async process(
     job: Job<{
@@ -54,6 +56,8 @@ export class SignalComputeProcessor {
     let rawData: any;
     let hasSnapshot = false;
 
+	console.log("mode: ", mode);
+
     try {
       // Update DB job record to processing
       await this.prisma.analysisJob.update({
@@ -80,6 +84,7 @@ export class SignalComputeProcessor {
 
       if (mode === 'wallet-only') {
         web3Data = await this.solanaAdapter.fetchOnChainData(walletAddress!);
+		console.log("web3 data", web3Data);
         let result: AnalysisResult = {
           capabilities: {
             backend: { score: 0, confidence: 'low' },
@@ -133,6 +138,8 @@ export class SignalComputeProcessor {
             result: result as any,
           },
         });
+
+		console.log("result: ", result);
 
         this.logger.log(
           {
@@ -319,24 +326,53 @@ export class SignalComputeProcessor {
 
   private async applyVouchSignal(
     result: AnalysisResult,
-    jobData: { githubUsername?: string; candidateUsername?: string },
+    jobData: { 
+		githubUsername?: string; 
+		candidateUsername?: string;
+		walletAddress?: string
+	},
   ): Promise<AnalysisResult> {
     const now = new Date();
 
     // Resolve candidateId from job data — vouches are candidate-scoped, not github-scoped
-    const candidate = await this.prisma.candidate.findFirst({
-      where: {
-        OR: [
-          {
-            devProfile: {
-              githubProfile: { githubUsername: jobData.githubUsername },
-            },
-          },
-          { user: { username: jobData.candidateUsername } },
-        ],
-      },
-    });
+   let candidate;
 
+// 1. GitHub path
+if (jobData.githubUsername) {
+  candidate = await this.prisma.candidate.findFirst({
+    where: {
+      devProfile: {
+        githubProfile: {
+          githubUsername: jobData.githubUsername,
+        },
+      },
+    },
+  });
+}
+
+// 2. Wallet path 
+if (!candidate && jobData.walletAddress) {
+  candidate = await this.prisma.candidate.findFirst({
+    where: {
+      devProfile: {
+        web3Profile: {
+          solanaAddress: jobData.walletAddress,
+        },
+      },
+    },
+  });
+}
+
+// 3. Optional user fallback (you said not needed)
+if (!candidate && jobData.candidateUsername) {
+  candidate = await this.prisma.candidate.findFirst({
+    where: {
+      user: {
+        username: jobData.candidateUsername,
+      },
+    },
+  });
+}
     const activeVouches = candidate
       ? await this.prisma.vouch.findMany({
           where: {

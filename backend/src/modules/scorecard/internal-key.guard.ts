@@ -12,8 +12,11 @@ export class InternalKeyGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
+	console.log("requerst: ", request.headers);
     const internalKey = request.headers['x-internal-key'];
+		console.log("internal key", internalKey);
     const expectedKey = this.configService.get<string>('INTERNAL_API_KEY');
+	console.log("expected: ", expectedKey);
     // console.log("InternalKeyGuard: Received key:[", internalKey, "]");
     // console.log("InternalKeyGuard: Expected key:[", expectedKey,"]");
     if (!expectedKey) {

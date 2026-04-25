@@ -13,10 +13,12 @@ import { SummaryGeneratorService } from './summary-generator/summary-generator.s
 import { SolanaAdapterService } from './web3-adapter/solana-adapter.service';
 import { Web3MergeService } from './web3-merge/web3-merge.service';
 import { AchievementWhitelistService } from './web3-adapter/achievement-whitelist.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Global()
 @Module({
   imports: [
+	ConfigModule,
     PrismaModule,
     RedisModule,
     BullModule.registerQueue({ name: 'signal-compute' }),

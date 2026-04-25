@@ -29,6 +29,7 @@ import {
   ApiUnauthorizedResponse,
   ApiNotFoundResponse,
   ApiBearerAuth,
+  ApiHeader
 } from '@nestjs/swagger';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -42,8 +43,8 @@ import {
   AnalysisErrorResponseDto,
 } from './dto/analysis-response.dto';
 
-@ApiTags('Analysis')
-@Controller('api/analysis')
+@ApiTags('Proof Of Talent')
+@Controller('api/proofOfTalent')
 export class AnalysisController {
   constructor(
     @InjectQueue('signal-compute') private readonly signalQueue: Queue,
@@ -153,7 +154,8 @@ Features:
       walletAddress,
       mode,
       useGithubCache,
-    });
+    },
+{attempts: 1});
 
     return { jobId: jobRecord.id };
   }
@@ -162,6 +164,11 @@ Features:
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(InternalKeyGuard)
   @ApiBearerAuth()
+  @ApiHeader({
+  name: 'x-internal-key',
+  required: true,
+  description: 'Internal API key',
+})
   @ApiOperation({
     summary: 'Recompute analysis',
     description: `
@@ -212,36 +219,42 @@ Use this for admin/system reprocessing.
     type: AnalysisErrorResponseDto,
   })
   async getStatus(@Param('jobId') jobId: string) {
-    const job = await this.signalQueue.getJob(jobId);
+    const job = await this.prisma.analysisJob.findUnique({
+    where: { id: jobId },
+  });
 
-    if (!job) {
-      throw new NotFoundException(`Job ${jobId} not found`);
-    }
+  if (!job) {
+    throw new NotFoundException(`Job ${jobId} not found`);
+  }
 
-    const [state, progress] = await Promise.all([
-      job.getState(),
-      Promise.resolve(job.progress),
-    ]);
+  let progress = 0;
+  let stage = 'queued';
 
-    const stageMap: Record<string, string> = {
-      completed: 'complete',
-      failed: 'failed',
-      active: 'analyzing_projects',
-      waiting: 'queued',
-      delayed: 'queued',
-    };
+  if (job.status === 'processing') {
+    stage = 'analyzing_projects'; // you can refine later
+    progress = 50; // placeholder unless you persist progress
+  }
 
-    return {
-      status:
-        state === 'completed'
-          ? 'complete'
-          : state === 'failed'
-            ? 'failed'
-            : 'pending',
-      stage: stageMap[state] || 'unknown',
-      progress: this.parseProgress(progress),
-      failureReason: job.failedReason || undefined,
-    };
+  if (job.status === 'completed') {
+    stage = 'complete';
+    progress = 100;
+  }
+
+  if (job.status === 'failed') {
+    stage = 'failed';
+  }
+
+  return {
+    status:
+      job.status === 'completed'
+        ? 'complete'
+        : job.status === 'failed'
+        ? 'failed'
+        : 'pending',
+    stage,
+    progress,
+    failureReason: job.error ?? undefined,
+  };
   }
 
   @Get(':jobId/result')
@@ -263,38 +276,35 @@ Use this for admin/system reprocessing.
     type: AnalysisErrorResponseDto,
   })
   async getResult(@Param('jobId') jobId: string) {
-    const job = await this.signalQueue.getJob(jobId);
+    const job = await this.prisma.analysisJob.findUnique({
+    where: { id: jobId },
+  });
 
-    if (!job) {
-      throw new NotFoundException(`Job ${jobId} not found`);
-    }
+  if (!job) {
+    throw new NotFoundException(`Job ${jobId} not found`);
+  }
 
-    const [state, progress] = await Promise.all([
-      job.getState(),
-      Promise.resolve(job.progress),
-    ]);
-
-    if (state === 'completed') {
-      return {
-        status: 'completed',
-        progress: 100,
-        result: job.returnvalue,
-      };
-    }
-
-    if (state === 'failed') {
-      return {
-        status: 'failed',
-        progress: this.parseProgress(progress),
-        error: job.failedReason,
-      };
-    }
-
+  if (job.status === 'completed') {
     return {
-      status: 'pending',
-      progress: this.parseProgress(progress),
+      status: 'completed',
+      progress: 100,
+      result: job.result,
     };
   }
+
+  if (job.status === 'failed') {
+    return {
+      status: 'failed',
+      progress: 0,
+      error: job.error,
+    };
+  }
+
+  return {
+    status: 'pending',
+    progress: 0,
+  };
+}
 
   private parseProgress(progress: any): number {
     if (typeof progress === 'number') return progress;

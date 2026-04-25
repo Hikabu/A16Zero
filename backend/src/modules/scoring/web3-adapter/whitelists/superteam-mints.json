@@ -1,3 +1,5 @@
-{
-  "mints": []
-}
+[
+  {
+    "mintAuthority": "SOME_SOLANA_ADDRESS"
+  }
+]

@@ -19,7 +19,9 @@ import { ConfigModule } from '@nestjs/config';
     GithubAdapterModule,
     CacheModule,
     EmailModule,
-    ConfigModule,
+    ConfigModule.forRoot({
+		isGlobal: true,
+	})
   ],
   providers: [SignalComputeProcessor, EmailProcessor, GithubSyncProcessor],
 })
