@@ -47,7 +47,7 @@ import {
 } from './dto/analysis-response.dto';
 
 @ApiTags('Proof Of Talent')
-@Controller('api/proofOfTalent')
+@Controller('api/analysis')
 export class AnalysisController {
   constructor(
     @InjectQueue('signal-compute') private readonly signalQueue: Queue,
