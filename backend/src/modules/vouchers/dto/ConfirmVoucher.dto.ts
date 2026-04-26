@@ -1,32 +1,25 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 
-/**
- * Request DTO: Confirm Vouch
- */
 export class ConfirmVouchDto {
   @ApiProperty({
-    description:
-      'Identifier of the candidate being vouched for (GitHub username or platform username)',
+    description: 'Identifier of the candidate',
     example: 'octocat',
   })
+  @IsString()
   candidateIdentifier: string;
 
   @ApiProperty({
-    description: 'Solana wallet address of the person giving the vouch',
-    example: '9xQeWvG816bUx9EPf9z...',
+    description: 'Endorsement message',
+    example: 'Great engineer',
   })
-  voucherWallet: string;
-
-  @ApiProperty({
-    description: 'Human-readable endorsement message',
-    example: 'Excellent smart contract engineer with strong security mindset',
-  })
+  @IsString()
   message: string;
 
   @ApiProperty({
-    description:
-      'On-chain transaction signature that contains the memo matching the message',
+    description: 'Transaction signature',
     example: '5Nf7abcXYZ123...',
   })
+  @IsString()
   txSignature: string;
 }

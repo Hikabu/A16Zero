@@ -15,7 +15,7 @@ import { VoucherQualityService } from './voucher-quality.service';
 /** Memo Program v1 (deprecated but still used) */
 const MEMO_V1 = 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo';
 /** Memo Program v2 (SPL Memo) */
-const MEMO_V2 = 'MemoSq4ugJjltXmYYUsgPnvQUre2uZoana88Sfd3xc';
+const MEMO_V2 = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
 
 const VOUCH_BUDGET = 5;
 const VOUCH_TTL_DAYS = 180;
@@ -25,8 +25,6 @@ const CLUSTER_THRESHOLD = 3;
 export interface ConfirmVouchInput {
   /** GitHub username or User.username of the candidate being vouched for */
   candidateIdentifier: string;
-  /** Solana wallet address of the person vouching */
-  voucherWallet: string;
   /** Human-readable endorsement message */
   message: string;
   /** On-chain transaction signature that anchors this vouch */
@@ -45,15 +43,21 @@ export class VouchesService {
 
   // ─── Public API ──────────────────────────────────────────────────────────
 
-  async confirmVouch(input: ConfirmVouchInput) {
-    const { candidateIdentifier, voucherWallet, message, txSignature } = input;
+  async confirmVouch(input: ConfirmVouchInput, userId: string) {
+    const { candidateIdentifier, message, txSignature } = input;
+	console.log("input:", input);
+	console.log('candidateIdentifier: ', candidateIdentifier);
+console.log("message: ", message);
+console.log("txsignature:" , txSignature);
+		const web3user = await this.prisma.web3Profile.findUnique({
+			where: {userId},
+		})
+		if (!web3user || !web3user.solanaAddress)
+			throw new UnauthorizedException(
+				'No linked wallet found for this account',
+			);
 
-    if (!voucherWallet) {
-      throw new UnauthorizedException(
-        'No linked wallet found for this account',
-      );
-    }
-
+			const voucherWallet : string = web3user.solanaAddress;
     // ── Step 0: Idempotency — bail early if tx already recorded ──────────
     const existing = await this.prisma.vouch.findUnique({
       where: { txSignature },
@@ -78,6 +82,9 @@ export class VouchesService {
           {
             user: { username: candidateIdentifier },
           },
+		  {
+			user: {email: candidateIdentifier},
+		  }
         ],
       },
       include: {
@@ -129,7 +136,7 @@ export class VouchesService {
     }
 
     // ── Step 5: On-chain verification ────────────────────────────────────
-    await this.verifyOnChainTx(txSignature, voucherWallet, message);
+    await this.verifyOnChainTx(txSignature, voucherWallet, message, candidateIdentifier);
 
     // ── Step 6: Weight assessment ─────────────────────────────────────────
     const weight =
@@ -218,12 +225,20 @@ export class VouchesService {
     txSignature: string,
     voucherWallet: string,
     message: string,
+	  candidateIdentifier: string, 
   ): Promise<void> {
     if (!message || !message.trim()) {
       throw new BadRequestException('Message must not be empty');
     }
 
-    const rpcUrl = this.config.get<string>('SOLANA_RPC_URL');
+    
+      const usingDevnet = this.config.get<string>('USING_DEVNET') === 'true';
+
+const rpcUrl = usingDevnet
+  ? this.config.get<string>('SOLANA_DEVNET_RPC_URL')
+  : this.config.get<string>('SOLANA_RPC_URL');
+
+
     if (!rpcUrl) {
       throw new BadRequestException(
         'SOLANA_RPC_URL not configured — cannot verify transaction',
@@ -277,24 +292,53 @@ export class VouchesService {
       data: Uint8Array | string;
     }> = msg.compiledInstructions ?? msg.instructions ?? [];
 
-    const memoMatch = instructions.some((ix) => {
-      const programId = accountKeys[ix.programIdIndex]?.toBase58();
-      if (programId !== MEMO_V1 && programId !== MEMO_V2) return false;
+    // ── 2. Memo instruction check ────────────────────────────────────────
+let memoFound = false;
 
-      // data is Uint8Array on versioned txs, base58-string on legacy txs.
-      const memoText =
-        ix.data instanceof Uint8Array || Buffer.isBuffer(ix.data)
-          ? Buffer.from(ix.data).toString('utf8')
-          : Buffer.from(bs58.decode(ix.data)).toString('utf8');
+for (const ix of instructions) {
+  const programId = accountKeys[ix.programIdIndex]?.toBase58();
+  if (programId !== MEMO_V1 && programId !== MEMO_V2) continue;
 
-      return memoText === message;
-    });
+  const raw =
+    ix.data instanceof Uint8Array || Buffer.isBuffer(ix.data)
+      ? Buffer.from(ix.data).toString('utf8')
+      : Buffer.from(bs58.decode(ix.data as string)).toString('utf8');
 
-    if (!memoMatch) {
-      throw new BadRequestException(
-        'No Memo instruction found whose text matches the provided message',
-      );
-    }
+  let memo: { type?: string; candidate?: string; msg?: string } = {};
+
+  try {
+    memo = JSON.parse(raw);
+  } catch {
+    // Not our format → skip
+    continue;
+  }
+
+  //  must be vouch type
+  if (memo.type !== 'vouch') continue;
+
+  // must match candidate (prevents replay attacks)
+  if (memo.candidate !== candidateIdentifier) {
+    throw new BadRequestException(
+      `Transaction targets candidate "${memo.candidate}" not "${candidateIdentifier}"`,
+    );
+  }
+
+  //  must match message
+  if (memo.msg !== message) {
+    throw new BadRequestException(
+      'Transaction message does not match provided message',
+    );
+  }
+
+  memoFound = true;
+  break;
+}
+
+if (!memoFound) {
+  throw new BadRequestException(
+    'No valid vouch Memo instruction found in this transaction',
+  );
+}
 
     this.logger.debug({ txSignature, voucherWallet }, 'on_chain_verify_ok');
   }
@@ -357,10 +401,36 @@ export class VouchesService {
     account: string,
     message: string,
   ): Promise<string> {
-    const rpcUrl = this.config.get<string>('SOLANA_RPC_URL');
+    const usingDevnet = this.config.get<string>('USING_DEVNET') === 'true';
+
+const rpcUrl = usingDevnet
+  ? this.config.get<string>('SOLANA_DEVNET_RPC_URL')
+  : this.config.get<string>('SOLANA_RPC_URL');
+
+if (!rpcUrl) {
+  throw new BadRequestException('Solana RPC not configured');
+}
+
+this.logger.log(`Using RPC: ${rpcUrl}`);
     if (!rpcUrl) {
       throw new BadRequestException('SOLANA_RPC_URL not configured');
     }
+	try {
+  const res = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'getHealth',
+    }),
+  });
+
+  console.log('RPC status:', res.status);
+  console.log('RPC text:', await res.text());
+} catch (e) {
+  console.error('RAW FETCH ERROR:', e);
+}
     const connection = new Connection(rpcUrl, 'confirmed');
 
     const memoData = JSON.stringify({

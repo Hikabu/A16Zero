@@ -92,6 +92,7 @@ export class ProfileService {
         careerPath: true,
         scorecard: true,
         createdAt: true,
+		vouches : true,
         devProfile: {
           select: {
             id: true,
@@ -140,8 +141,9 @@ export class ProfileService {
   // ─── GitHub Connection ────────────────────────────────────────────────────
 
   async getConnectedGithub(userId: string) {
+     
     const candidate = await this.prisma.candidate.findUnique({
-      where: { userId },
+		 where: { userId },
       select: {
         devProfile: {
           select: {
@@ -159,6 +161,7 @@ export class ProfileService {
           },
         },
       },
+     
     });
 
     if (!candidate) throw new NotFoundException('Candidate profile not found');
@@ -168,6 +171,37 @@ export class ProfileService {
     return {
       connected: !!github,
       github,
+    };
+  }
+
+   // ─── Wallet Connection ────────────────────────────────────────────────────
+
+  async getConnectedWallet(userId: string) {
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { userId },
+      select: {
+        devProfile: {
+          select: {
+            web3Profile: {
+              select: {
+                solanaAddress: true,
+                verifiedContracts: true,
+                onChainMetrics: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!candidate) throw new NotFoundException('Candidate profile not found');
+
+    const web3 = candidate.devProfile?.web3Profile ?? null;
+
+    return {
+      connected: !!web3,
+      web3,
     };
   }
 }

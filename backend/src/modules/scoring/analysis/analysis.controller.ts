@@ -10,6 +10,9 @@ import {
   HttpStatus,
   Req,
   BadRequestException,
+  UsePipes,
+  ValidationPipe,
+
   UnauthorizedException,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -70,13 +73,21 @@ Features:
 - Async execution via BullMQ
     `,
   })
-  @ApiBody({ type: CreateAnalysisDto })
+  @ApiBody({
+  type: CreateAnalysisDto,
+  required: false,
+  description: `
+Optional if authenticated.
+
+- If JWT is provided → body is ignored (uses linked accounts)
+- If no JWT → must provide githubUsername or walletAddress
+`,
+})
   @ApiCreatedResponse({ type: JobResponseDto })
   @ApiBadRequestResponse({ type: AnalysisErrorResponseDto })
   async createAnalysis(
     @Req() req: any,
-    @Body() body: CreateAnalysisDto & { force?: boolean },
-  ) {
+@Body() body?: CreateAnalysisDto & { force?: boolean }  ) {
     let githubUsername: string | null = null;
     let walletAddress: string | null = null;
     let useGithubCache = false;
@@ -104,8 +115,8 @@ Features:
           githubProfile.lastSyncAt.getTime() > Date.now() - 86_400_000;
       }
     } else {
-      githubUsername = body.githubUsername ?? null;
-      walletAddress = body.walletAddress ?? null;
+      githubUsername = body?.githubUsername ?? null;
+      walletAddress = body?.walletAddress ?? null;
 
       if (!githubUsername && !walletAddress) {
         throw new BadRequestException(
@@ -133,7 +144,7 @@ Features:
       walletAddress ?? undefined,
     );
 
-    if (!body.force) {
+    if (!body?.force) {
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         return { jobId: null, cached: true, result: cached };
@@ -161,6 +172,7 @@ Features:
   }
 
   @Post('recompute')
+  @UsePipes(new ValidationPipe({ transform: false }))
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(InternalKeyGuard)
   @ApiBearerAuth()
@@ -196,6 +208,7 @@ Use this for admin/system reprocessing.
     type: AnalysisErrorResponseDto,
   })
   async recompute(@Req() req: any, @Body() body: RecomputeAnalysisDto) {
+	console.log(body);
     return this.createAnalysis(req, { ...body, force: true });
   }
 

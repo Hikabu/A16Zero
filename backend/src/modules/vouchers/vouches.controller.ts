@@ -136,11 +136,12 @@ export class VouchesController {
     },
   })
   async confirmVouch(@Req() req: any, @Body() body: ConfirmVouchDto) {
-    const walletAddress = req.user.web3Profile?.solanaAddress ?? null;
-    return this.vouchesService.confirmVouch({
-      ...body,
-      voucherWallet: walletAddress,
-    });
+	  console.log('RAW BODY:', body);
+
+    return this.vouchesService.confirmVouch(
+    body,
+    req.user.id,
+    );
   }
 
   @Delete(':id')

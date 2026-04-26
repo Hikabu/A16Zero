@@ -1,18 +1,19 @@
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
+import crypto from 'crypto';
 
-// fixed seed (32 bytes)
-const SEED = Uint8Array.from([
-  1, 2, 3, 4, 5, 6, 7, 8,
-  9, 10, 11, 12, 13, 14, 15, 16,
-  17, 18, 19, 20, 21, 22, 23, 24,
-  25, 26, 27, 28, 29, 30, 31, 32,
-]);
+// derive 32-byte seed from any string input
+function deriveSeed(input: string): Uint8Array {
+  const hash = crypto.createHash('sha256').update(input).digest();
+  return new Uint8Array(hash); // 32 bytes
+}
 
-// derive keypair from seed
-const keypair = nacl.sign.keyPair.fromSeed(SEED);
+function getKeypair(id: string) {
+  const seed = deriveSeed(id);
+  return nacl.sign.keyPair.fromSeed(seed);
+}
 
-function signMessage(message: string) {
+function signMessage(message: string, keypair: nacl.SignKeyPair) {
   const signature = nacl.sign.detached(
     Buffer.from(message),
     keypair.secretKey,
@@ -25,11 +26,24 @@ function signMessage(message: string) {
 }
 
 // CLI input
-const message = process.argv[2];
+const id = process.argv[2];        // e.g. "1", "2", "alice"
+const message = process.argv[3];   // message to sign
 
-if (!message) {
-  console.error('Usage: ts-node sign-message.ts "<message>"');
+if (!id || !message) {
+  console.error(
+    'Usage: npx ts-node scripts/test-sign-message <id> "<message>"'
+  );
   process.exit(1);
 }
 
-console.log(signMessage(message));
+const keypair = getKeypair(id);
+
+console.log('=== WALLET ===');
+console.log({
+  id,
+  walletAddress: bs58.encode(keypair.publicKey),
+  privateKey: bs58.encode(keypair.secretKey),
+});
+
+console.log('=== SIGNATURE ===');
+console.log(signMessage(message, keypair));

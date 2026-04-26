@@ -28,11 +28,13 @@ export const envSchema = z.object({
   ENCRYPTION_KEY: z.string().optional(),
   INTERNAL_API_KEY: z.string().optional(),
 
-  SOLANA_RPC_URL: z.string().optional(),
   HELIUS_API_KEY: z.string().optional(),
   WALLET_CHALLENGE_SECRET: z.string().optional(),
   APP_BASE_URL: z.string().optional(),
   VOUCH_ICON_URL: z.string().optional(),
+  SOLANA_RPC_URL: z.string().optional(),
+  SOLANA_DEVNET_RPC_URL: z.string().optional(),
+  USING_DEVNET: z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM: z.string().optional(),
