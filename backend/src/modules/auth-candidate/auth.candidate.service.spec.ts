@@ -33,12 +33,13 @@ const mockRedis = {
   get: jest.fn(),
   set: jest.fn(),
   del: jest.fn(),
-  incr: jest.fn()
+  incr: jest.fn(),
 };
 
 const mockConfigService = {
   get: jest.fn((key: string) => {
-    if (key === 'AUTH_ENCRYPTION_KEY') return '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'; // 32 bytes hex
+    if (key === 'AUTH_ENCRYPTION_KEY')
+      return '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'; // 32 bytes hex
     return null;
   }),
 };
@@ -52,13 +53,17 @@ const mockOtplib = {
 };
 
 // Mock the internal require used in AuthService
-jest.mock('otplib', () => {
-  return {
-    TOTP: jest.fn().mockImplementation(() => mockOtplib),
-    NobleCryptoPlugin: jest.fn(),
-    ScureBase32Plugin: jest.fn(),
-  };
-}, { virtual: true });
+jest.mock(
+  'otplib',
+  () => {
+    return {
+      TOTP: jest.fn().mockImplementation(() => mockOtplib),
+      NobleCryptoPlugin: jest.fn(),
+      ScureBase32Plugin: jest.fn(),
+    };
+  },
+  { virtual: true },
+);
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -87,54 +92,69 @@ describe('AuthService', () => {
   });
 
   describe('Local Authentication', () => {
-    const registerDto = { email: 'test@example.com', username: 'testuser', password: 'password123' };
+    const registerDto = {
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'password123',
+    };
 
     it('should register a new user and initiate email verification', async () => {
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
-      prisma.user.create.mockResolvedValue({ id: 'user_1', email: 'test@example.com' });
+      prisma.user.create.mockResolvedValue({
+        id: 'user_1',
+        email: 'test@example.com',
+      });
 
       const result = await service.register(registerDto);
 
       expect(prisma.user.create).toHaveBeenCalled();
-      expect(redis.set).toHaveBeenCalledWith(expect.stringContaining('verify_email'), expect.any(String), 'EX', 3600);
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringContaining('verify_email'),
+        expect.any(String),
+        'EX',
+        3600,
+      );
       expect(result).toEqual({
-  needsVerification: true,
-  email: 'test@example.com',
-});
+        needsVerification: true,
+        email: 'test@example.com',
+      });
     });
     it('should login and check MFA requirement', async () => {
-  prisma.user.findFirst.mockResolvedValue({
-    id: 'user_1',
-    email: 'test@example.com',
-    isEmailVerified: true,
-    mfaEnabled: true,
-    authAccounts: [
-      { provider: 'LOCAL', passwordHash: 'hashed_password' },
-    ],
-  });
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'user_1',
+        email: 'test@example.com',
+        isEmailVerified: true,
+        mfaEnabled: true,
+        authAccounts: [{ provider: 'LOCAL', passwordHash: 'hashed_password' }],
+      });
 
-  (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-  const result = await service.login({ identifier: 'test', password: 'p' });
+      const result = await service.login({ identifier: 'test', password: 'p' });
 
-  expect(result).toEqual({
-    mfaRequired: true,
-    mfaToken: 'mock_token',
-  });
-});
+      expect(result).toEqual({
+        mfaRequired: true,
+        mfaToken: 'mock_token',
+      });
+    });
   });
 
   describe('MFA & Verification', () => {
     it('should setup MFA', async () => {
       const result = await service.setupMfa('user_1');
       expect(result.qrCode).toBeDefined();
-      expect(redis.set).toHaveBeenCalledWith('mfa_setup:user_1', 'mock_secret', 'EX', 300);
+      expect(redis.set).toHaveBeenCalledWith(
+        'mfa_setup:user_1',
+        'mock_secret',
+        'EX',
+        300,
+      );
     });
 
     it('should activate MFA and encrypt secret', async () => {
       redis.get.mockResolvedValue('mock_secret');
       mockOtplib.verify.mockReturnValue(true);
-      
+
       await service.activateMfa('user_1', '123456');
 
       expect(prisma.user.update).toHaveBeenCalledWith({
@@ -152,20 +172,31 @@ describe('AuthService', () => {
       // Since it's symmetric, we can just mock the findUnique return with anything that looks like encrypted
       // Actually, my decrypt function will be called.
       // I'll construct a real encrypted secret using the test key.
-      const testKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+      const testKey =
+        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
       const realSecret = 'SECRET123';
       const iv = crypto.randomBytes(12).toString('hex');
-      const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(testKey, 'hex'), Buffer.from(iv, 'hex'));
+      const cipher = crypto.createCipheriv(
+        'aes-256-gcm',
+        Buffer.from(testKey, 'hex'),
+        Buffer.from(iv, 'hex'),
+      );
       let enc = cipher.update(realSecret, 'utf8', 'hex');
       enc += cipher.final('hex');
       const tag = cipher.getAuthTag().toString('hex');
       const encrypted = `${iv}:${tag}:${enc}`;
 
-      prisma.user.findUnique.mockResolvedValue({ id: 'user_1', mfaSecret: encrypted });
-      
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user_1',
+        mfaSecret: encrypted,
+      });
+
       await service.verifyMfa('user_1', '123456', 'mfa_token');
-      
-      expect(mockOtplib.verify).toHaveBeenCalledWith({ token: '123456', secret: realSecret });
+
+      expect(mockOtplib.verify).toHaveBeenCalledWith({
+        token: '123456',
+        secret: realSecret,
+      });
     });
   });
 });

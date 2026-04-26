@@ -8,21 +8,21 @@ export class SummaryGeneratorService {
    */
   generate(result: AnalysisResult): string {
     const { capabilities, ownership } = result;
-    
+
     // 1. Determine focus
     const roles = [
       { name: 'backend', score: capabilities.backend.score },
       { name: 'frontend', score: capabilities.frontend.score },
       { name: 'devops', score: capabilities.devops.score },
     ].sort((a, b) => b.score - a.score);
-    
+
     const topRole = roles[0].name;
     const topScore = roles[0].score;
     const secondRole = roles[1].name;
     const secondScore = roles[1].score;
 
     let focus = '';
-    if (topScore > 0.6 && (topScore - secondScore) > 0.3) {
+    if (topScore > 0.6 && topScore - secondScore > 0.3) {
       focus = `${this.capitalize(topRole)}-focused developer`;
     } else if (topScore > 0.4 && secondScore > 0.4) {
       focus = `Full-stack developer with strong ${topRole} and ${secondRole} capabilities`;
@@ -40,7 +40,26 @@ export class SummaryGeneratorService {
       context = `with a consistent open-source presence`;
     }
 
-    return `${focus} ${context}.`;
+    let summary = `${focus} ${context}.`;
+
+    if (result.web3?.ecosystem === 'solana') {
+      summary += ' Active in the Solana ecosystem.';
+    }
+
+    if (result.web3?.achievements) {
+      const superteamBounties = result.web3.achievements.filter(
+        (a) => a.type === 'bounty_completion' && a.source === 'superteam',
+      );
+      if (superteamBounties.length > 0) {
+        summary += ` Superteam bounty contributor (${superteamBounties.length} completions).`;
+      }
+    }
+
+    if (result.reputation && result.reputation.verifiedVouchCount >= 2) {
+      summary += ` Vouched for by ${result.reputation.verifiedVouchCount} verified developers.`;
+    }
+
+    return summary;
   }
 
   private capitalize(s: string): string {

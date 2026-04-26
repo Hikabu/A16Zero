@@ -61,6 +61,12 @@ export class CandidateProfileResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  @ApiProperty({ nullable: true })
+  vouches: any;
+
+  @ApiProperty({ nullable: true })
+  devProfile: any;
 }
 
 export class GithubConnectionResponseDto {
@@ -71,6 +77,13 @@ export class GithubConnectionResponseDto {
   github: any;
 }
 
+export class Web3ConnectionResponseDto {
+  @ApiProperty()
+  connected: boolean;
+
+  @ApiProperty({ nullable: true })
+  web3: any;
+}
 export class SimpleMessageResponseDto {
   @ApiProperty()
   message: string;

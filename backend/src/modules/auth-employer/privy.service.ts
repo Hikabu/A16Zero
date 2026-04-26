@@ -8,9 +8,7 @@ require('dotenv').config();
 
 @Injectable()
 @Public()
-
 export class PrivyService {
-  
   private readonly logger = new Logger(PrivyService.name);
   //signing tokens
   private readonly jwks: ReturnType<typeof jose.createRemoteJWKSet>;
@@ -23,8 +21,8 @@ export class PrivyService {
       throw new Error('Privy credentials missing');
     }
     this.privyClient = new PrivyClient({
-    appId: appId,
-    appSecret: appSecret,
+      appId: appId,
+      appSecret: appSecret,
     });
 
     const jwksUrl = this.configService.get<string>(
@@ -34,7 +32,7 @@ export class PrivyService {
 
     this.jwks = jose.createRemoteJWKSet(new URL(jwksUrl));
   }
-  
+
   //verify token
   async verifyToken(token: string) {
     console.log('TOKEN', token);
@@ -48,7 +46,7 @@ export class PrivyService {
     }
     try {
       const appId = this.configService.get<string>('PRIVY_APP_ID');
-      
+
       const { payload } = await jose.jwtVerify(token, this.jwks, {
         issuer: 'privy.io',
         audience: appId,
@@ -64,17 +62,20 @@ export class PrivyService {
     }
   }
   async getUser(privyId: string) {
-    if (process.env.PRIVY_BYPASS === 'true' && privyId === 'did:privy:test-user-123') {
-    return {
-      id: 'did:privy:test-user-123',
-      linked_accounts: [
-        {
-          type: 'wallet',
-          address: '0x123456789abcdef0123456789abcdef012345678',
-        },
-      ],
-    };
-  }
+    if (
+      process.env.PRIVY_BYPASS === 'true' &&
+      privyId === 'did:privy:test-user-123'
+    ) {
+      return {
+        id: 'did:privy:test-user-123',
+        linked_accounts: [
+          {
+            type: 'wallet',
+            address: '0x123456789abcdef0123456789abcdef012345678',
+          },
+        ],
+      };
+    }
     try {
       const user = await this.privyClient.users()._get(privyId);
       return user;

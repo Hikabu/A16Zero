@@ -6,4 +6,4 @@ export const loginSchema = z.object({
   password: z.string().describe('Secret password').min(6),
 });
 
-export class LoginDto extends createZodDto(loginSchema) {}
+export class LoginDtoSchema extends createZodDto(loginSchema) {}

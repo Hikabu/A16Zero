@@ -27,7 +27,8 @@
 		"worker": "ts-node src/worker.ts",
 		"worker:dev": "ts-node-dev --respawn --transpile-only src/worker.ts",
 		"env:sync": "ts-node scripts/sync-env.ts",
-		"preload:cache": "ts-node -r tsconfig-paths/register src/scripts/preload-cache.ts"
+		"preload:cache": "ts-node -r tsconfig-paths/register src/scripts/preload-cache.ts",
+		"wallet:sign": "ts-node scripts/test-sign-message.ts"
 	},
 	"dependencies": {
 		"@alchemy/aa-accounts": "^3.19.0",
@@ -47,6 +48,7 @@
 		"@privy-io/server-auth": "^1.32.5",
 		"argon2": "^0.44.0",
 		"bcrypt": "^6.0.0",
+		"bs58": "^6.0.0",
 		"bullmq": "^5.74.1",
 		"class-transformer": "^0.5.1",
 		"class-validator": "^0.15.1",
@@ -70,6 +72,7 @@
 		"resend": "^6.12.0",
 		"rxjs": "^7.8.1",
 		"swagger-ui-express": "^5.0.1",
+		"tweetnacl": "^1.0.3",
 		"viem": "^2.48.1",
 		"zod": "^4.3.6"
 	},

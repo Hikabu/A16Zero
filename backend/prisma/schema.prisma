@@ -198,6 +198,9 @@ model User {
 
   authAccounts AuthAccount[]
   candidate    Candidate?
+  web3Profile  Web3Profile?
+  githubProfile GithubProfile?
+  analysisJobs AnalysisJob[]
 }
 
 // ─── User AUTH  ──────────────────────────────────────────
@@ -233,6 +236,7 @@ model Candidate {
   devProfile DeveloperCandidate?
   shortlist  Shortlist[]
   scorecard  Json? // { roleType, seniorityLevel, signals: { key: value }, overallFit }
+  vouches         Vouch[] 
   createdAt  DateTime            @default(now())
 }
 
@@ -258,6 +262,10 @@ model GithubProfile {
   id              String             @id @default(uuid())
   devCandidateId  String             @unique
   devCandidate    DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+  
+  userId          String?            @unique
+  user            User?              @relation(fields: [userId], references: [id])
+
   githubUsername  String             @unique
   githubUserId    String             @unique
   encryptedToken  String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
@@ -278,7 +286,10 @@ model Web3Profile {
   id                String             @id @default(uuid())
   devCandidateId    String             @unique
   devCandidate      DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  evmAddress        String?
+  
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   solanaAddress     String?
   // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
   verifiedContracts Json?
@@ -286,6 +297,33 @@ model Web3Profile {
   createdAt         DateTime           @default(now())
 }
 
+//-----Vouchers ---------------------------
+model Vouch {
+  id              String    @id @default(uuid())
+
+  // Candidate side — FK to Candidate, not GithubProfile
+  candidateId     String
+  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Voucher side — wallet proving identity on-chain
+  voucherWallet   String
+  message         String    @db.VarChar(500)
+  txSignature     String    @unique
+
+  // Weight & lifecycle
+  weight          String    @default("standard")  // 'verified' | 'standard' | 'new'
+  isActive        Boolean   @default(true)
+  flag            String?   // 'cluster_detected' | null
+
+  // Timestamps
+  confirmedAt     DateTime  @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+
+  @@unique([candidateId, voucherWallet])
+  @@index([candidateId, isActive, expiresAt])
+  @@index([voucherWallet, isActive, expiresAt])
+}
 // ─── Cache Layer ──────────────────────────────────────────────
 model CachedResult {
   id        String   @id @default(cuid())
@@ -293,4 +331,18 @@ model CachedResult {
   result    Json
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model AnalysisJob {
+  id        String   @id @default(uuid())
+  status    String   @default("pending")
+  input     Json     // { githubUsername, walletAddress, mode, useGithubCache }
+  result    Json?
+  error     String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("analysis_jobs")
 }
