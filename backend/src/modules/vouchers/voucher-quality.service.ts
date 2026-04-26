@@ -31,7 +31,13 @@ export class VoucherQualityService {
       // Non-fatal — proceed without cache
     }
 
-    const rpcUrl = this.config.get<string>('SOLANA_RPC_URL');
+      const usingDevnet = this.config.get<string>('USING_DEVNET') === 'true';
+
+const rpcUrl = usingDevnet
+  ? this.config.get<string>('SOLANA_DEVNET_RPC_URL')
+  : this.config.get<string>('SOLANA_RPC_URL');
+
+
     if (!rpcUrl) {
       this.logger.warn(
         'SOLANA_RPC_URL not configured — defaulting to standard',

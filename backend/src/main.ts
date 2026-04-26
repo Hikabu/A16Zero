@@ -23,6 +23,12 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ZodValidationPipe());
 
+//   app.useGlobalPipes(
+//   new ValidationPipe({
+//     whitelist: true,
+//     transform: true,
+//   }),
+// );
 
   app.useStaticAssets(join(__dirname, 'static'), {
     prefix: '/',

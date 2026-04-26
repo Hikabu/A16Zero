@@ -25,6 +25,7 @@ import {
   UserProfileResponseDto,
   CandidateProfileResponseDto,
   GithubConnectionResponseDto,
+  Web3ConnectionResponseDto,
   SimpleMessageResponseDto,
 } from './dto/profile.response.dto';
 
@@ -113,4 +114,19 @@ export class ProfileController {
   getConnectedGithub(@Req() req: any) {
     return this.profileService.getConnectedGithub(req.user.id);
   }
+
+   // ───────────────── WEB3 ─────────────────
+
+  @Get('wallet')
+  @ApiOperation({
+    summary: 'Get wallet connection status',
+    description:
+      'Returns whether wallet is connected and sync status to which address.',
+  })
+  @ApiOkResponse({ type: Web3ConnectionResponseDto })
+  @ApiNotFoundResponse({ description: 'Candidate profile not found' })
+  getConnectedWallet(@Req() req: any) {
+    return this.profileService.getConnectedWallet(req.user.id);
+  }
+
 }

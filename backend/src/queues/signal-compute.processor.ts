@@ -128,7 +128,7 @@ export class SignalComputeProcessor extends WorkerHost {
         }
 
         // S15 — Vouch signal (Live)
-        result = await this.applyVouchSignal(result, { githubUsername });
+        result = await this.applyVouchSignal(result, { githubUsername, walletAddress });
 
         // Update AnalysisJob status to completed
         await this.prisma.analysisJob.update({
@@ -228,7 +228,7 @@ export class SignalComputeProcessor extends WorkerHost {
       }
 
       // S15 — Vouch signal (Live)
-      result = await this.applyVouchSignal(result, { githubUsername });
+        result = await this.applyVouchSignal(result, { githubUsername, walletAddress });
 
       // Update progress: complete (100%)
       await this.updateProgress(profile?.id, 'complete', 100);
