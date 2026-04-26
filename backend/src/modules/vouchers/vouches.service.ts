@@ -88,6 +88,7 @@ console.log("txsignature:" , txSignature);
         ],
       },
       include: {
+		userId:true,
         devProfile: {
           include: { web3Profile: true },
         },
@@ -107,6 +108,10 @@ console.log("txsignature:" , txSignature);
     if (candidateWallet && candidateWallet === voucherWallet) {
       throw new BadRequestException('Cannot vouch for yourself');
     }
+
+	if (userId && candidate.userId === userId){
+		throw new BadRequestException('Cannot vouch for yourself');
+	}
 
     // ── Step 3: Hard block — duplicate vouch ─────────────────────────────
     const duplicateVouch = await this.prisma.vouch.findUnique({
