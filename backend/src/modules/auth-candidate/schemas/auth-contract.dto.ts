@@ -6,8 +6,12 @@ export const OAuthCallbackQuerySchema = z.object({
 });
 
 export const VerifyEmailSchema = z.object({
-  code: z.string().describe('6-digit verification code sent to the users email'),
+  code: z
+    .string()
+    .describe('6-digit verification code sent to the users email'),
 });
 
-export class OAuthCallbackQueryDto extends createZodDto(OAuthCallbackQuerySchema) {}
+export class OAuthCallbackQueryDto extends createZodDto(
+  OAuthCallbackQuerySchema,
+) {}
 export class VerifyEmailDto extends createZodDto(VerifyEmailSchema) {}

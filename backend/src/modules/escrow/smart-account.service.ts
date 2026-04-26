@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createLightAccount } from '@alchemy/aa-accounts';
 import { createSmartAccountClient, LocalAccountSigner } from '@alchemy/aa-core';
-import { createPublicClient, http, hexToBytes, keccak256, stringToHex } from 'viem';
+import {
+  createPublicClient,
+  http,
+  hexToBytes,
+  keccak256,
+  stringToHex,
+} from 'viem';
 import { sepolia } from 'viem/chains';
 
 @Injectable()
@@ -11,11 +17,12 @@ export class SmartAccountService {
 
   async predictSmartAccountAddress(privyId: string): Promise<string> {
     const rpcUrl = this.configService.get<string>('RPC_URL');
-    
+
     // We use a dummy signer for prediction (counterfactual address)
     // The salt will be derived from the privyId
     const dummyPrivateKey = keccak256(stringToHex('playground-dummy-signer'));
-    const signer = LocalAccountSigner.privateKeyToAccountSigner(dummyPrivateKey);
+    const signer =
+      LocalAccountSigner.privateKeyToAccountSigner(dummyPrivateKey);
 
     const publicClient = createPublicClient({
       chain: sepolia,

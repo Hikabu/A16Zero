@@ -1,4 +1,11 @@
-import { Injectable, UnauthorizedException, Inject, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  Inject,
+  ConflictException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -34,7 +41,9 @@ export class AuthCandidateService {
     }
     if (attempts > 5) {
       this.logger.warn(`LOGIN_FAILURE: Rate limit exceeded for ${identifier}`);
-      throw new UnauthorizedException('Too many login attempts. Please try again later.');
+      throw new UnauthorizedException(
+        'Too many login attempts. Please try again later.',
+      );
     }
   }
 
@@ -45,10 +54,14 @@ export class AuthCandidateService {
   private getAuthenticator() {
     // Dynamic require to handle ESM/CJS compatibility in test environments
     const otplib = require('otplib');
-    const { TOTP, NobleCryptoPlugin, ScureBase32Plugin } = otplib.TOTP ? otplib : otplib.default || {};
-    
+    const { TOTP, NobleCryptoPlugin, ScureBase32Plugin } = otplib.TOTP
+      ? otplib
+      : otplib.default || {};
+
     if (!TOTP) {
-      throw new Error(`Failed to load otplib components. Available keys: ${Object.keys(otplib)}`);
+      throw new Error(
+        `Failed to load otplib components. Available keys: ${Object.keys(otplib)}`,
+      );
     }
 
     return new TOTP({
@@ -59,7 +72,8 @@ export class AuthCandidateService {
 
   private getEncryptionKey(): string {
     const key = this.config.get<string>('AUTH_ENCRYPTION_KEY');
-    if (!key) throw new Error('AUTH_ENCRYPTION_KEY is not defined in environment');
+    if (!key)
+      throw new Error('AUTH_ENCRYPTION_KEY is not defined in environment');
     return key;
   }
 
@@ -82,13 +96,17 @@ export class AuthCandidateService {
         } as any,
       });
 
-      this.logger.log(`REGISTRATION_SUCCESS: User ${user.email} registered locally`);
+      this.logger.log(
+        `REGISTRATION_SUCCESS: User ${user.email} registered locally`,
+      );
       await this.initiateEmailVerification(user.id, user.email!);
       return this.handleLoginResponse(user);
     } catch (error) {
       if (error.code === 'P2002') {
         const target = error.meta?.target?.[0];
-        throw new ConflictException(`${target ? target.charAt(0).toUpperCase() + target.slice(1) : 'Account'} already exists`);
+        throw new ConflictException(
+          `${target ? target.charAt(0).toUpperCase() + target.slice(1) : 'Account'} already exists`,
+        );
       }
       throw error;
     }
@@ -99,10 +117,7 @@ export class AuthCandidateService {
 
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email: dto.identifier },
-          { username: dto.identifier },
-        ],
+        OR: [{ email: dto.identifier }, { username: dto.identifier }],
       },
       include: { authAccounts: true },
     });
@@ -110,11 +125,14 @@ export class AuthCandidateService {
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const account = user.authAccounts.find((a) => a.provider === 'LOCAL');
-    if (!account || !account.passwordHash) throw new UnauthorizedException('Invalid credentials');
+    if (!account || !account.passwordHash)
+      throw new UnauthorizedException('Invalid credentials');
 
     const isValid = await bcrypt.compare(dto.password, account.passwordHash);
     if (!isValid) {
-      this.logger.warn(`LOGIN_FAILURE: Invalid credentials for ${dto.identifier}`);
+      this.logger.warn(
+        `LOGIN_FAILURE: Invalid credentials for ${dto.identifier}`,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -126,35 +144,36 @@ export class AuthCandidateService {
 
   private async handleLoginResponse(user: any) {
     if (!user.isEmailVerified) {
-		return {
-			type: AuthState.NEEDS_VERIFICATION,
-			data: { email: user.email },
-		  };
+      return {
+        type: AuthState.NEEDS_VERIFICATION,
+        data: { email: user.email },
+      };
     }
 
     if (user.mfaEnabled) {
       const mfaToken = this.jwt.sign(
         { sub: user.id, type: 'mfa', jti: crypto.randomUUID() },
-        { 
+        {
           secret: this.config.get('jwt_secret.mfa'),
-          expiresIn: '5m' 
-        }
+          expiresIn: '5m',
+        },
       );
       return {
-		type: AuthState.MFA_REQUIRED,
-		data: { mfaToken },
-	  };
+        type: AuthState.MFA_REQUIRED,
+        data: { mfaToken },
+      };
     }
 
-    return await this.issueTokens(user.id, (user as any).isEmailVerified);
+    return await this.issueTokens(user.id, user.isEmailVerified);
   }
 
   async verifyMfa(userId: string, code: string, mfaToken: string) {
     try {
       const payload: any = this.jwt.verify(mfaToken, {
-        secret: this.config.get('jwt_secret.mfa')
+        secret: this.config.get('jwt_secret.mfa'),
       });
-      if (payload.sub !== userId || payload.type !== 'mfa') throw new UnauthorizedException();
+      if (payload.sub !== userId || payload.type !== 'mfa')
+        throw new UnauthorizedException();
     } catch {
       throw new UnauthorizedException('Invalid MFA session');
     }
@@ -178,7 +197,9 @@ export class AuthCandidateService {
       if (storedJti) {
         // Token reuse detected. Hijack scenario! Revoke all sessions.
         await this.redis.del(`refresh:${userId}`);
-        this.logger.warn(`MFA_BYPASS_ATTEMPT / TOKEN REUSE DETECTED: Revoked sessions for user ${userId}`);
+        this.logger.warn(
+          `MFA_BYPASS_ATTEMPT / TOKEN REUSE DETECTED: Revoked sessions for user ${userId}`,
+        );
       }
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
@@ -199,34 +220,37 @@ export class AuthCandidateService {
     if (!user) throw new UnauthorizedException('User not found');
 
     const accessToken = this.jwt.sign(
-      { 
-        sub: userId, 
+      {
+        sub: userId,
         isEmailVerified,
         role: user.role,
-        jti: crypto.randomUUID(), 
-       }, 
-      { 
+        jti: crypto.randomUUID(),
+      },
+      {
         secret: this.config.get('jwt_secret.access'),
-        expiresIn: '15m' 
-      }
+        expiresIn: '15m',
+      },
     );
     const refreshJti = crypto.randomUUID();
     const refreshToken = this.jwt.sign(
-      { sub: userId,
-        jti: refreshJti
-       }, 
-      { 
+      { sub: userId, jti: refreshJti },
+      {
         secret: this.config.get('jwt_secret.refresh'),
         expiresIn: '7d',
-       }
+      },
     );
-    await this.redis.set(`refresh:${userId}`, refreshJti, 'EX', 60 * 60 * 24 * 7);
-    console.log("refresh token: ", refreshToken);
-    console.log("access token: ", accessToken);
+    await this.redis.set(
+      `refresh:${userId}`,
+      refreshJti,
+      'EX',
+      60 * 60 * 24 * 7,
+    );
+    console.log('refresh token: ', refreshToken);
+    console.log('access token: ', accessToken);
     return {
-		type: AuthState.SUCCESS,
-		data: { accessToken, refreshToken },
-	  };
+      type: AuthState.SUCCESS,
+      data: { accessToken, refreshToken },
+    };
   }
 
   // --- OAuth & Linking ---
@@ -244,7 +268,7 @@ export class AuthCandidateService {
 
     if (!profile) throw new UnauthorizedException();
 
-    let account = await this.prisma.authAccount.findUnique({
+    const account = await this.prisma.authAccount.findUnique({
       where: { provider_providerId: { provider, providerId: id } },
       include: { user: true },
     });
@@ -259,21 +283,33 @@ export class AuthCandidateService {
     if (user) {
       // SECURITY: Only auto-link if BOTH the local account AND the OAuth provider affirm verification.
       if (!user.isEmailVerified) {
-        this.logger.warn(`LINKING_FAILURE: Attempted auto-link to unverified local account ${user.email}`);
-        throw new UnauthorizedException('Email is already registered but not verified. Please verify locally first.');
+        this.logger.warn(
+          `LINKING_FAILURE: Attempted auto-link to unverified local account ${user.email}`,
+        );
+        throw new UnauthorizedException(
+          'Email is already registered but not verified. Please verify locally first.',
+        );
       }
 
       if (profile.email_verified === false) {
-        this.logger.warn(`LINKING_FAILURE: OAuth provider ${provider} email not verified for ${profile.email}`);
-        throw new UnauthorizedException('OAuth email not verified. Please verify your social account or log in locally.');
+        this.logger.warn(
+          `LINKING_FAILURE: OAuth provider ${provider} email not verified for ${profile.email}`,
+        );
+        throw new UnauthorizedException(
+          'OAuth email not verified. Please verify your social account or log in locally.',
+        );
       }
 
-      const existingAccount = user.authAccounts.find(a => a.provider === provider);
+      const existingAccount = user.authAccounts.find(
+        (a) => a.provider === provider,
+      );
       if (!existingAccount) {
         await this.prisma.authAccount.create({
           data: { userId: user.id, provider, providerId: id },
         });
-        this.logger.log(`ACCOUNT_LINKED: User ${user.id} auto-linked to ${provider}`);
+        this.logger.log(
+          `ACCOUNT_LINKED: User ${user.id} auto-linked to ${provider}`,
+        );
       }
       return this.handleLoginResponse(user);
     }
@@ -289,20 +325,25 @@ export class AuthCandidateService {
         lastName: profile.lastName,
       }),
       'EX',
-      900
+      900,
     );
 
-    const tempToken = this.jwt.sign({ 
-      claimId, type: 'onboarding', jti: crypto.randomUUID() 
-    }, { 
-      secret: this.config.get("jwt_secret.onboarding"),
-      expiresIn: '15m' 
-    });
-    console.log("Generated onboarding token: ", tempToken);
+    const tempToken = this.jwt.sign(
+      {
+        claimId,
+        type: 'onboarding',
+        jti: crypto.randomUUID(),
+      },
+      {
+        secret: this.config.get('jwt_secret.onboarding'),
+        expiresIn: '15m',
+      },
+    );
+    console.log('Generated onboarding token: ', tempToken);
     return {
-		type: AuthState.NEEDS_ONBOARDING,
-		data: { tempToken },
-	  };
+      type: AuthState.NEEDS_ONBOARDING,
+      data: { tempToken },
+    };
   }
 
   async generateLinkState(userId: string): Promise<string> {
@@ -311,15 +352,21 @@ export class AuthCandidateService {
     return state;
   }
 
-  async linkOAuth(userId: string, profile: any, provider: Provider, state: string) {
-    console.log("linkauth1!!!!!");
-    console.log("Linking profile: ", profile);
-    console.log("Linking provider: ", provider);
+  async linkOAuth(
+    userId: string,
+    profile: any,
+    provider: Provider,
+    state: string,
+  ) {
+    console.log('linkauth1!!!!!');
+    console.log('Linking profile: ', profile);
+    console.log('Linking provider: ', provider);
     const storedUserId = await this.redis.get(`link_state:${state}`);
-    if (!storedUserId || storedUserId !== userId) throw new UnauthorizedException('Invalid link state');
+    if (!storedUserId || storedUserId !== userId)
+      throw new UnauthorizedException('Invalid link state');
     await this.redis.del(`link_state:${state}`);
-    const id  = this.extractProfileId(profile, provider);
-    console.log("Extracted provider ID: ", id);
+    const id = this.extractProfileId(profile, provider);
+    console.log('Extracted provider ID: ', id);
     const existing = await this.prisma.authAccount.findUnique({
       where: { provider_providerId: { provider, providerId: id } },
     });
@@ -329,45 +376,47 @@ export class AuthCandidateService {
       data: { userId, provider, providerId: id },
     });
 
-    this.logger.log(`ACCOUNT_LINKED: User ${userId} successfully linked ${provider}`);
+    this.logger.log(
+      `ACCOUNT_LINKED: User ${userId} successfully linked ${provider}`,
+    );
   }
 
   async completeOnboarding(dto, oauth: any) {
-  const usernameExists = await this.prisma.user.findUnique({
-    where: { username: dto.username },
-  });
+    const usernameExists = await this.prisma.user.findUnique({
+      where: { username: dto.username },
+    });
 
-  if (usernameExists) {
-    throw new ConflictException('Username taken');
-  }
+    if (usernameExists) {
+      throw new ConflictException('Username taken');
+    }
 
-  const user = await this.prisma.user.create({
-    data: {
-      email: oauth.email,
-      username: dto.username,
-      firstName: oauth.firstName,
-      lastName: oauth.lastName,
-      isEmailVerified: true,
-      authAccounts: {
-        create: {
-          provider: oauth.provider,
-          providerId: oauth.providerId,
+    const user = await this.prisma.user.create({
+      data: {
+        email: oauth.email,
+        username: dto.username,
+        firstName: oauth.firstName,
+        lastName: oauth.lastName,
+        isEmailVerified: true,
+        authAccounts: {
+          create: {
+            provider: oauth.provider,
+            providerId: oauth.providerId,
+          },
         },
       },
-    },
-  });
+    });
 
-  await this.redis.del(`onboarding_claim:${oauth.claimId}`);
+    await this.redis.del(`onboarding_claim:${oauth.claimId}`);
 
-  return this.handleLoginResponse(user);
-}
+    return this.handleLoginResponse(user);
+  }
 
   // --- Email Verification ---
 
   async initiateEmailVerification(userId: string, email: string) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     await this.redis.set(`verify_email:${code}`, userId, 'EX', 3600);
-    
+
     await this.emailQueue.add('send-verification', {
       to: email,
       subject: 'Verify your Colosseum account',
@@ -379,7 +428,10 @@ export class AuthCandidateService {
     const userId = await this.redis.get(`verify_email:${code}`);
     if (!userId) throw new BadRequestException('Invalid code');
 
-    await this.prisma.user.update({ where: { id: userId }, data: { isEmailVerified: true } as any });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isEmailVerified: true } as any,
+    });
     await this.redis.del(`verify_email:${code}`);
   }
 
@@ -390,7 +442,7 @@ export class AuthCandidateService {
     const secret = auth.generateSecret();
     const otpauthUrl = auth.keyuri(userId, 'Colosseeum', secret);
     const qrCode = await QRCode.toDataURL(otpauthUrl);
-    
+
     await this.redis.set(`mfa_setup:${userId}`, secret, 'EX', 300);
     return { qrCode, secret };
   }
@@ -403,39 +455,56 @@ export class AuthCandidateService {
     if (!isValid) throw new BadRequestException('Invalid MFA code');
 
     const encryptedSecret = encrypt(secret, this.getEncryptionKey());
-    const backupCodes = Array.from({ length: 10 }, () => crypto.randomBytes(4).toString('hex'));
-    const encryptedBackupCodes = backupCodes.map(c => encrypt(c, this.getEncryptionKey()));
+    const backupCodes = Array.from({ length: 10 }, () =>
+      crypto.randomBytes(4).toString('hex'),
+    );
+    const encryptedBackupCodes = backupCodes.map((c) =>
+      encrypt(c, this.getEncryptionKey()),
+    );
 
     await this.prisma.user.update({
       where: { id: userId },
       data: {
         mfaEnabled: true,
         mfaSecret: encryptedSecret,
-        mfaBackupCodes: encryptedBackupCodes
-      } as any
+        mfaBackupCodes: encryptedBackupCodes,
+      } as any,
     });
     await this.redis.del(`mfa_setup:${userId}`);
     return { backupCodes };
   }
 
-  async verifyMfaRecovery(userId: string, backupCode: string, mfaToken: string) {
+  async verifyMfaRecovery(
+    userId: string,
+    backupCode: string,
+    mfaToken: string,
+  ) {
     try {
       const payload: any = this.jwt.verify(mfaToken, {
         secret: this.config.get('jwt_secret.mfa'),
       });
-      if (payload.sub !== userId || payload.type !== 'mfa') throw new UnauthorizedException();
+      if (payload.sub !== userId || payload.type !== 'mfa')
+        throw new UnauthorizedException();
     } catch {
       throw new UnauthorizedException('Invalid MFA session');
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !(user as any).mfaEnabled || !(user as any).mfaBackupCodes.length) throw new UnauthorizedException();
+    if (
+      !user ||
+      !(user as any).mfaEnabled ||
+      !(user as any).mfaBackupCodes.length
+    )
+      throw new UnauthorizedException();
 
     const encryptionKey = this.getEncryptionKey();
-    const decryptedCodes = (user as any).mfaBackupCodes.map((c: string) => decrypt(c, encryptionKey));
-    
+    const decryptedCodes = (user as any).mfaBackupCodes.map((c: string) =>
+      decrypt(c, encryptionKey),
+    );
+
     const codeIndex = decryptedCodes.indexOf(backupCode);
-    if (codeIndex === -1) throw new UnauthorizedException('Invalid backup code');
+    if (codeIndex === -1)
+      throw new UnauthorizedException('Invalid backup code');
 
     // Use-once: remove the code
     const updatedCodes = [...(user as any).mfaBackupCodes];
@@ -443,7 +512,7 @@ export class AuthCandidateService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { mfaBackupCodes: updatedCodes } as any
+      data: { mfaBackupCodes: updatedCodes } as any,
     });
 
     return await this.issueTokens(user.id, (user as any).isEmailVerified);
@@ -452,12 +521,14 @@ export class AuthCandidateService {
   // --- Password Reset ---
 
   async requestPasswordReset(dto: any) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
     // SECURITY: Always return success to prevent email enumeration
     if (!user) {
       this.logger.warn(`RESET_REQUEST: Non-existent email ${dto.email}`);
-	  return;
+      return;
     }
 
     const token = crypto.randomBytes(32).toString('hex');
@@ -468,7 +539,6 @@ export class AuthCandidateService {
       subject: 'Reset your Colosseum password',
       html: `<p>Click <a href="${this.config.get('APP_URL')}/reset-password?token=${token}">here</a> to reset your password.</p>`,
     });
-    
   }
 
   async resetPassword(dto: any) {
@@ -478,7 +548,7 @@ export class AuthCandidateService {
     }
 
     const hash = await bcrypt.hash(dto.newPassword, 10);
-    
+
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
@@ -495,25 +565,25 @@ export class AuthCandidateService {
 
     await this.redis.del(`password_reset:${dto.token}`);
     await this.redis.del(`refresh:${userId}`); // Global logout/session invalidation
-    
-    this.logger.log(`PASSWORD_RESET_SUCCESS: User ${userId} reset their password`);
-    
+
+    this.logger.log(
+      `PASSWORD_RESET_SUCCESS: User ${userId} reset their password`,
+    );
   }
 
- async githubLink(userId: string) {
-  const state = await this.generateLinkState(userId);
+  async githubLink(userId: string) {
+    const state = await this.generateLinkState(userId);
 
-  const base = 'https://github.com/login/oauth/authorize';
+    const base = 'https://github.com/login/oauth/authorize';
 
+    const clientId = this.config.get('GITHUB_CLIENT_ID');
+    const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
+    console.log('!!!!GITHUB Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
 
-  const clientId = this.config.get('GITHUB_CLIENT_ID');
-  const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
-    console.log("!!!!GITHUB Link Callback URL: ", redirectUri); // Debug log to check the callback URL being generated
+    return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`;
+  }
 
-  return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`;
-}
-
-async googleLink(userId: string) {
+  async googleLink(userId: string) {
     const state = await this.generateLinkState(userId);
 
     const base = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -521,10 +591,9 @@ async googleLink(userId: string) {
 
     const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.googleLinkCallback')}`;
 
-    console.log("!!!!Google Link Callback URL: ", redirectUri); // Debug log to check the callback URL being generated
+    console.log('!!!!Google Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
     const scope = encodeURIComponent('openid email profile');
 
     return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;
   }
 }
-

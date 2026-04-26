@@ -1,0 +1,2 @@
+> blink w/USER from user to user
+> blink w/TWITTER share link + blink from no user

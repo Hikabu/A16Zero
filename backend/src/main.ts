@@ -23,6 +23,12 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ZodValidationPipe());
 
+//   app.useGlobalPipes(
+//   new ValidationPipe({
+//     whitelist: true,
+//     transform: true,
+//   }),
+// );
 
   app.useStaticAssets(join(__dirname, 'static'), {
     prefix: '/',
@@ -36,6 +42,15 @@ async function bootstrap() {
     )
     .setVersion('1.0')
     .addBearerAuth()
+	  .addApiKey(
+    {
+      type: 'apiKey',
+      name: 'x-internal-api-key', // must match your guard
+      in: 'header',
+      description: 'Internal API key',
+    },
+    'internal-api-key',
+  )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -48,6 +63,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
+
 
   logger.log(`Application is running on: http://localhost:${port}`);
   logger.log(`Swagger documentation: http://localhost:${port}/api/docs`);

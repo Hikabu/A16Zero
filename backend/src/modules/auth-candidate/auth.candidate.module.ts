@@ -22,14 +22,12 @@ import { GithubSyncConnectStrategy } from './strategies/github.sync.connect.stra
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [authConfig]
+      load: [authConfig],
     }),
   ],
-  controllers: [
-    AuthCandidateController
-  ],
+  controllers: [AuthCandidateController],
   providers: [
-    AuthCandidateService, 
+    AuthCandidateService,
     GithubStrategy,
     GoogleStrategy,
     GithubLinkStrategy,
@@ -38,7 +36,7 @@ import { GithubSyncConnectStrategy } from './strategies/github.sync.connect.stra
     JwtStrategy,
     GithubLinkGuard,
     GoogleLinkGuard,
-    RefreshStrategy
+    RefreshStrategy,
   ],
 })
 export class AuthCandidateModule {}

@@ -7,19 +7,24 @@ describe('Scoring Types Verification', () => {
       capabilities: {
         backend: { score: 85, confidence: 'high' },
         frontend: { score: 20, confidence: 'low' },
-        devops: { score: 40, confidence: 'medium' }
+        devops: { score: 40, confidence: 'medium' },
       },
       ownership: {
         ownedProjects: 5,
         activelyMaintained: 3,
-        confidence: 'high'
+        confidence: 'high',
       },
       impact: {
         activityLevel: 'high',
         consistency: 'strong',
         externalContributions: 10,
-        confidence: 'high'
-      }
+        confidence: 'high',
+      },
+      stack: {
+        languages: [],
+        tools: [],
+      },
+      web3: null,
     };
     expect(result.summary).toBeDefined();
   });
@@ -33,7 +38,7 @@ describe('Scoring Types Verification', () => {
       externalContributions: 12,
       projectMeaningfulness: 150,
       stackIdentity: ['TypeScript', 'Node.js'],
-      dataCompleteness: 0.95
+      dataCompleteness: 0.95,
     };
     expect(signals.techStackBreadth).toBeDefined();
   });

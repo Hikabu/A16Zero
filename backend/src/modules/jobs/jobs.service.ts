@@ -27,7 +27,7 @@ export class JobsService {
 
   async publish(id: string, companyId: string) {
     const job = await this.prisma.jobPost.findUnique({ where: { id } });
-    
+
     if (!job || job.companyId !== companyId) {
       throw new AppException('Job not found or access denied', 404);
     }
@@ -43,7 +43,7 @@ export class JobsService {
 
   async close(id: string, companyId: string) {
     const job = await this.prisma.jobPost.findUnique({ where: { id } });
-    
+
     if (!job || job.companyId !== companyId) {
       throw new AppException('Job not found or access denied', 404);
     }

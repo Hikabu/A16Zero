@@ -42,6 +42,11 @@ describe('CacheService', () => {
       externalContributions: 2,
       confidence: 'high',
     },
+    stack: {
+      languages: [],
+      tools: [],
+    },
+    web3: null,
   };
 
   beforeEach(async () => {
@@ -68,22 +73,24 @@ describe('CacheService', () => {
 
   describe('buildCacheKey', () => {
     it('should build a simple key for username', () => {
-      expect(service.buildCacheKey('Alice')).toBe('analysis-alice');
+      expect(service.buildCacheKey('Alice')).toBe('analysis:alice');
     });
 
     it('should include wallet address if provided', () => {
-      expect(service.buildCacheKey('Alice', '0x123')).toBe('analysis-alice-0x123');
+      expect(service.buildCacheKey('Alice', '0x123')).toBe(
+        'analysis:alice:0x123',
+      );
     });
   });
 
   describe('get', () => {
     it('should return result from Redis if available', async () => {
       mockRedis.get.mockResolvedValue(JSON.stringify(mockResult));
-      
-      const result = await service.get('analysis-alice');
-      
+
+      const result = await service.get('analysis:alice');
+
       expect(result).toEqual(mockResult);
-      expect(mockRedis.get).toHaveBeenCalledWith('analysis-alice');
+      expect(mockRedis.get).toHaveBeenCalledWith('analysis:alice');
       expect(mockPrisma.cachedResult.findUnique).not.toHaveBeenCalled();
     });
 
@@ -92,12 +99,12 @@ describe('CacheService', () => {
       const expiresAt = new Date(Date.now() + 10000);
       mockPrisma.cachedResult.findUnique.mockResolvedValue({
         id: '1',
-        cacheKey: 'analysis-alice',
+        cacheKey: 'analysis:alice',
         result: mockResult,
         expiresAt,
       });
 
-      const result = await service.get('analysis-alice');
+      const result = await service.get('analysis:alice');
 
       expect(result).toEqual(mockResult);
       expect(mockPrisma.cachedResult.findUnique).toHaveBeenCalled();
@@ -117,7 +124,9 @@ describe('CacheService', () => {
       const result = await service.get('analysis:alice');
 
       expect(result).toBeNull();
-      expect(mockPrisma.cachedResult.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+      expect(mockPrisma.cachedResult.delete).toHaveBeenCalledWith({
+        where: { id: '1' },
+      });
     });
   });
 
@@ -129,7 +138,7 @@ describe('CacheService', () => {
         'analysis:alice',
         JSON.stringify(mockResult),
         'EX',
-        86400
+        86400,
       );
       expect(mockPrisma.cachedResult.upsert).toHaveBeenCalled();
     });
@@ -137,9 +146,9 @@ describe('CacheService', () => {
 
   describe('invalidate', () => {
     it('should remove from both layers', async () => {
-      await service.invalidate('analysis-alice');
+      await service.invalidate('analysis:alice');
 
-      expect(mockRedis.del).toHaveBeenCalledWith('analysis-alice');
+      expect(mockRedis.del).toHaveBeenCalledWith('analysis:alice');
       expect(mockPrisma.cachedResult.deleteMany).toHaveBeenCalled();
     });
   });

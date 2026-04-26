@@ -150,8 +150,6 @@ describe('Auth (e2e)', () => {
   });
 
   it('Protected route should fail without token', async () => {
-    await request(server)
-      .get('/companies/me')
-      .expect(401);
+    await request(server).get('/companies/me').expect(401);
   });
 });

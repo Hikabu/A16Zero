@@ -2,7 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ScoringService } from '../scoring-service/scoring.service';
 import { SignalExtractorService } from '../signal-extractor/signal-extractor.service';
 import { SummaryGeneratorService } from '../summary-generator/summary-generator.service';
-import { ALEX_BACKEND, SARAH_FULLSTACK, MAYA_DEVOPS, NEW_DEV, GHOST_PROFILE } from '../signal-extractor/__fixtures__/seed-developers';
+import { EcosystemClassifierService } from '../signal-extractor/ecosystem-clarifier.service';
+import { StackFingerprintService } from '../signal-extractor/stack-fingerprint.service';
+import {
+  ALEX_BACKEND,
+  SARAH_FULLSTACK,
+  MAYA_DEVOPS,
+  NEW_DEV,
+  GHOST_PROFILE,
+} from '../signal-extractor/__fixtures__/seed-developers';
 
 describe('Scoring Pipeline Integration (Checkpoint B)', () => {
   let scoringService: ScoringService;
@@ -14,6 +22,8 @@ describe('Scoring Pipeline Integration (Checkpoint B)', () => {
         ScoringService,
         SignalExtractorService,
         SummaryGeneratorService,
+        EcosystemClassifierService,
+        StackFingerprintService,
       ],
     }).compile();
 
@@ -46,7 +56,9 @@ describe('Scoring Pipeline Integration (Checkpoint B)', () => {
       expect(result.capabilities).toBeDefined();
       expect(result.capabilities.backend).toBeDefined();
       expect(result.capabilities.backend.score).toBeGreaterThanOrEqual(0);
-      expect(['low', 'medium', 'high']).toContain(result.capabilities.backend.confidence);
+      expect(['low', 'medium', 'high']).toContain(
+        result.capabilities.backend.confidence,
+      );
 
       expect(result.ownership).toBeDefined();
       expect(typeof result.ownership.ownedProjects).toBe('number');
@@ -55,8 +67,12 @@ describe('Scoring Pipeline Integration (Checkpoint B)', () => {
       expect(['low', 'medium', 'high']).toContain(result.impact.activityLevel);
 
       // Verify no NaN or undefined values in scores
-      const roles = [result.capabilities.backend, result.capabilities.frontend, result.capabilities.devops];
-      roles.forEach(role => {
+      const roles = [
+        result.capabilities.backend,
+        result.capabilities.frontend,
+        result.capabilities.devops,
+      ];
+      roles.forEach((role) => {
         expect(role.score).not.toBeNaN();
         expect(role.score).toBeLessThanOrEqual(1.0);
       });

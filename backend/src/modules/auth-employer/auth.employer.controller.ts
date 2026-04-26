@@ -19,7 +19,7 @@ class LoginResponseDto {
   accessToken: string;
 }
 
-class ErrorResponseDto {
+class AuthEmplErrorResponseDto {
   statusCode: number;
   message: string;
   error: string;
@@ -44,7 +44,8 @@ export class AuthEmployerController extends BaseController {
   })
   @ApiBody({
     type: LoginDto,
-    description: 'Optional login metadata used during company creation or update',
+    description:
+      'Optional login metadata used during company creation or update',
     examples: {
       default: {
         value: {
@@ -59,11 +60,11 @@ export class AuthEmployerController extends BaseController {
   })
   @ApiUnauthorizedResponse({
     description: 'Invalid or missing Privy token',
-    type: ErrorResponseDto,
+    type: AuthEmplErrorResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Missing authorization header or invalid request payload',
-    type: ErrorResponseDto,
+    type: AuthEmplErrorResponseDto,
   })
   async login(
     @Headers('authorization') authHeader: string,
