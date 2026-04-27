@@ -1,8 +1,14 @@
 import { INestApplication } from '@nestjs/common';
-import { AuthService } from './auth.candidate.service';
+import { AuthCandidateService } from './auth.candidate.service';
 import { resetBefore, resetAfter } from '../../../test/shared';
 import { App } from 'supertest/types';
 import Redis from 'ioredis';
+
+jest.mock('@privy-io/node', () => ({
+  PrivyClient: jest.fn().mockImplementation(() => ({
+    verifyVerify: jest.fn(),
+  })),
+}));
 
 jest.mock(
   'otplib',
@@ -21,9 +27,9 @@ jest.mock(
   { virtual: true },
 );
 
-describe('AuthService (Integration)', () => {
+describe('AuthCandidateService (Integration)', () => {
   let app: INestApplication<App>;
-  let service: AuthService;
+  let service: AuthCandidateService;
   let redis: Redis;
   let testId: string;
 
@@ -31,7 +37,7 @@ describe('AuthService (Integration)', () => {
     const setup = await resetBefore();
     app = setup.app;
     testId = setup.id;
-    service = app.get(AuthService);
+    service = app.get(AuthCandidateService);
     redis = app.get('REDIS');
   });
 

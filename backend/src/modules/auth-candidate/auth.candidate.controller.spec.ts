@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthController } from './auth.candidate.controller';
-import { AuthService } from './auth.candidate.service';
+import { AuthCandidateController } from './auth.candidate.controller';
+import { AuthCandidateService } from './auth.candidate.service';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 
-describe('AuthController', () => {
-  let controller: AuthController;
-  let authService: AuthService;
+describe('AuthCandidateController', () => {
+  let controller: AuthCandidateController;
+  let authService: AuthCandidateService;
 
   const mockAuthService = {
     login: jest.fn(),
@@ -34,26 +35,40 @@ describe('AuthController', () => {
     }),
   };
 
+  const mockJwtService = {
+    sign: jest.fn(),
+    verify: jest.fn(),
+  };
+
+  const mockRedis = {
+    get: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [AuthController],
+      controllers: [AuthCandidateController],
       providers: [
-        { provide: AuthService, useValue: mockAuthService },
+        { provide: AuthCandidateService, useValue: mockAuthService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: JwtService, useValue: mockJwtService },
+        { provide: 'REDIS', useValue: mockRedis },
       ],
     }).compile();
 
-    controller = module.get<AuthController>(AuthController);
-    authService = module.get<AuthService>(AuthService);
+    controller = module.get<AuthCandidateController>(AuthCandidateController);
+    authService = module.get<AuthCandidateService>(AuthCandidateService);
   });
 
   describe('Secure Linking', () => {
-    it('should generate secure state for link', async () => {
+    it('should generate secure state for link and redirect', async () => {
       const req = { user: { id: 'user_1' } };
+      const res = { redirect: jest.fn() } as any;
+      mockAuthService.githubLink.mockResolvedValue('http://github.auth.url');
 
-      const result = await controller.linkGithub(req);
+      await controller.linkGithub(req, res);
 
       expect(mockAuthService.githubLink).toHaveBeenCalledWith('user_1');
+      expect(res.redirect).toHaveBeenCalledWith('http://github.auth.url');
     });
 
     it('should verify state in callback', async () => {

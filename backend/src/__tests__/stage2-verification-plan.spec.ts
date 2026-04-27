@@ -4,12 +4,18 @@ import { APP_GUARD } from '@nestjs/core';
 import request from 'supertest';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+jest.mock('@privy-io/node', () => ({
+  PrivyClient: jest.fn().mockImplementation(() => ({
+    verifyVerify: jest.fn(),
+  })),
+}));
+
 import { AppModule } from '../app.module';
 import { WorkerModule } from '../queues/worker.module';
-import { ScoringService } from '../scoring/scoring-service/scoring.service';
-import { SignalExtractorService } from '../scoring/signal-extractor/signal-extractor.service';
-import { CacheService } from '../scoring/cache/cache.service';
-import { GithubAdapterService } from '../scoring/github-adapter/github-adapter.service';
+import { ScoringService } from '../modules/scoring/scoring-service/scoring.service';
+import { SignalExtractorService } from '../modules/scoring/signal-extractor/signal-extractor.service';
+import { CacheService } from '../modules/scoring/cache/cache.service';
+import { GithubAdapterService } from '../modules/scoring/github-adapter/github-adapter.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import {
@@ -18,8 +24,8 @@ import {
   MAYA_DEVOPS,
   NEW_DEV,
   GHOST_PROFILE,
-} from '../scoring/signal-extractor/__fixtures__/seed-developers';
-import { AnalysisResult } from '../scoring/types/result.types';
+} from '../modules/scoring/signal-extractor/__fixtures__/seed-developers';
+import { AnalysisResult } from '../modules/scoring/types/result.types';
 
 describe('Stage 2 Verification Plan - Final Validation', () => {
   let app: INestApplication;

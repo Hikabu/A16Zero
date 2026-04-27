@@ -8,6 +8,7 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "transformIgnorePatterns": [
+    "node_modules/(?!(@octokit|octokit|universal-user-agent|before-after-hook|is-plain-object|node-fetch)/)",
     "node_modules/(?!(jose|@privy-io)/)",
 	"node_modules/(?!(@scure|@noble|otplib|octokit|@octokit)/)",
     "node_modules/(?!(@scure|@noble|otplib|octokit|@octokit)/)"

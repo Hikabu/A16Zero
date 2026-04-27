@@ -67,12 +67,12 @@ export class GithubSyncProcessor extends WorkerHost {
         },
       });
 
-      console.log(
-        'Fetched raw data for profile ',
-        githubProfileId,
-        ': ',
-        JSON.stringify(rawData, null, 2),
-      );
+      // console.log(
+      //   'Fetched raw data for profile ',
+      //   githubProfileId,
+      //   ': ',
+      //   JSON.stringify(rawData, null, 2),
+      // );
 
       // (e) Save raw data, keep status = IN_PROGRESS, lastSyncAt
       await this.prisma.githubProfile.update({

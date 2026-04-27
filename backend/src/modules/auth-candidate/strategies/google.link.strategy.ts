@@ -19,7 +19,7 @@ export class GoogleLinkStrategy extends PassportStrategy(
   }
 
   async validate(accessToken: string, refreshToken: string, profile: any) {
-    console.log('Google profile:', profile); // Debug log to check the profile object
+    // console.log('Google profile:', profile); // Debug log to check the profile object
     return {
       googleId: profile.id,
       email: profile.emails?.[0]?.value,

@@ -35,10 +35,10 @@ export class PrivyService {
 
   //verify token
   async verifyToken(token: string) {
-    console.log('TOKEN', token);
-    console.log('PRIVY_BYPASS', process.env.PRIVY_BYPASS);
+    // console.log('TOKEN', token);
+    // console.log('PRIVY_BYPASS', process.env.PRIVY_BYPASS);
     if (process.env.PRIVY_BYPASS === 'true' && token === 'debugtoken') {
-      console.log('Using PRIVY_BYPASS mode');
+      // console.log('Using PRIVY_BYPASS mode');
       return {
         privyId: 'did:privy:test-user-123',
         email: 'valeriia@test.com',
