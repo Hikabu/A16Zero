@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Req, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -14,6 +14,7 @@ import {
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { BaseController } from '../../shared/base.controller';
+import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
 
 class JobResponseTypeDto {
   id: string;
@@ -33,6 +34,7 @@ class JobErrorResponseDto {
 
 @ApiTags('Jobs')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('jobs')
 export class JobsController extends BaseController {
   constructor(private readonly jobsService: JobsService) {

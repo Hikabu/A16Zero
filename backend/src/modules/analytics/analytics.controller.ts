@@ -1,4 +1,4 @@
-import { Controller, Get, Request } from '@nestjs/common';
+import { Controller, Get, Request, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -10,9 +10,11 @@ import {
 import { AnalyticsService } from './analytics.service';
 import { BaseController } from '../../shared/base.controller';
 import { DashboardStatsResponseDto } from './dto/dashboard-stats.response.dto';
+import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('analytics')
 export class AnalyticsController extends BaseController {
   constructor(private readonly analyticsService: AnalyticsService) {

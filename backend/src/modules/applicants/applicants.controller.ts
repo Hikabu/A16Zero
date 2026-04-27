@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -11,6 +11,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { BaseController } from '../../shared/base.controller';
+import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
 import { CandidateListResponseDto } from './dto/candidateListResponse.dto';
 import { ShortlistResponseDto } from './dto/shortListResponse.dto';
 import { UpdateShortlistStatusDto } from './dto/updateStatus.dto';
@@ -18,6 +19,7 @@ import { UpdateShortlistResponseDto } from './dto/updateStatusResponse.dto';
 
 @ApiTags('Applicants')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('applicants')
 export class ApplicantsController extends BaseController {
   /**
