@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Req, UseGuards, UsePipes, Logger } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -13,7 +13,14 @@ import {
 
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
+import { ParseJobDescriptionDto } from './dto/parse-jd.dto';
+import { ParsedJobRequirementsDto, ParsedJobRequirementsSchema } from './dto/confirm-requirements.dto';
+import { JobDescriptionParserService } from '../scoring/gap-analysis/job-description-parser.service';
+import { diffParsedRequirements } from '../scoring/gap-analysis/jd-diff.util';
 import { BaseController } from '../../shared/base.controller';
+import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
+import { ZodValidationPipe } from '../../shared/pipes/zod.pipe';
+import { Seniority } from '@prisma/client';
 
 class JobResponseTypeDto {
   id: string;
@@ -33,9 +40,15 @@ class JobErrorResponseDto {
 
 @ApiTags('Jobs')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('jobs')
 export class JobsController extends BaseController {
-  constructor(private readonly jobsService: JobsService) {
+  private readonly logger = new Logger(JobsController.name);
+
+  constructor(
+    private readonly jobsService: JobsService,
+    private readonly parserService: JobDescriptionParserService
+  ) {
     super();
   }
 
@@ -137,5 +150,68 @@ export class JobsController extends BaseController {
   async close(@Req() req: any, @Param('id') id: string) {
     const job = await this.jobsService.close(id, req.user.id);
     return this.handleSuccess(job, 'Job closed successfully');
+  }
+
+  // ─────────────────────────────
+  // PARSE JOB DESCRIPTION
+  // ─────────────────────────────
+  @Post(':id/parse-jd')
+  @ApiOperation({
+    summary: 'Extract structured requirements from JD text',
+    description: 'Uses AI to parse a job description text and returns a proposed set of requirements and weights for review.',
+  })
+  async parseJd(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: ParseJobDescriptionDto,
+  ) {
+    // 1. Verify job exists and belongs to the authenticated org
+    await this.jobsService.verifyOwnership(id, req.user.id);
+
+    // 2. Call parser service
+    const parsed = await this.parserService.parse(body.jdText);
+
+    // 3. Build diff summary
+    const diff = diffParsedRequirements(parsed);
+
+    // 4. Return preview
+    return this.handleSuccess({
+      parsed,
+      requiresReview: parsed.parserConfidence < 0.75,
+      diff,
+    });
+  }
+
+  // ─────────────────────────────
+  // CONFIRM REQUIREMENTS
+  // ─────────────────────────────
+  @Post(':id/confirm-requirements')
+  @ApiOperation({
+    summary: 'Confirm AI-parsed requirements',
+    description: 'Saves the structure requirements to the job post and logs an audit record.',
+  })
+  @UsePipes(new ZodValidationPipe(ParsedJobRequirementsSchema))
+  async confirmRequirements(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: ParsedJobRequirementsDto,
+  ) {
+    // 1. Ownership verify and Idempotency check
+    const job = await this.jobsService.verifyOwnership(id, req.user.id);
+
+    if (
+      job.parsedRequirements &&
+      JSON.stringify(job.parsedRequirements) === JSON.stringify(body)
+    ) {
+      return this.handleSuccess(job, 'Job requirements confirmed and updated');
+    }
+
+    // 2. Update Job
+    const updatedJob = await this.jobsService.updateRequirements(id, body);
+
+    // 3. Audit Log (Mocked as requested)
+    this.logger.log(`AUDIT_LOG: { entityType: 'Job', entityId: '${id}', action: 'REQUIREMENTS_CONFIRMED', actorId: '${req.user.id}', after: ${JSON.stringify(body)} }`);
+
+    return this.handleSuccess(updatedJob, 'Job requirements confirmed and updated');
   }
 }

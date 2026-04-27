@@ -56,4 +56,28 @@ export class JobsService {
       },
     });
   }
+
+  async verifyOwnership(id: string, companyId: string) {
+    const job = await this.prisma.jobPost.findUnique({ where: { id } });
+    if (!job || job.companyId !== companyId) {
+      throw new AppException('Job not found or access denied', 404);
+    }
+    return job;
+  }
+
+  async updateRequirements(id: string, requirements: any) {
+    return this.prisma.jobPost.update({
+      where: { id },
+      data: {
+        parsedRequirements: requirements,
+        dynamicWeights: {
+          collaborationWeight: requirements.collaborationWeight,
+          ownershipWeight: requirements.ownershipWeight,
+          innovationWeight: requirements.innovationWeight,
+        },
+        isWeb3Role: requirements.isWeb3Role,
+        requirementsConfirmedAt: new Date(),
+      },
+    });
+  }
 }

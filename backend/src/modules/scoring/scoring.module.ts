@@ -15,12 +15,17 @@ import { Web3MergeService } from './web3-merge/web3-merge.service';
 import { AchievementWhitelistService } from './web3-adapter/achievement-whitelist.service';
 import { ConfigModule } from '@nestjs/config';
 
+import { GapAnalysisModule } from './gap-analysis/gap-analysis.module';
+import { DecisionCardModule } from './decision-card/decision-card.module';
+
 @Global()
 @Module({
   imports: [
 	ConfigModule,
     PrismaModule,
     RedisModule,
+    GapAnalysisModule,
+    DecisionCardModule,
     BullModule.registerQueue({ name: 'signal-compute' }),
   ],
   providers: [
