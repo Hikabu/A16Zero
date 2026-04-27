@@ -76,6 +76,7 @@ export class AuthEmployerController extends BaseController {
 
     const token = authHeader.replace('Bearer ', '');
 
+
     const result = await this.authService.login(token, loginDto);
 
     return this.handleSuccess(result, 'Logged in successfully');

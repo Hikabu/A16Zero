@@ -1,0 +1,62 @@
+1[HR] POST A JOB 
+		1. START JOB POST 
+				@post /jobs/draft
+		2. PARSE JOB DESCRIPTION 
+				@post /jobs/{id}/parse-jd
+				@post /jobs/{id}/confirm-requirements
+		3. SET ESCROW
+				@post /jobs/{id}/escrow
+		4. PUBLISH
+				@post /jons/{id}/publish
+
+2[CD] APPLY FOR JOB
+		1. BROWSE JOBS 
+				!!todo @get /jobs/filters?
+		2. SEE JOB DETAILS
+				!!todo @get /jobs/{id}
+		3. SELF GAP PREVIEW
+				@get /applications/me/gap-PREVIEW
+		4. APPLY 
+				@post /applications/me/{jobid}
+
+					4.1> Get latest AnalysisResult
+					4.2> Application =  * frozen scorecard
+										* decision card 
+										* gap analysis 
+										* role fit score    
+					4.3 PipelineStage = APPLIED
+		5. SEE MY APPLICATIONS
+				@get /applications/me
+
+
+3[HR] ATS - SORT APPLICATIONS 
+		1. GET APPLICANTIONS LIST
+				@get /applications/hr/jobs/{jobId}
+					> veridict bage + hr summary + reputation note
+		2. FILTER (ATS)
+				@get /applications/hr/jobs/{jobId}/{filter?} //TODO!!
+					>fitTier, minScore, pipelineStage...
+		3. VIEW 
+			> 3.1 HR VIEW = summary
+					@?????
+			> 3.2 CTO VIEW = technical + detail
+					@?????
+			> 3.3 FULL DETAILS 
+					@get /applications/hr/{appId}
+					
+		3. APPLY DECISION
+				@?????
+					>shortlist/ reject/ reviewed
+		4. NEXT STAGE 
+				@patch	/applications/hr/{appId}/stage
+					> shortlist 
+						@??????????
+					> interview type
+						@???????????
+					> generate tailored qs
+						@????????
+					> sort + filter tailored qs
+						@??????????
+
+		5. SHARE SCORECARD
+		

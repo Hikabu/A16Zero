@@ -5,6 +5,7 @@ import { DecisionCardService } from '../scoring/decision-card/decision-card.serv
 import { InterviewQuestionService } from './interview-question.service';
 import { JobStatus, PipelineStage, ShortlistStatus, FitTier, Prisma } from '@prisma/client';
 import { AnalysisResult } from '../scoring/types/result.types';
+import { INTERVIEW_STAGES } from './interviewStages.set';
 
 @Injectable()
 export class ApplicantsService {
@@ -211,12 +212,11 @@ export class ApplicantsService {
     let updatedQuestions = (app as any).interviewQuestions || [];
     let payloadResponse: any = undefined;
 
-    if ([PipelineStage.INTERVIEW_HR, PipelineStage.INTERVIEW_TECHNICAL, PipelineStage.INTERVIEW_FINAL].includes(nextStage)) {
-      const generatedSet = await this.interviewQuestionService.generate(app, nextStage);
-      updatedQuestions = [...updatedQuestions, generatedSet];
-      payloadResponse = generatedSet;
-    }
-
+    if (INTERVIEW_STAGES.has(nextStage)) {
+  const generatedSet = await this.interviewQuestionService.generate(app, nextStage);
+  updatedQuestions = [...updatedQuestions, generatedSet];
+  payloadResponse = generatedSet;
+}
     const updated = await this.prisma.shortlist.update({
       where: { id: appId },
       data: {
