@@ -51,7 +51,6 @@ const CANDIDATE = {
 
 const BASE_INPUT = {
   candidateIdentifier: 'alice',
-  voucherWallet: VOUCHER_WALLET,
   message: MESSAGE,
   txSignature: TX_SIG,
 };
@@ -100,6 +99,10 @@ describe('VouchesService', () => {
       candidate: {
         findFirst: jest.fn().mockResolvedValue(CANDIDATE),
       },
+      // confirmVouch resolves the caller's wallet from web3Profile
+      web3Profile: {
+        findUnique: jest.fn().mockResolvedValue({ solanaAddress: VOUCHER_WALLET }),
+      },
     };
 
     mockQuality = {
@@ -124,20 +127,20 @@ describe('VouchesService', () => {
   describe('confirmVouch Anti-Abuse', () => {
     // 7. voucherWallet === candidate.devProfile.web3Profile.walletAddress → 400 self-vouch
     it('throws BadRequestException for self-vouching', async () => {
+      // Override web3Profile to return the candidate's own wallet
+      mockPrisma.web3Profile.findUnique.mockResolvedValue({ solanaAddress: CANDIDATE_WALLET });
       await expect(
-        service.confirmVouch({
-          ...BASE_INPUT,
-          voucherWallet: CANDIDATE_WALLET,
-        }),
+        service.confirmVouch(BASE_INPUT, 'user-abc'),
       ).rejects.toThrow(BadRequestException);
     });
 
     // 8. Same wallet already vouched for candidate (same candidateId) → 400 duplicate
     it('throws BadRequestException for duplicate vouch', async () => {
       mockPrisma.vouch.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 'existing' });
-      await expect(service.confirmVouch(BASE_INPUT)).rejects.toThrow(
+        .mockResolvedValueOnce(null)  // idempotency check in confirmVouch
+        .mockResolvedValueOnce(null)  // idempotency check in persistVouch
+        .mockResolvedValueOnce({ id: 'existing' }); // duplicate check
+      await expect(service.confirmVouch(BASE_INPUT, 'user-abc')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -145,7 +148,7 @@ describe('VouchesService', () => {
     // 9. voucherWallet has 5 active non-expired vouches → 400 budget exhausted
     it('throws BadRequestException when budget (5) is exhausted', async () => {
       mockPrisma.vouch.count.mockResolvedValue(5);
-      await expect(service.confirmVouch(BASE_INPUT)).rejects.toThrow(
+      await expect(service.confirmVouch(BASE_INPUT, 'user-abc')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -153,7 +156,7 @@ describe('VouchesService', () => {
     // 10. voucherWallet has 4 active + 1 expired → budget check passes (5 slots, 1 free)
     it('allows vouching if one slot is expired', async () => {
       mockPrisma.vouch.count.mockResolvedValue(4);
-      const res = await service.confirmVouch(BASE_INPUT);
+      const res = await service.confirmVouch(BASE_INPUT, 'user-abc');
       expect(res.id).toBe('vouch-1');
     });
 
@@ -195,7 +198,7 @@ describe('VouchesService', () => {
     it('saves a valid vouch with correct weight and expiration', async () => {
       mockQuality.assessVoucherWallet.mockResolvedValue('verified');
 
-      const res = await service.confirmVouch(BASE_INPUT);
+      const res = await service.confirmVouch(BASE_INPUT, 'user-abc');
 
       expect(res.weight).toBe('verified');
       expect(res.candidateId).toBe('cand-1UUID');
@@ -249,6 +252,68 @@ describe('VouchesService', () => {
       await expect(
         service.revokeVouch(VOUCH_ID, VOUCHER_WALLET, 'sig'),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Refactor regression: path separation (tests 13-16 from spec)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  describe('path separation regression', () => {
+    const USER_ID = 'user-abc';
+    const PERSIST_PARAMS = {
+      txSignature: TX_SIG,
+      candidateUsername: 'alice',
+      voucherWallet: VOUCHER_WALLET,
+      message: MESSAGE,
+    };
+
+    // 13. confirmVouch (Web UI path): getTransaction must be called
+    it('13. confirmVouch calls getTransaction once (Web UI path)', async () => {
+      await service.confirmVouch(BASE_INPUT, USER_ID);
+      expect(mockGetTransaction).toHaveBeenCalledTimes(1);
+      expect(mockGetTransaction).toHaveBeenCalledWith(TX_SIG, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+      expect(mockPrisma.vouch.create).toHaveBeenCalledTimes(1);
+    });
+
+    // 14. confirmVouchFromWebhook (Helius path): getTransaction must NOT be called
+    it('14. confirmVouchFromWebhook never calls getTransaction (webhook path)', async () => {
+      await service.confirmVouchFromWebhook(PERSIST_PARAMS);
+      expect(mockGetTransaction).not.toHaveBeenCalled();
+      expect(mockPrisma.vouch.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            txSignature: TX_SIG,
+            candidateId: 'cand-1UUID',
+            voucherWallet: VOUCHER_WALLET,
+            message: MESSAGE,
+          }),
+        }),
+      );
+    });
+
+    // 15. confirmVouchFromWebhook: persistVouch throws BadRequestException → returns null
+    it('15. confirmVouchFromWebhook returns null when persistVouch throws BadRequestException', async () => {
+      mockPrisma.vouch.findUnique.mockResolvedValue({ id: 'existing' }); // triggers idempotency → but actually let's use duplicate
+      // Force duplicate: first findUnique (idempotency) → null, second (duplicate) → existing
+      mockPrisma.vouch.findUnique
+        .mockResolvedValueOnce(null)    // idempotency in persistVouch
+        .mockResolvedValueOnce({ id: 'existing' }); // duplicate check
+
+      const result = await service.confirmVouchFromWebhook(PERSIST_PARAMS);
+      expect(result).toBeNull();
+    });
+
+    // 16. confirmVouchFromWebhook: any error → returns null, no throw
+    it('16. confirmVouchFromWebhook swallows all errors and returns null', async () => {
+      mockPrisma.candidate.findFirst.mockRejectedValue(new Error('DB connection lost'));
+
+      await expect(
+        service.confirmVouchFromWebhook(PERSIST_PARAMS),
+      ).resolves.toBeNull();
     });
   });
 });

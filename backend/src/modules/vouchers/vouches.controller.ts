@@ -9,7 +9,13 @@ import {
   HttpStatus,
   Post,
   Req,
+  Headers,
+  Res,
+  Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SkipThrottle } from '@nestjs/throttler';
+import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiTags,
@@ -24,6 +30,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { VouchesService } from './vouches.service';
+import { HeliusWebhookService } from './helius-webhook.service';
 import { ConfirmVouchDto } from './dto/ConfirmVoucher.dto';
 import { RevokeVouchDto } from './dto/RevokeVouch.dto';
 import { VouchResponseDto } from './dto/VouchResponse.dto';
@@ -32,7 +39,13 @@ import { VoucherErrorResponseDto } from './dto/ErrorResponse.dto';
 @ApiTags('Vouches')
 @Controller('vouch')
 export class VouchesController {
-  constructor(private readonly vouchesService: VouchesService) {}
+  private readonly logger = new Logger(VouchesController.name);
+
+  constructor(
+    private readonly vouchesService: VouchesService,
+    private readonly heliusWebhookService: HeliusWebhookService,
+    private readonly config: ConfigService,
+  ) {}
 
   @Post('confirm')
   @UseGuards(AuthGuard('jwt'))
@@ -232,5 +245,70 @@ export class VouchesController {
       walletAddress,
       body.signedMessage, // Still passing for compatibility if needed, but service should skip if wallet exists
     );
+  }
+
+  // ─── Helius webhook ───────────────────────────────────────────────────────
+
+  /**
+   * POST /vouch/webhooks/helius
+   *
+   * Receives Helius Enhanced Transaction webhook payloads.
+   *
+   * Design decisions:
+   *  - Always returns HTTP 200 — a non-200 would cause Helius to retry (up to
+   *    3×), risking duplicate-confirm attempts and quota waste.
+   *  - Verifies the shared secret header first; on mismatch we still return
+   *    200 with { ok: false } to silently drain spoofed requests without
+   *    giving the caller any signal about retrying.
+   *  - Responds to Helius immediately, then processes via setImmediate so we
+   *    stay well inside Helius's 10-second response window.
+   *  - @SkipThrottle: Helius can send burst traffic; the global ThrottlerGuard
+   *    must not block legitimate webhook deliveries.
+   */
+  @SkipThrottle()
+  @Post('webhooks/helius')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Helius transaction webhook (internal)',
+    description: 'Receives Enhanced Transaction events from Helius for on-chain vouch processing.',
+  })
+  async heliusWebhook(
+    @Headers('x-helius-webhook-secret') secret: string,
+    @Body() payload: any[],
+    @Res() res: Response,
+  ): Promise<void> {
+    const expected = this.config.get<string>('HELIUS_WEBHOOK_SECRET');
+
+    // 1. Verify secret — reject spoofed requests
+    if (!expected || secret !== expected) {
+      this.logger.warn({ reason: 'bad_secret' }, 'helius_webhook_bad_secret');
+      // Return 200 anyway — 401 would trigger Helius retries
+      res.status(200).json({ ok: false, reason: 'bad_secret' });
+      return;
+    }
+
+    // 2. Validate payload shape
+    if (!Array.isArray(payload) || payload.length === 0) {
+      res.status(200).json({ ok: true, processed: 0 });
+      return;
+    }
+
+    // 3. Respond to Helius immediately — must reply before processing begins
+    res.status(200).json({ ok: true, received: payload.length });
+
+    // 4. Process in background after response is flushed
+    setImmediate(async () => {
+      try {
+        await this.heliusWebhookService.processWebhookPayload(
+          payload,
+          this.vouchesService,
+        );
+      } catch (err) {
+        this.logger.error(
+          { err: (err as Error).message },
+          'helius_webhook_processing_error',
+        );
+      }
+    });
   }
 }

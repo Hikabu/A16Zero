@@ -43,137 +43,74 @@ export class VouchesService {
 
   // ─── Public API ──────────────────────────────────────────────────────────
 
+  // ─── Web UI path ─────────────────────────────────────────────────────────
+
   async confirmVouch(input: ConfirmVouchInput, userId: string) {
     const { candidateIdentifier, message, txSignature } = input;
-	console.log("input:", input);
-	console.log('candidateIdentifier: ', candidateIdentifier);
-console.log("message: ", message);
-console.log("txsignature:" , txSignature);
-		const web3user = await this.prisma.web3Profile.findUnique({
-			where: {userId},
-		})
-		if (!web3user || !web3user.solanaAddress)
-			throw new UnauthorizedException(
-				'No linked wallet found for this account',
-			);
 
-			const voucherWallet : string = web3user.solanaAddress;
-    // ── Step 0: Idempotency — bail early if tx already recorded ──────────
+    // ── Resolve caller's wallet ───────────────────────────────────────────
+    const web3user = await this.prisma.web3Profile.findUnique({
+      where: { userId },
+    });
+    if (!web3user || !web3user.solanaAddress)
+      throw new UnauthorizedException('No linked wallet found for this account');
+
+    const voucherWallet: string = web3user.solanaAddress;
+
+    // ── Idempotency fast-path (before the expensive RPC call) ────────────
     const existing = await this.prisma.vouch.findUnique({
       where: { txSignature },
     });
     if (existing) {
-      this.logger.log(
-        { txSignature },
-        'vouch_already_confirmed — idempotent return',
-      );
+      this.logger.log({ txSignature }, 'vouch_already_confirmed — idempotent return');
       return existing;
     }
 
-    // ── Step 1: Candidate resolution ─────────────────────────────────────
-    const candidate = await this.prisma.candidate.findFirst({
+    // ── Self-vouch guard (userId level, before RPC) ───────────────────────
+    const candidateUser = await this.prisma.candidate.findFirst({
       where: {
         OR: [
-          {
-            devProfile: {
-              githubProfile: { githubUsername: candidateIdentifier },
-            },
-          },
-          {
-            user: { username: candidateIdentifier },
-          },
-		  {
-			user: {email: candidateIdentifier},
-		  }
+          { devProfile: { githubProfile: { githubUsername: candidateIdentifier } } },
+          { user: { username: candidateIdentifier } },
+          { user: { email: candidateIdentifier } },
         ],
       },
-      include: {
-		userId:true,
-        devProfile: {
-          include: { web3Profile: true },
-        },
-      },
+      select: { userId: true },
     });
-
-    if (!candidate) {
-      throw new NotFoundException(
-        `Candidate not found for identifier: ${candidateIdentifier}`,
-      );
-    }
-
-    //TODO check wallet
-
-    // ── Step 2: Hard block — self-vouch ───────────────────────────────────
-    const candidateWallet = candidate.devProfile?.web3Profile?.solanaAddress;
-    if (candidateWallet && candidateWallet === voucherWallet) {
+    if (candidateUser && userId && candidateUser.userId === userId) {
       throw new BadRequestException('Cannot vouch for yourself');
     }
 
-	if (userId && candidate.userId === userId){
-		throw new BadRequestException('Cannot vouch for yourself');
-	}
-
-    // ── Step 3: Hard block — duplicate vouch ─────────────────────────────
-    const duplicateVouch = await this.prisma.vouch.findUnique({
-      where: {
-        candidateId_voucherWallet: {
-          candidateId: candidate.id,
-          voucherWallet,
-        },
-      },
-    });
-    if (duplicateVouch) {
-      throw new BadRequestException('Already vouched for this candidate');
-    }
-
-    // ── Step 4: Budget check ──────────────────────────────────────────────
-    const activeCount = await this.prisma.vouch.count({
-      where: {
-        voucherWallet,
-        isActive: true,
-        expiresAt: { gt: new Date() },
-      },
-    });
-    if (activeCount >= VOUCH_BUDGET) {
-      throw new BadRequestException(
-        'Vouch budget exhausted. Revoke an existing vouch to proceed.',
-      );
-    }
-
-    // ── Step 5: On-chain verification ────────────────────────────────────
+    // ── Step 1: On-chain verification (Web UI must verify — tx from frontend) ──
     await this.verifyOnChainTx(txSignature, voucherWallet, message, candidateIdentifier);
 
-    // ── Step 6: Weight assessment ─────────────────────────────────────────
-    const weight =
-      await this.voucherQualityService.assessVoucherWallet(voucherWallet);
-    const expiresAt = new Date(Date.now() + VOUCH_TTL_DAYS * 86_400 * 1000);
+    // ── Step 2: Shared anti-Sybil + DB logic ──────────────────────────────
+    return this.persistVouch({ txSignature, candidateUsername: candidateIdentifier, voucherWallet, message });
+  }
 
-    // ── Step 7: Create vouch record ───────────────────────────────────────
-    const vouch = await this.prisma.vouch.create({
-      data: {
-        candidateId: candidate.id,
-        voucherWallet,
-        message,
-        txSignature,
-        weight,
-        expiresAt,
-        confirmedAt: new Date(),
-      },
-    });
+  // ─── Helius webhook path ─────────────────────────────────────────────────
 
-    this.logger.log(
-      { vouchId: vouch.id, candidateId: candidate.id, weight },
-      'vouch_confirmed',
-    );
-
-    // ── Step 8: Cluster detection (async, non-blocking) ──────────────────
-    setImmediate(() =>
-      this.runClusterCheck(candidate.id, voucherWallet).catch((err) =>
-        this.logger.warn({ err }, 'cluster_check_error'),
-      ),
-    );
-
-    return vouch;
+  /**
+   * Called by the Helius webhook handler after the transaction has already
+   * been verified on-chain by Helius.  Skips the RPC getTransaction call.
+   * Never throws — always returns null on error so the webhook returns 200
+   * and Helius does not retry.
+   */
+  async confirmVouchFromWebhook(params: {
+    txSignature: string;
+    candidateUsername: string;
+    voucherWallet: string;
+    message: string;
+  }) {
+    try {
+      return await this.persistVouch(params);
+    } catch (err) {
+      this.logger.warn(
+        { ...params, err: (err as Error).message },
+        'webhook_vouch_failed',
+      );
+      return null;
+    }
   }
 
   /**
@@ -217,6 +154,92 @@ console.log("txsignature:" , txSignature);
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────
+
+  /**
+   * Core anti-Sybil + DB write logic shared by the Web UI path and the
+   * Helius webhook path.  Assumes the transaction has already been verified
+   * by the caller (either via on-chain RPC or by Helius itself).
+   */
+  private async persistVouch(params: {
+    txSignature: string;
+    candidateUsername: string;
+    voucherWallet: string;
+    message: string;
+  }) {
+    const { txSignature, candidateUsername, voucherWallet, message } = params;
+
+    // ── a. Idempotency ───────────────────────────────────────────────────
+    const existing = await this.prisma.vouch.findUnique({
+      where: { txSignature },
+    });
+    if (existing) {
+      this.logger.log({ txSignature }, 'vouch_already_confirmed — idempotent return');
+      return existing;
+    }
+
+    // ── Candidate resolution ──────────────────────────────────────────────
+    const candidate = await this.prisma.candidate.findFirst({
+      where: {
+        OR: [
+          { devProfile: { githubProfile: { githubUsername: candidateUsername } } },
+          { user: { username: candidateUsername } },
+          { user: { email: candidateUsername } },
+        ],
+      },
+      include: {
+        devProfile: { include: { web3Profile: true } },
+      },
+    });
+
+    if (!candidate) {
+      throw new NotFoundException(`Candidate not found for identifier: ${candidateUsername}`);
+    }
+
+    // ── b. Self-vouch block (wallet level) ───────────────────────────────
+    const candidateWallet = candidate.devProfile?.web3Profile?.solanaAddress;
+    if (candidateWallet && candidateWallet === voucherWallet) {
+      throw new BadRequestException('Cannot vouch for yourself');
+    }
+
+    // ── c. Duplicate vouch block ──────────────────────────────────────────
+    const duplicateVouch = await this.prisma.vouch.findUnique({
+      where: { candidateId_voucherWallet: { candidateId: candidate.id, voucherWallet } },
+    });
+    if (duplicateVouch) {
+      throw new BadRequestException('Already vouched for this candidate');
+    }
+
+    // ── d. Budget check ───────────────────────────────────────────────────
+    const activeCount = await this.prisma.vouch.count({
+      where: { voucherWallet, isActive: true, expiresAt: { gt: new Date() } },
+    });
+    if (activeCount >= VOUCH_BUDGET) {
+      throw new BadRequestException('Vouch budget exhausted. Revoke an existing vouch to proceed.');
+    }
+
+    // ── e. Weight assessment ──────────────────────────────────────────────
+    const weight = await this.voucherQualityService.assessVoucherWallet(voucherWallet);
+
+    // ── f. TTL ────────────────────────────────────────────────────────────
+    const expiresAt = new Date(Date.now() + VOUCH_TTL_DAYS * 86_400 * 1000);
+
+    // ── g. Create vouch record ────────────────────────────────────────────
+    const vouch = await this.prisma.vouch.create({
+      data: { candidateId: candidate.id, voucherWallet, message, txSignature, weight, expiresAt, confirmedAt: new Date() },
+    });
+
+    this.logger.log({ vouchId: vouch.id, candidateId: candidate.id, weight }, 'vouch_confirmed');
+
+    // ── h. Cluster detection (async, non-blocking) ────────────────────────
+    setImmediate(() =>
+      this.runClusterCheck(candidate.id, voucherWallet).catch((err) =>
+        this.logger.warn({ err }, 'cluster_check_error'),
+      ),
+    );
+
+    // ── i. Return ─────────────────────────────────────────────────────────
+    return vouch;
+  }
 
   /**
    * Real on-chain verification:

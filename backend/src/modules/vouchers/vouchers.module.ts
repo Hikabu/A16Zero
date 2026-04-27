@@ -6,7 +6,7 @@ import { VoucherQualityService } from './voucher-quality.service';
 import { VouchesService } from './vouches.service';
 import { VouchesController } from './vouches.controller';
 import { BlinkCorsMiddleware } from './blink-cors.middleware';
-
+import { HeliusWebhookService } from './helius-webhook.service';
 import { ActionsController } from './actions.controller';
 
 @Module({
@@ -16,8 +16,8 @@ import { ActionsController } from './actions.controller';
     PrismaModule,
   ],
   controllers: [VouchesController, ActionsController],
-  providers: [VoucherQualityService, VouchesService],
-  exports: [VoucherQualityService, VouchesService],
+  providers: [VoucherQualityService, VouchesService, HeliusWebhookService],
+  exports: [VoucherQualityService, VouchesService, HeliusWebhookService],
 })
 export class VouchersModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
