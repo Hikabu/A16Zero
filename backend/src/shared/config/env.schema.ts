@@ -29,6 +29,7 @@ export const envSchema = z.object({
   INTERNAL_API_KEY: z.string().optional(),
 
   HELIUS_API_KEY: z.string().optional(),
+  HELIUS_WEBHOOK_SECRET: z.string().optional(),
   WALLET_CHALLENGE_SECRET: z.string().optional(),
   APP_BASE_URL: z.string().optional(),
   VOUCH_ICON_URL: z.string().optional(),

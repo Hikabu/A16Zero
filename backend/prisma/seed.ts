@@ -151,7 +151,7 @@ async function main() {
       await prisma.web3Profile.create({
         data: {
           devCandidateId: devCandidate.id,
-          evmAddress: `0x${faker.string.hexadecimal({ length: 40 }).slice(2)}`,
+          userId: user.id,
           solanaAddress: faker.datatype.boolean({ probability: 0.3 })
             ? faker.string.alphanumeric(44)
             : null,
