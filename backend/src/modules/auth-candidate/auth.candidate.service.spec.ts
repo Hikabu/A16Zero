@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.candidate.service';
+import { AuthCandidateService } from './auth.candidate.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -65,8 +65,8 @@ jest.mock(
   { virtual: true },
 );
 
-describe('AuthService', () => {
-  let service: AuthService;
+describe('AuthCandidateService', () => {
+  let service: AuthCandidateService;
   let prisma: typeof mockPrismaService;
   let jwt: typeof mockJwtService;
   let redis: typeof mockRedis;
@@ -74,7 +74,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        AuthService,
+        AuthCandidateService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
@@ -83,7 +83,7 @@ describe('AuthService', () => {
       ],
     }).compile();
 
-    service = module.get<AuthService>(AuthService);
+    service = module.get<AuthCandidateService>(AuthCandidateService);
     prisma = module.get(PrismaService);
     jwt = module.get(JwtService);
     redis = module.get('REDIS');
@@ -115,8 +115,8 @@ describe('AuthService', () => {
         3600,
       );
       expect(result).toEqual({
-        needsVerification: true,
-        email: 'test@example.com',
+        type: 'NEEDS_VERIFICATION',
+        data: { email: 'test@example.com' },
       });
     });
     it('should login and check MFA requirement', async () => {
@@ -133,8 +133,8 @@ describe('AuthService', () => {
       const result = await service.login({ identifier: 'test', password: 'p' });
 
       expect(result).toEqual({
-        mfaRequired: true,
-        mfaToken: 'mock_token',
+        type: 'MFA_REQUIRED',
+        data: { mfaToken: 'mock_token' },
       });
     });
   });

@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private config: ConfigService) {
-	console.log("GOOGLE STRATEGY CALLBAKC:",config.get('app.url') + config.get('auth.googleCallback') );
+	// console.log("GOOGLE STRATEGY CALLBAKC:",config.get('app.url') + config.get('auth.googleCallback') );
     super({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -16,7 +16,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   }
 
   async validate(accessToken: string, refreshToken: string, profile: any) {
-    console.log('Google profile:', profile); // Debug log to check the profile object
+    // console.log('Google profile:', profile); // Debug log to check the profile object
     return {
       googleId: profile.id,
       email: profile.emails?.[0]?.value,

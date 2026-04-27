@@ -23,7 +23,7 @@ export class AuthEmployerService {
   ) {}
 
   async login(token: string, body: LoginDto) {
-    console.log('LOGIN: ', token, 'body:', body);
+    // console.log('LOGIN: ', token, 'body:', body);
     const { privyId, email } = await this.privyService.verifyToken(token);
 
     if (!privyId) {
@@ -63,7 +63,7 @@ export class AuthEmployerService {
       },
     });
 
-    console.log('Logged in company: ', company);
+    // console.log('Logged in company: ', company);
 
     const payload = {
       sub: company.id,

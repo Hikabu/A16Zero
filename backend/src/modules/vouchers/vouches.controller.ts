@@ -149,7 +149,7 @@ export class VouchesController {
     },
   })
   async confirmVouch(@Req() req: any, @Body() body: ConfirmVouchDto) {
-	  console.log('RAW BODY:', body);
+	  // console.log('RAW BODY:', body);
 
     return this.vouchesService.confirmVouch(
     body,

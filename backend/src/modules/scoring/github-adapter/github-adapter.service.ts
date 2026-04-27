@@ -235,9 +235,9 @@ export class GithubAdapterService {
   }
 
   public decryptToken(encryptedToken: string): string {
-    console.log(
-      `Decrypting token, length: ${encryptedToken.length}, startsWith v1: ${encryptedToken.startsWith('v1:')}`,
-    );
+    // console.log(
+    //   `Decrypting token, length: ${encryptedToken.length}, startsWith v1: ${encryptedToken.startsWith('v1:')}`,
+    // );
     const key = process.env.AUTH_ENCRYPTION_KEY;
     if (!key) throw new Error('AUTH_ENCRYPTION_KEY not set');
 
@@ -246,7 +246,7 @@ export class GithubAdapterService {
       : encryptedToken;
 
     const decripted = decrypt(data, key);
-    console.log(`Decrypted token, length: ${decripted.length}`);
+    // console.log(`Decrypted token, length: ${decripted.length}`);
     return decripted;
   }
 

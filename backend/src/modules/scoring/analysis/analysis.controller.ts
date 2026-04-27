@@ -147,7 +147,7 @@ Optional if authenticated.
     if (!body?.force) {
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
-        return { jobId: null, cached: true, result: cached };
+        return { jobId: `cached-${cacheKey}`, cached: true, result: cached };
       }
     }
 
@@ -208,7 +208,7 @@ Use this for admin/system reprocessing.
     type: AnalysisErrorResponseDto,
   })
   async recompute(@Req() req: any, @Body() body: RecomputeAnalysisDto) {
-	console.log(body);
+	// console.log(body);
     return this.createAnalysis(req, { ...body, force: true });
   }
 
@@ -232,6 +232,14 @@ Use this for admin/system reprocessing.
     type: AnalysisErrorResponseDto,
   })
   async getStatus(@Param('jobId') jobId: string) {
+    if (jobId.startsWith('cached-')) {
+      return {
+        status: 'complete',
+        stage: 'complete',
+        progress: 100,
+      };
+    }
+
     const job = await this.prisma.analysisJob.findUnique({
     where: { id: jobId },
   });
@@ -289,6 +297,14 @@ Use this for admin/system reprocessing.
     type: AnalysisErrorResponseDto,
   })
   async getResult(@Param('jobId') jobId: string) {
+    if (jobId.startsWith('cached-')) {
+      const cacheKey = jobId.replace('cached-', '');
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) {
+        return { status: 'complete', result: cached };
+      }
+    }
+
     const job = await this.prisma.analysisJob.findUnique({
     where: { id: jobId },
   });
