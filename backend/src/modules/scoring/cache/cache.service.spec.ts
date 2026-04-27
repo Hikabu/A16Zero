@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from './cache.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import Redis from 'ioredis';
 import { AnalysisResult } from '../types/result.types';
 
@@ -47,6 +47,7 @@ describe('CacheService', () => {
       tools: [],
     },
     web3: null,
+    reputation: null,
   };
 
   beforeEach(async () => {

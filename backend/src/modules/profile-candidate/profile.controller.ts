@@ -29,7 +29,7 @@ import {
   SimpleMessageResponseDto,
 } from './dto/profile.response.dto';
 
-import { VerifiedAuth } from 'src/shared/decorators/verified.decorator';
+import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
 
 @VerifiedAuth()
 @ApiBearerAuth()

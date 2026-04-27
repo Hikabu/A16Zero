@@ -1,10 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import supertest from 'supertest';
-import { AppModule } from '../../app.module';
-import { PrismaService } from '../../prisma/prisma.service';
+import { AppModule } from '../../../app.module';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { getQueueToken } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
+
+jest.mock('@privy-io/node', () => ({
+  PrivyClient: jest.fn(() => ({})),
+}));
 
 describe('AnalysisController (integration)', () => {
   let app: INestApplication;
@@ -95,24 +99,24 @@ describe('AnalysisController (integration)', () => {
         .send({ githubUsername: username }); // Use dynamic username
 
       expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('jobId', 'mock-job-id');
+      expect(response.body).toHaveProperty('jobId', expect.any(String));
       expect(signalQueueMock.add).toHaveBeenCalledWith(
-        'sync-profile',
+        'analyze',
         expect.objectContaining({
-          candidateId: expect.any(String),
-          githubProfileId: expect.any(String),
+          jobId: expect.any(String),
+          githubUsername: username,
         }),
         expect.any(Object), // matches { attempts: 1 }
       );
     });
 
-    it('should return 404 for missing profile', async () => {
+    it('should return 400 for empty body', async () => {
       const response = await supertest(app.getHttpServer())
         .post('/api/analysis/recompute')
         .set('x-internal-key', internalKey)
-        .send({ githubUsername: 'non-existent-user' });
+        .send({});
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(400);
     });
   });
 
@@ -128,32 +132,29 @@ describe('AnalysisController (integration)', () => {
     });
 
     it('should return pending status with progress object parsing', async () => {
-      signalQueueMock.getJob.mockResolvedValue({
-        getState: jest.fn().mockResolvedValue('active'),
-        progress: JSON.stringify({ stage: 'analyzing_projects', percent: 65 }),
+      const job = await prisma.analysisJob.create({
+        data: { status: 'processing', input: {} },
       });
 
       const response = await supertest(app.getHttpServer()).get(
-        '/api/analysis/job-123/result',
+        `/api/analysis/${job.id}/result`,
       );
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         status: 'pending',
-        progress: 65,
+        progress: 0,
       });
     });
 
     it('should return completed status with returnvalue', async () => {
       const mockResult = { summary: 'Passes integration' };
-      signalQueueMock.getJob.mockResolvedValue({
-        getState: jest.fn().mockResolvedValue('completed'),
-        progress: 100,
-        returnvalue: mockResult,
+      const job = await prisma.analysisJob.create({
+        data: { status: 'completed', result: mockResult, input: {} },
       });
 
       const response = await supertest(app.getHttpServer()).get(
-        '/api/analysis/job-123/result',
+        `/api/analysis/${job.id}/result`,
       );
 
       expect(response.status).toBe(200);

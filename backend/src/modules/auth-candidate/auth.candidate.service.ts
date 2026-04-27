@@ -358,15 +358,15 @@ export class AuthCandidateService {
     provider: Provider,
     state: string,
   ) {
-    console.log('linkauth1!!!!!');
-    console.log('Linking profile: ', profile);
-    console.log('Linking provider: ', provider);
+    // console.log('linkauth1!!!!!');
+    // console.log('Linking profile: ', profile);
+    // console.log('Linking provider: ', provider);
     const storedUserId = await this.redis.get(`link_state:${state}`);
     if (!storedUserId || storedUserId !== userId)
       throw new UnauthorizedException('Invalid link state');
     await this.redis.del(`link_state:${state}`);
     const id = this.extractProfileId(profile, provider);
-    console.log('Extracted provider ID: ', id);
+    // console.log('Extracted provider ID: ', id);
     const existing = await this.prisma.authAccount.findUnique({
       where: { provider_providerId: { provider, providerId: id } },
     });
@@ -578,7 +578,7 @@ export class AuthCandidateService {
 
     const clientId = this.config.get('GITHUB_CLIENT_ID');
     const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
-    console.log('!!!!GITHUB Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
+    // console.log('!!!!GITHUB Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
 
     return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`;
   }
@@ -591,7 +591,7 @@ export class AuthCandidateService {
 
     const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.googleLinkCallback')}`;
 
-    console.log('!!!!Google Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
+    // console.log('!!!!Google Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
     const scope = encodeURIComponent('openid email profile');
 
     return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;

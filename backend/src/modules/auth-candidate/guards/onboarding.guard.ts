@@ -18,9 +18,9 @@ export class OnboardingGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
 
-    console.log('req headers:', req.headers); // Debug log to check headers
+    // console.log('req headers:', req.headers); // Debug log to check headers
     const authHeader = req.headers.authorization;
-    console.log('Authorization header:', authHeader); // Debug log to check Authorization header presence
+    // console.log('Authorization header:', authHeader); // Debug log to check Authorization header presence
     if (!authHeader) throw new UnauthorizedException('No token');
 
     const token = authHeader.split(' ')[1];

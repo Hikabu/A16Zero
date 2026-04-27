@@ -28,7 +28,7 @@ import {
   ApiNotFoundResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { VerifiedAuth } from 'src/shared/decorators/verified.decorator';
+import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
 import { RawScorecard } from './contract/scorecard.schema';
 
 /**
