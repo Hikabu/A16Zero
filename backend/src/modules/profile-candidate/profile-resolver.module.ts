@@ -1,7 +1,7 @@
 // profile-resolver.module.ts
 import { Module } from '@nestjs/common';
 import { ProfileResolverService } from './profile-resolver.service';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
   providers: [ProfileResolverService, PrismaService],

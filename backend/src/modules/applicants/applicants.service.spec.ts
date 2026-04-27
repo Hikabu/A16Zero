@@ -22,11 +22,17 @@ describe('ApplicantsService', () => {
     },
     analysisResult: {
       findFirst: jest.fn(),
+    },
+    candidate: {
+      findUnique: jest.fn(),
+    },
+    analysisJob: {
+      findFirst: jest.fn(),
     }
   };
 
   const mockGapAnalysisService = {
-    compute: jest.fn().mockReturnValue({}),
+    compute: jest.fn().mockReturnValue({ gaps: [] }),
   };
 
   const mockDecisionCardService = {
@@ -63,11 +69,14 @@ describe('ApplicantsService', () => {
 
   describe('apply', () => {
     it('cases 21-28: retains original apply logic checking duplicates, analyzing gaps, etc', async () => {
+      mockPrisma.candidate.findUnique.mockResolvedValue({ id: 'cand-1UUID', userId: 'cand-1' });
       mockPrisma.jobPost.findUnique.mockResolvedValue({ id: 'job-1', status: 'ACTIVE' });
       mockPrisma.shortlist.findFirst.mockResolvedValue(null);
-      mockPrisma.analysisResult.findFirst.mockResolvedValue({
-        overallFitScore: 85,
-        fitTier: 'STRONG'
+      mockPrisma.analysisJob.findFirst.mockResolvedValue({
+        result: {
+          overallFitScore: 85,
+          fitTier: 'STRONG'
+        }
       });
       mockPrisma.shortlist.create.mockResolvedValue({ id: 'app-1', pipelineStage: PipelineStage.APPLIED, pipelineStageHistory: [] });
 
@@ -76,9 +85,10 @@ describe('ApplicantsService', () => {
     });
 
     it('case 29: Application created with pipelineStage: APPLIED', async () => {
+      mockPrisma.candidate.findUnique.mockResolvedValue({ id: 'cand-1UUID', userId: 'cand-1' });
       mockPrisma.jobPost.findUnique.mockResolvedValue({ id: 'job-1', status: 'ACTIVE' });
       mockPrisma.shortlist.findFirst.mockResolvedValue(null);
-      mockPrisma.analysisResult.findFirst.mockResolvedValue({ overallFitScore: 85, fitTier: 'STRONG' });
+      mockPrisma.analysisJob.findFirst.mockResolvedValue({ result: { overallFitScore: 85, fitTier: 'STRONG' } });
       
       let createData: any;
       mockPrisma.shortlist.create.mockImplementation((args) => {
@@ -91,9 +101,10 @@ describe('ApplicantsService', () => {
     });
 
     it('case 30: pipelineStageHistory contains one entry { stage: APPLIED, changedBy: "system" }', async () => {
+      mockPrisma.candidate.findUnique.mockResolvedValue({ id: 'cand-1UUID', userId: 'cand-1' });
       mockPrisma.jobPost.findUnique.mockResolvedValue({ id: 'job-1', status: 'ACTIVE' });
       mockPrisma.shortlist.findFirst.mockResolvedValue(null);
-      mockPrisma.analysisResult.findFirst.mockResolvedValue({ overallFitScore: 85, fitTier: 'STRONG' });
+      mockPrisma.analysisJob.findFirst.mockResolvedValue({ result: { overallFitScore: 85, fitTier: 'STRONG' } });
       
       let createData: any;
       mockPrisma.shortlist.create.mockImplementation((args) => {

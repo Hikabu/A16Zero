@@ -6,10 +6,10 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
   constructor(private config: ConfigService) {
-    console.log(
-      'Initializing GithubStrategy with callback URL: ',
-      config.get('app.url') + config.get('auth.githubCallback'),
-    );
+    // console.log(
+    //   'Initializing GithubStrategy with callback URL: ',
+    //   config.get('app.url') + config.get('auth.githubCallback'),
+    // );
     super({
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
@@ -19,7 +19,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
   }
 
   async validate(accessToken: string, refreshToken: string, profile: any) {
-    console.log('RAW PROFILE:', JSON.stringify(profile, null, 2));
+    // console.log('RAW PROFILE:', JSON.stringify(profile, null, 2));
     // GitHub primary email is usually verified if it's the primary one,
     // but we check the profile emails array if available.
     const emailObj =
