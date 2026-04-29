@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, Req, Query, BadRequestException, Res } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, Req, Query, BadRequestException, Res, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
 import {
   ApiTags,
@@ -11,7 +11,7 @@ import {
   ApiNotFoundResponse,
   ApiParam,
   ApiQuery,
-  ApiBody
+  ApiBody,
 } from '@nestjs/swagger';
 import { BaseController } from '../../shared/base.controller';
 import { CandidateListResponseDto } from './dto/candidateListResponse.dto';
@@ -19,7 +19,7 @@ import { ShortlistResponseDto } from './dto/shortListResponse.dto';
 import { UpdateShortlistStatusDto } from './dto/updateStatus.dto';
 import { UpdateShortlistResponseDto } from './dto/updateStatusResponse.dto';
 import { ApplicantsService } from './applicants.service';
-import { ScorecardRenderer } from './scorecard-renderer.service';
+import { ScorecardRendererService } from './scorecard-renderer.service';
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
 import { UserRole, PipelineStage, FitTier } from '@prisma/client';
 import { JwtAuthGuard as HrAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
@@ -27,6 +27,7 @@ import { ApplyResponseDto } from './dto/applyResponse.dto';
 import { ErrorResponseDto } from './dto/common.dto';
 import { AdvanceStageDto } from './dto/advanceStage.dto';
 import { ApplicationFiltersDto } from './dto/applicationFilter.dto';
+import { ApplyDecisionDto } from './dto/applyDecision.dto';
 
 @ApiTags('Applications')
 @ApiBearerAuth('Authorization')
@@ -34,11 +35,10 @@ import { ApplicationFiltersDto } from './dto/applicationFilter.dto';
 export class ApplicantsController extends BaseController {
   constructor(
     private readonly applicantsService: ApplicantsService,
-    private readonly scorecardRenderer: ScorecardRenderer
+    private readonly scorecardRendererService: ScorecardRendererService
   ) {
     super();
   }
-
    // ─────────────────────────────
   // CANDIDATE: GAP PREVIEW
   // ─────────────────────────────
@@ -54,6 +54,7 @@ export class ApplicantsController extends BaseController {
   @ApiQuery({
     name: 'jobId',
     required: true,
+    description: 'Job to preview gap analysis against',
     example: 'job_123',
   })
   @ApiBadRequestResponse({
@@ -187,7 +188,43 @@ export class ApplicantsController extends BaseController {
     example: 'app_123',
   })
   @ApiOkResponse({
-    description: 'Application details retrieved',
+    description: 'Returns application detail with dual-view shape (HR vs CTO)',
+    schema: {
+      example: {
+        id: 'app_123',
+        hrView: {
+          verdict: 'PROCEED',
+          hrSummary: 'Strong candidate with clear career growth',
+          reputationNote: 'Verified by 5 peers on-chain',
+          appliedAt: '2026-04-20T10:00:00Z',
+          pipelineStage: 'INTERVIEW_TECHNICAL',
+          candidate: { name: 'Alice Smith', username: 'alice_dev' }
+        },
+        technicalView: {
+          technicalSummary: 'Expert in React and Node.js. Missing Rust experience.',
+          strengths: ['Architecture', 'Testing'],
+          risks: ['No experience with high-scale DBs'],
+          roleFitScore: 85,
+          fitTier: 'STRONG'
+        },
+        decisionCard: {
+          verdict: 'PROCEED',
+          hrSummary: '...',
+          technicalSummary: '...',
+          gapDetail: {
+            overallVerdict: 'PROCEED',
+            technologyFitScore: 0.85,
+            gaps: [{ dimension: 'Rust', severity: 'SIGNIFICANT' }]
+          }
+        },
+        interviewQuestions: {
+          stage: 'INTERVIEW_TECHNICAL',
+          questions: [{ question: 'Explain X', priority: 'MUST_ASK' }]
+        },
+        notObservable: ['Communication quality'],
+        pipelineStageHistory: [{ stage: 'APPLIED', movedAt: '...' }]
+      }
+    }
   })
   @ApiNotFoundResponse({
     description: 'Application not found',
@@ -196,6 +233,55 @@ export class ApplicantsController extends BaseController {
   async getApplicationDetail(@Req() req: any, @Param('appId') appId: string) {
     const detail = await this.applicantsService.findById(appId, req.user.id);
     return this.handleSuccess(detail);
+  }
+
+  // ─────────────────────────────
+  // HR: APPLY DECISION (SHORTLIST/REJECT)
+  // ─────────────────────────────
+  @Patch('hr/:appId/decision')
+  @UseGuards(HrAuthGuard)
+  @ApiOperation({
+    summary: 'Apply review decision',
+    description: 'Marks an application as SHORTLISTED, REJECTED, or REVIEWED.',
+  })
+  @ApiParam({ name: 'appId', example: 'app_123' })
+  @ApiBody({ type: ApplyDecisionDto })
+  @ApiOkResponse({ description: 'Decision applied successfully' })
+  async applyDecision(
+    @Req() req: any,
+    @Param('appId') appId: string,
+    @Body() body: ApplyDecisionDto
+  ) {
+    const updated = await this.applicantsService.applyDecision(
+      appId,
+      body.status,
+      req.user.id
+    );
+    return this.handleSuccess(updated, 'Decision applied successfully');
+  }
+
+  // ─────────────────────────────
+  // HR: EXPORT SCORECARD (HTML)
+  // ─────────────────────────────
+  @Get('hr/:appId/scorecard')
+  @UseGuards(HrAuthGuard)
+  @ApiOperation({
+    summary: 'Export candidate scorecard (HTML)',
+    description: 'Generates a printable HTML scorecard for external sharing.',
+  })
+  @ApiParam({ name: 'appId', example: 'app_123' })
+  @ApiOkResponse({ description: 'HTML scorecard generated' })
+  async getScorecard(
+    @Req() req: any,
+    @Param('appId') appId: string,
+    @Res() res: Response
+  ) {
+    const application = await this.applicantsService.findById(appId, req.user.id);
+    if (!application) throw new NotFoundException('Application not found');
+
+    const html = this.scorecardRendererService.render(application);
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
   }
 
   // ─────────────────────────────

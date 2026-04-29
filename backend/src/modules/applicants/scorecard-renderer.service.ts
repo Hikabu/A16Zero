@@ -1,266 +1,78 @@
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ScorecardRenderer {
-  render(app: any): string {
-    const jobTitle = app.application?.job?.title || 'Unknown Role';
-    const companyName = app.application?.job?.company || 'Unknown Company';
-    const candidateName = app.application?.candidate?.name || 'Unknown Candidate';
-    
-    // Extract decision card
-    const decisionCard = app.decisionCard || {};
-    const gapDetail = decisionCard.gapDetail || {};
-    
-    const verdict = decisionCard.verdict || 'N/A';
-    const hrSummary = decisionCard.hrSummary || '';
-    const technicalSummary = decisionCard.technicalSummary || '';
-    
-    const strengths = decisionCard.strengths || [];
-    const risks = decisionCard.risks || [];
-    const reputationNote = decisionCard.reputationNote || '';
-    
-    const missingTechnologies = gapDetail.missingTechnologies || [];
-    const matchedTechnologies = gapDetail.matchedTechnologies || [];
-    
-    const safeGaps = gapDetail.gaps || [];
-    const probeQuestions = safeGaps
-      .filter((g: any) => g.probeQuestion && (g.severity === 'SIGNIFICANT' || g.severity === 'DEALBREAKER'))
-      .map((g: any) => ({ dimension: g.dimension, question: g.probeQuestion }));
+export class ScorecardRendererService {
+  render(application: any): string {
+    const dc          = application.decisionCard ?? {};
+    const gapDetail   = dc.gapDetail ?? {};
+    const gaps        = gapDetail.gaps ?? [];
+    const probeGaps   = gaps.filter((g: any) =>
+      ['SIGNIFICANT', 'DEALBREAKER'].includes(g.severity) && g.probeQuestion);
+    const verdictColor = dc.verdict === 'PROCEED' ? '#22c55e'
+                       : dc.verdict === 'REJECT'  ? '#ef4444' : '#f59e0b';
 
-    const notObservable = [
-      'Communication style under pressure',
-      'Team culture fit / soft skills',
-      'Architecture design intuition (without scaffolding)',
-      'Mentorship / leadership potential'
-    ];
+    return `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<title>Scorecard — ${application.application?.job?.title ?? 'Job'} — ${application.application?.candidate?.name ?? 'Candidate'}</title>
+<style>
+  body { font-family: -apple-system, sans-serif; font-size: 14px; color: #1a1a1a; background: #fff; padding: 40px; max-width: 860px; margin: 0 auto; }
+  .verdict-block { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: 8px; border: 2px solid ${verdictColor}44; background: ${verdictColor}0d; margin-bottom: 24px; }
+  .verdict-badge { font-size: 18px; font-weight: 800; color: ${verdictColor}; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .section { background: #f9f9f9; border: 1px solid #e5e5e5; border-radius: 6px; padding: 14px; margin-bottom: 12px; }
+  h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #444; margin: 24px 0 10px; }
+  ul { list-style: none; padding: 0; }
+  li { padding: 3px 0 3px 14px; font-size: 13px; color: #333; position: relative; }
+  li::before { content: '·'; position: absolute; left: 0; color: #999; }
+  .probe-q { padding: 8px 12px; background: #fff7ed; border-left: 3px solid #f59e0b; margin-bottom: 8px; font-size: 13px; }
+  .tech-chip { font-size: 11px; padding: 2px 8px; border-radius: 12px; }
+  .tech-match { background: #dcfce7; color: #166534; }
+  .tech-miss  { background: #fee2e2; color: #991b1b; }
+  @media print { .no-print { display: none; } @page { margin: 1.5cm; } }
+</style></head><body>
+<div class="no-print" style="text-align: right; margin-bottom: 20px;">
+  <button onclick="window.print()" style="background:#000;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:600">Print / Save as PDF</button>
+</div>
+<h1>${application.application?.job?.title ?? 'Role'} — Candidate Scorecard</h1>
+<h2 style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:24px">
+  ${application.application?.candidate?.name ?? 'Candidate'} · Generated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</h2>
 
-    const generateList = (items: string[]) => items.length 
-      ? `<ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>`
-      : '<p>None</p>';
+<div class="verdict-block">
+  <div class="verdict-badge">${dc.verdict ?? '—'}</div>
+  <div>${dc.hrSummary ?? 'No summary available.'}</div>
+</div>
 
-    // Badge styling
-    let badgeColor = '#6b7280'; // default gray
-    let badgeBg = '#f3f4f6';
-    if (verdict === 'PROCEED') {
-      badgeColor = '#065f46';
-      badgeBg = '#d1fae5';
-    } else if (verdict === 'REVIEW') {
-      badgeColor = '#92400e';
-      badgeBg = '#fef3c7';
-    } else if (verdict === 'REJECT') {
-      badgeColor = '#991b1b';
-      badgeBg = '#fee2e2';
-    }
+<div class="two-col">
+  <div class="section"><h3>Strengths</h3><ul>${(dc.strengths??[]).map((s:string)=>`<li>${s}</li>`).join('')||'<li style="color:#999">None recorded</li>'}</ul></div>
+  <div class="section"><h3>Risks</h3><ul>${(dc.risks??[]).map((r:string)=>`<li>${r}</li>`).join('')||'<li style="color:#999">None recorded</li>'}</ul></div>
+</div>
 
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${candidateName} - Scorecard</title>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            line-height: 1.5;
-            color: #111827;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px;
-            background: #fff;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
-          }
-          header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          h1, h2, h3 { margin-top: 0; }
-          .logo-placeholder {
-            font-size: 24px;
-            font-weight: 800;
-            color: #4b5563;
-          }
-          .candidate-name {
-            font-size: 32px;
-            font-weight: bold;
-            margin: 10px 0 5px;
-          }
-          .job-title {
-            font-size: 18px;
-            color: #6b7280;
-          }
-          .verdict-block {
-            background-color: ${badgeBg};
-            border-left: 4px solid ${badgeColor};
-            padding: 20px;
-            margin-bottom: 30px;
-            border-radius: 4px;
-          }
-          .badge {
-            display: inline-block;
-            padding: 6px 12px;
-            background-color: ${badgeColor};
-            color: white;
-            font-weight: bold;
-            border-radius: 4px;
-            font-size: 14px;
-            letter-spacing: 0.1em;
-            margin-bottom: 10px;
-          }
-          .hr-summary {
-            font-size: 18px;
-            font-weight: 500;
-          }
-          .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-          }
-          .section {
-            margin-bottom: 30px;
-          }
-          .section-title {
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #6b7280;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 8px;
-            margin-bottom: 15px;
-          }
-          .tech-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-          }
-          .tech-tag {
-            background: #f3f4f6;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 14px;
-          }
-          .tech-tag.matched { background: #dcfce7; color: #166534; }
-          .tech-tag.missing { background: #fee2e2; color: #991b1b; }
-          
-          .print-btn {
-            background: #000;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 20px;
-          }
-          .print-btn:hover { background: #333; }
-          
-          .footer {
-            margin-top: 50px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            font-size: 12px;
-            color: #9ca3af;
-            text-align: center;
-          }
+<h3>Technology Match</h3>
+<div class="two-col">
+  <div class="section">
+    <strong style="font-size:11px;color:#166534">Matched</strong>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      ${(gapDetail.matchedTechnologies??[]).map((t:string)=>`<span class="tech-chip tech-match">${t}</span>`).join('')||'<span style="font-size:12px;color:#999">None</span>'}
+    </div>
+  </div>
+  <div class="section">
+    <strong style="font-size:11px;color:#991b1b">Missing</strong>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      ${(gapDetail.missingTechnologies??[]).map((t:string)=>`<span class="tech-chip tech-miss">${t}</span>`).join('')||'<span style="font-size:12px;color:#999">None</span>'}
+    </div>
+  </div>
+</div>
 
-          @media print {
-            body { padding: 0; max-width: none; }
-            .no-print { display: none !important; }
-            @page { margin: 1.5cm; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="no-print" style="text-align: right;">
-          <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
-        </div>
+${probeGaps.length > 0 ? `<h3>Probe Questions</h3>${probeGaps.map((g:any)=>`<div class="probe-q"><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#92400e;margin-bottom:4px">${g.dimension} · ${g.severity}</div>${g.probeQuestion}</div>`).join('')}` : ''}
 
-        <header>
-          <div>
-            <div class="candidate-name">${candidateName}</div>
-            <div class="job-title">Applying for: <strong>${jobTitle}</strong></div>
-          </div>
-          <div style="text-align: right;">
-            <div class="logo-placeholder">${companyName}</div>
-            <div style="font-size: 14px; color: #6b7280; margin-top: 5px;">${new Date().toLocaleDateString()}</div>
-          </div>
-        </header>
+${dc.reputationNote ? `<div class="section" style="margin-top:12px"><h3>Reputation Note</h3><p style="font-size:13px">${dc.reputationNote}</p></div>` : ''}
 
-        <div class="verdict-block">
-          <div class="badge">${verdict}</div>
-          <div class="hr-summary">${hrSummary}</div>
-        </div>
-
-        <div class="section">
-          <h3 class="section-title">Technical Summary</h3>
-          <p>${technicalSummary}</p>
-        </div>
-
-        <div class="grid">
-          <div class="section">
-            <h3 class="section-title">Strengths</h3>
-            ${generateList(strengths)}
-          </div>
-          <div class="section">
-            <h3 class="section-title">Risks</h3>
-            ${generateList(risks)}
-          </div>
-        </div>
-
-        <div class="grid">
-          <div class="section">
-            <h3 class="section-title">Matched Technologies</h3>
-            <div class="tech-list">
-              ${matchedTechnologies.length ? matchedTechnologies.map((t: string) => `<span class="tech-tag matched">${t}</span>`).join('') : '<p>None</p>'}
-            </div>
-          </div>
-          <div class="section">
-            <h3 class="section-title">Missing Technologies</h3>
-            <div class="tech-list">
-              ${missingTechnologies.length ? missingTechnologies.map((t: string) => `<span class="tech-tag missing">${t}</span>`).join('') : '<p>None</p>'}
-            </div>
-          </div>
-        </div>
-
-        ${probeQuestions.length > 0 ? `
-        <div class="section">
-          <h3 class="section-title">Interview Probe Questions</h3>
-          <ol style="padding-left: 20px;">
-            ${probeQuestions.map((q: any) => `
-              <li style="margin-bottom: 10px;">
-                <strong>${q.dimension}:</strong><br/>
-                ${q.question}
-              </li>
-            `).join('')}
-          </ol>
-        </div>
-        ` : ''}
-
-        ${reputationNote ? `
-        <div class="section">
-          <h3 class="section-title">Reputation Note</h3>
-          <p><em>${reputationNote}</em></p>
-        </div>
-        ` : ''}
-
-        <div class="section" style="background: #f9fafb; padding: 20px; border-radius: 4px; font-size: 14px;">
-          <h3 class="section-title" style="margin-bottom: 10px; border: none; padding: 0;">Evaluation Limits (Not Observable)</h3>
-          <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
-            ${notObservable.map(item => `<li>${item}</li>`).join('')}
-          </ul>
-        </div>
-
-        <div class="footer">
-          Generated by Colosseum — proof-of-talent hiring platform • ${new Date().toISOString()}
-        </div>
-      </body>
-      </html>
-    `;
+<div class="section" style="margin-top:12px"><h3>Not Observable via GitHub</h3>
+  <p style="font-size:12px;color:#666">Communication quality · System design thinking · Management capability · Cultural fit · Interview performance — these require interview assessment.</p>
+</div>
+<div style="font-size:11px;color:#999;text-align:center;padding-top:20px;border-top:1px solid #e5e5e5;margin-top:32px">
+  Generated by Colosseum — proof-of-talent hiring platform · ${new Date().toISOString()}
+</div>
+</body></html>`;
   }
 }

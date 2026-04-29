@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Req,
+  Query,
   UseGuards,
   Logger,
 } from '@nestjs/common';
@@ -34,13 +35,15 @@ import { JobDescriptionParserService } from '../scoring/gap-analysis/job-descrip
 import { diffParsedRequirements } from '../scoring/gap-analysis/jd-diff.util';
 import { BaseController } from '../../shared/base.controller';
 import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
+import { Public } from '../auth-employer/decorators/public.decorator';
 import { ErrorResponseDto } from './dto/errorResponse.dto';
 import { JobResponseDto } from './dto/jobResponse.dto';
 import { ParseJdResponseDto } from './dto/parseJdResponse.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Jobs')
-@ApiBearerAuth('Authorization')
-@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
 @Controller('jobs')
 export class JobsController extends BaseController {
   private readonly logger = new Logger(JobsController.name);
@@ -92,13 +95,39 @@ export class JobsController extends BaseController {
     type: ErrorResponseDto,
   })
   async create(@Req() req: any, @Body() dto: CreateJobDto) {
+    console.log("user: ", req.user);
     const job = await this.jobsService.create(req.user.id, dto);
     return this.handleCreated(job, 'Job created successfully');
   }
 
   // ─────────────────────────────
-  // GET MY JOBS
+  // PUBLIC: BROWSE JOBS
   // ─────────────────────────────
+
+  @Public()
+  @Get()
+  @ApiOperation({
+    summary: 'Browse open jobs (Public)',
+    description: 'Returns a list of published jobs with filtering and pagination.',
+  })
+  async getPublicJobs(
+    @Query('search') search?: string,
+    @Query('roleType') roleType?: string,
+    @Query('seniority') seniority?: string,
+    @Query('isWeb3') isWeb3?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const jobs = await this.jobsService.getPublicJobs({
+      search,
+      roleType,
+      seniority,
+      isWeb3: isWeb3 === 'true' ? true : isWeb3 === 'false' ? false : undefined,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
+    return this.handleSuccess(jobs);
+  }
 
   @Get('me')
   @ApiOperation({
@@ -130,6 +159,21 @@ export class JobsController extends BaseController {
   async getMyJobs(@Req() req: any) {
     const jobs = await this.jobsService.findMyJobs(req.user.id);
     return this.handleSuccess(jobs);
+  }
+
+  // ─────────────────────────────
+  // PUBLIC: JOB DETAILS
+  // ─────────────────────────────
+
+  @Public()
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get job details (Public)',
+    description: 'Returns detailed information about a published job.',
+  })
+  async getPublicJobById(@Param('id') id: string) {
+    const job = await this.jobsService.getPublicJobById(id);
+    return this.handleSuccess(job);
   }
 
   // ─────────────────────────────

@@ -80,4 +80,116 @@ export class JobsService {
       },
     });
   }
+
+  async getPublicJobs(query: {
+    search?: string;
+    roleType?: string;
+    seniority?: string;
+    isWeb3?: boolean;
+    page?: number;
+    limit?: number;
+  }) {
+    const { search, roleType, seniority, isWeb3, page = 1, limit = 20 } = query;
+    const take = Math.min(limit, 50);
+    const skip = (page - 1) * take;
+
+    const where: any = {
+      status: JobStatus.ACTIVE,
+    };
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (roleType) {
+      where.AND = where.AND || [];
+      where.AND.push({
+        parsedRequirements: {
+          path: ['requiredRoleType'],
+          equals: roleType,
+        },
+      });
+    }
+
+    if (seniority) {
+      where.AND = where.AND || [];
+      where.AND.push({
+        parsedRequirements: {
+          path: ['requiredSeniority'],
+          equals: seniority,
+        },
+      });
+    }
+
+    if (isWeb3 !== undefined) {
+      where.isWeb3Role = isWeb3;
+    }
+
+    const [jobs, total] = await Promise.all([
+      this.prisma.jobPost.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          isWeb3Role: true,
+          createdAt: true,
+          publishedAt: true,
+          company: {
+            select: {
+              name: true,
+              logoUrl: true,
+              website: true,
+            },
+          },
+        },
+        skip,
+        take,
+        orderBy: { publishedAt: 'desc' },
+      }),
+      this.prisma.jobPost.count({ where }),
+    ]);
+
+    return { jobs, total, page, limit: take };
+  }
+
+  async getPublicJobById(id: string) {
+    const job = await this.prisma.jobPost.findUnique({
+      where: { id, status: JobStatus.ACTIVE },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        isWeb3Role: true,
+        createdAt: true,
+        publishedAt: true,
+        company: {
+          select: {
+            name: true,
+            logoUrl: true,
+            website: true,
+            description: true,
+          },
+        },
+        _count: {
+          select: {
+            shortlists: true,
+          },
+        },
+      },
+    });
+
+    if (!job) {
+      throw new AppException('Job not found or is no longer active', 404);
+    }
+
+    const { _count, ...rest } = job;
+    return {
+      ...rest,
+      applicationCount: _count.shortlists,
+    };
+  }
 }

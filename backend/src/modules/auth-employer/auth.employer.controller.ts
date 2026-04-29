@@ -7,6 +7,7 @@ import {
   ApiOkResponse,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
+  ApiHeader,
 } from '@nestjs/swagger';
 
 import { AuthEmployerService } from './auth.employer.service';
@@ -36,11 +37,11 @@ export class AuthEmployerController extends BaseController {
 
   @Public()
   @Post('login')
-  @ApiBearerAuth() // 👈 THIS is the correct Swagger way
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Login with Privy token',
     description:
-      'Verifies a Privy access token from frontend authentication and returns a signed JWT for API access.',
+      'Verifies a Privy access token from frontend authentication and returns a signed JWT for API access. \nTESTING:\n 1. make sure .env > PRIVY_BYPASS="true"\n2. Bearer Token = debugtoken \n3. Authorization header = did:privy:test-user-123 ',
   })
   @ApiBody({
     type: LoginDto,
@@ -48,9 +49,10 @@ export class AuthEmployerController extends BaseController {
       'Optional login metadata used during company creation or update',
     examples: {
       default: {
-        value: {
-          smartAccountAddress: '0x123abc...',
-        },
+        value:{
+  walletAddress: "0x123456789abcdef0123456789abcdef012345678",
+  smartAccountAddress: "0x123456789abcdef0123456789abcdef012345678"
+},
       },
     },
   })

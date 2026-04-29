@@ -41,8 +41,8 @@ async function bootstrap() {
       'Backend MVP for Employer platform features and Account Abstraction auth verification.',
     )
     .setVersion('1.0')
-    .addBearerAuth()
-	  .addApiKey(
+  .addBearerAuth()	  
+  .addApiKey(
     {
       type: 'apiKey',
       name: 'x-internal-api-key', // must match your guard

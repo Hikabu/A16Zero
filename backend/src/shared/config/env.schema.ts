@@ -18,12 +18,18 @@ export const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string(),
   GOOGLE_CLIENT_SECRET: z.string(),
 
+  JWT_SECRET: z.string(),
   JWT_ACCESS_SECRET: z.string(),
   JWT_REFRESH_SECRET: z.string(),
   JWT_EXPIRY: z.string(),
   JWT_REFRESH_EXPIRY: z.string(),
   JWT_ISSUER: z.string(),
   JWT_AUDIENCE: z.string(),
+
+  PRIVY_APP_ID: z.string(),
+  PRIVY_SECRET: z.string(),
+  PRIVY_JWKS_URL: z.string(),
+  PRIVY_BYPASS: z.string(),
 
   ENCRYPTION_KEY: z.string().optional(),
   INTERNAL_API_KEY: z.string().optional(),

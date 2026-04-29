@@ -17,16 +17,56 @@ export interface InterviewQuestionSet {
   generatedAt: Date;
 }
 
+import { PrismaService } from '../../prisma/prisma.service';
+
 @Injectable()
 export class InterviewQuestionService {
   private readonly anthropic: Anthropic;
   private readonly logger = new Logger(InterviewQuestionService.name);
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService
+  ) {
     const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
     this.anthropic = new Anthropic({
       apiKey: apiKey,
     });
+  }
+
+  async generateForApplication(appId: string, targetStage: PipelineStage) {
+    try {
+      const app = await this.prisma.shortlist.findUnique({
+        where: { id: appId },
+        include: {
+          jobPost: true,
+          candidate: { include: { user: true } }
+        }
+      });
+
+      if (!app) return;
+
+      const generatedSet = await this.generate(app, targetStage);
+      
+      // Sort questions: MUST_ASK > SHOULD_ASK > NICE_TO_HAVE
+      const priorityOrder = { 'MUST_ASK': 1, 'SHOULD_ASK': 2, 'NICE_TO_HAVE': 3 };
+      generatedSet.questions.sort((a, b) => 
+        (priorityOrder[a.priority] || 99) - (priorityOrder[b.priority] || 99)
+      );
+
+      const existingQuestions = (app.interviewQuestions as any[]) || [];
+      
+      await this.prisma.shortlist.update({
+        where: { id: appId },
+        data: {
+          interviewQuestions: [...existingQuestions, generatedSet]
+        }
+      });
+
+      this.logger.log(`Generated and saved questions for application ${appId} stage ${targetStage}`);
+    } catch (error) {
+      this.logger.error(`Failed to generate/save questions for ${appId}: ${error.message}`);
+    }
   }
 
   async generate(application: any, targetStage: PipelineStage): Promise<InterviewQuestionSet> {

@@ -18,6 +18,9 @@ model Company {
   id                 String    @id @default(uuid())
   name               String
   legalName          String? // exact registered business name 
+  logoUrl      String?
+  website   String?
+  description String?
   registrationNumber String?   @unique
   country            String
   isVerified         Boolean   @default(false)
@@ -106,6 +109,7 @@ enum FraudTier {
 enum ShortlistStatus {
   PENDING
   REVIEWED
+  SHORTLISTED
   CONTACTED
   REJECTED
 }
@@ -143,6 +147,7 @@ enum FitTier {
 enum PipelineStage {
   APPLIED
   REVIEWED
+  SHORTLISTED
   INTERVIEW_HR
   INTERVIEW_TECHNICAL
   INTERVIEW_FINAL

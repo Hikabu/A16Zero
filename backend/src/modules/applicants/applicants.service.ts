@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GapAnalysisService } from '../scoring/gap-analysis/gap-analysis.service';
 import { DecisionCardService } from '../scoring/decision-card/decision-card.service';
@@ -40,24 +40,24 @@ export class ApplicantsService {
     });
 
     return applications.map(app => {
-      const decisionCard = app.decisionCard as any;
+      const decisionCard = (app.decisionCard as any) || {};
       return {
         id: app.id,
         hrView: {
-          verdict: decisionCard.verdict,
-          hrSummary: decisionCard.hrSummary,
-          reputationNote: decisionCard.reputationNote,
-          appliedAt: app.createdAt,
+          verdict: decisionCard.verdict || null,
+          hrSummary: decisionCard.hrSummary || null,
+          reputationNote: decisionCard.reputationNote ?? null,
+          appliedAt: app.appliedAt,
           pipelineStage: app.pipelineStage,
           candidate: {
-            name: `${app.candidate.user.firstName} ${app.candidate.user.lastName}`,
+            name: `${app.candidate.user.firstName || ''} ${app.candidate.user.lastName || ''}`.trim(),
             username: app.candidate.user.username
           }
         },
         technicalView: {
-          technicalSummary: decisionCard.technicalSummary,
-          strengths: decisionCard.strengths,
-          risks: decisionCard.risks,
+          technicalSummary: decisionCard.technicalSummary || null,
+          strengths: decisionCard.strengths || [],
+          risks: decisionCard.risks || [],
           roleFitScore: app.roleFitScore,
           fitTier: app.fitTier
         }
@@ -97,14 +97,6 @@ export class ApplicantsService {
     const { decisionCard, gapReport, interviewQuestions, pipelineStageHistory } = app as any;
 
     // Build embedded gap detail
-    const gapDetail = gapReport ? {
-      overallVerdict: gapReport.overallVerdict,
-      technologyFitScore: gapReport.technologyFitScore,
-      missingTechnologies: gapReport.missingTechnologies,
-      matchedTechnologies: gapReport.matchedTechnologies,
-      gaps: gapReport.gaps
-    } : null;
-
     // Determine interview questions
     let activeQuestions = null;
     if (interviewQuestions && Array.isArray(interviewQuestions) && interviewQuestions.length > 0) {
@@ -115,22 +107,24 @@ export class ApplicantsService {
     const web3Profile = (app as any).candidate?.devProfile?.web3Profile || null;
 
     return {
-      application: {
-        id: app.id,
-        pipelineStage: (app as any).pipelineStage,
-        pipelineStageHistory: pipelineStageHistory || [],
-        status: app.status,
+      id: app.id,
+      hrView: {
+        verdict: decisionCard?.verdict || null,
+        hrSummary: decisionCard?.hrSummary || null,
+        reputationNote: decisionCard?.reputationNote || null,
         appliedAt: (app as any).appliedAt || app.createdAt,
+        pipelineStage: (app as any).pipelineStage,
         candidate: {
           name: `${app.candidate.user.firstName || ''} ${app.candidate.user.lastName || ''}`.trim(),
-          username: app.candidate.user.username,
-          githubProfile,
-          web3Profile
-        },
-        job: {
-          title: app.jobPost.title,
-          company: app.jobPost.company?.name
+          username: app.candidate.user.username
         }
+      },
+      technicalView: {
+        technicalSummary: decisionCard?.technicalSummary || null,
+        strengths: decisionCard?.strengths || [],
+        risks: decisionCard?.risks || [],
+        roleFitScore: app.roleFitScore,
+        fitTier: app.fitTier
       },
       decisionCard: decisionCard ? {
         verdict: decisionCard.verdict,
@@ -139,8 +133,15 @@ export class ApplicantsService {
         strengths: decisionCard.strengths || [],
         risks: decisionCard.risks || [],
         reputationNote: decisionCard.reputationNote || null,
-        gapDetail
+        gapDetail: gapReport ? {
+          overallVerdict: gapReport.overallVerdict,
+          technologyFitScore: gapReport.technologyFitScore,
+          missingTechnologies: gapReport.missingTechnologies,
+          matchedTechnologies: gapReport.matchedTechnologies,
+          gaps: gapReport.gaps
+        } : null
       } : null,
+      interviewQuestions: activeQuestions,
       notObservable: [
         "Communication quality",
         "System design thinking (PRs are a proxy)",
@@ -148,7 +149,7 @@ export class ApplicantsService {
         "Cultural fit",
         "Interview performance"
       ],
-      interviewQuestions: activeQuestions
+      pipelineStageHistory: pipelineStageHistory || []
     };
   }
 
@@ -191,47 +192,49 @@ export class ApplicantsService {
     }
 
     const currentStage = app.pipelineStage;
-    
-    // Validate transition
-    const validTransitions: Record<PipelineStage, PipelineStage[]> = {
-      APPLIED: [PipelineStage.REVIEWED],
-      REVIEWED: [PipelineStage.INTERVIEW_HR, PipelineStage.REJECTED],
-      INTERVIEW_HR: [PipelineStage.INTERVIEW_TECHNICAL, PipelineStage.INTERVIEW_FINAL, PipelineStage.REJECTED],
-      INTERVIEW_TECHNICAL: [PipelineStage.INTERVIEW_FINAL, PipelineStage.REJECTED],
-      INTERVIEW_FINAL: [PipelineStage.OFFER, PipelineStage.REJECTED],
-      OFFER: [PipelineStage.HIRED, PipelineStage.REJECTED],
-      HIRED: [],
-      REJECTED: []
+
+    // 1. FORWARD-ONLY VALIDATION
+    const stageOrder: Record<PipelineStage, number> = {
+      [PipelineStage.APPLIED]: 0,
+      [PipelineStage.REVIEWED]: 1,
+      [PipelineStage.SHORTLISTED]: 2,
+      [PipelineStage.INTERVIEW_HR]: 3,
+      [PipelineStage.INTERVIEW_TECHNICAL]: 4,
+      [PipelineStage.INTERVIEW_FINAL]: 5,
+      [PipelineStage.OFFER]: 6,
+      [PipelineStage.HIRED]: 7,
+      [PipelineStage.REJECTED]: 8
     };
 
-    const allowed = validTransitions[currentStage as PipelineStage] || [];
-    if (!allowed.includes(nextStage)) {
-      throw new BadRequestException(`Invalid pipeline transition: cannot move from ${currentStage} to ${nextStage}`);
+    if (stageOrder[nextStage] <= stageOrder[currentStage as PipelineStage]) {
+      // Exception: allow moving to REJECTED from anywhere except HIRED/REJECTED
+      if (nextStage !== PipelineStage.REJECTED) {
+        throw new BadRequestException(`Cannot move stage backwards from ${currentStage} to ${nextStage}`);
+      }
     }
 
-    let updatedQuestions = (app as any).interviewQuestions || [];
-    let payloadResponse: any = undefined;
+    // 2. INTERVIEW QUESTION TRIGGER (Fire and forget)
+    if (nextStage.startsWith('INTERVIEW_')) {
+      this.interviewQuestionService.generateForApplication(appId, nextStage).catch(err => 
+        this.logger.error(`Deferred question generation failed for ${appId}: ${err.message}`)
+      );
+    }
 
-    if (INTERVIEW_STAGES.has(nextStage)) {
-  const generatedSet = await this.interviewQuestionService.generate(app, nextStage);
-  updatedQuestions = [...updatedQuestions, generatedSet];
-  payloadResponse = generatedSet;
-}
+    // 3. PIPELINE STAGE HISTORY APPEND & UPDATE
     const updated = await this.prisma.shortlist.update({
       where: { id: appId },
       data: {
         pipelineStage: nextStage,
-        interviewQuestions: updatedQuestions,
         pipelineStageHistory: [
           ...(((app as any).pipelineStageHistory as any[]) || []),
-          { stage: nextStage, changedAt: new Date(), changedBy: `HR:${companyId}`, note: note ?? null }
+          { stage: nextStage, movedAt: new Date(), movedBy: `HR:${companyId}`, note: note ?? null }
         ] as any
       }
     });
 
     this.logger.log(`AUDIT_LOG: { entityType: 'Application', entityId: '${appId}', action: 'STAGE_UPDATED', actorId: 'HR:${companyId}', after: '${nextStage}' }`);
     
-    return payloadResponse ? payloadResponse : updated;
+    return updated;
   }
 
   async findCandidateApplications(candidateUserId: string) {
@@ -283,19 +286,30 @@ export class ApplicantsService {
 
     const analysisResult = latestAnalysis.result as unknown as AnalysisResult;
     const gapReport = this.gapAnalysisService.compute(analysisResult, job);
+    const decisionCard = this.decisionCardService.generate(gapReport, analysisResult);
 
-    const safeGaps = gapReport.gaps.map(g => {
-      const { probeQuestion, ...rest } = g;
-      return rest;
-    });
+    const verdictMap: Record<string, FitTier> = {
+      PROCEED: FitTier.STRONG,
+      REVIEW: FitTier.PROBE,
+      REJECT: FitTier.PASS,
+    };
+    const fitTier = verdictMap[decisionCard.verdict] || FitTier.PASS;
+    const roleFitScore = this.computeRoleFitScore(gapReport);
+
+    const safeGaps = gapReport.gaps.map(g => ({
+      dimension: g.dimension,
+      severity: g.severity,
+      description: `${g.actual} vs required ${g.expected}${g.mitigatingContext ? '. ' + g.mitigatingContext : ''}`
+    }));
 
     return {
-      overallVerdict: gapReport.overallVerdict,
-      technologyFitScore: gapReport.technologyFitScore,
-      missingTechnologies: gapReport.missingTechnologies,
+      jobId,
+      fitTier,
+      roleFitScore,
+      gapSummary: decisionCard.hrSummary,
       matchedTechnologies: gapReport.matchedTechnologies,
-      gaps: safeGaps,
-      hrSummary: null // explicitly hide from candidate
+      missingTechnologies: gapReport.missingTechnologies,
+      gaps: safeGaps
     };
   }
 
@@ -382,5 +396,35 @@ export class ApplicantsService {
 
     const score = 100 - counts.DEALBREAKER * 30 - counts.SIGNIFICANT * 10 - counts.MINOR * 3;
     return Math.max(0, score);
+  }
+
+  async applyDecision(appId: string, status: string, companyId: string) {
+    const application = await this.prisma.shortlist.findUnique({
+      where: { id: appId },
+      include: {
+        jobPost: {
+          select: { companyId: true }
+        }
+      }
+    });
+
+    if (!application) {
+      throw new NotFoundException('Application not found');
+    }
+
+    if (application.jobPost.companyId !== companyId) {
+      throw new ForbiddenException('Access denied: application belongs to another company');
+    }
+
+    const updated = await this.prisma.shortlist.update({
+      where: { id: appId },
+      data: {
+        status: status as ShortlistStatus
+      }
+    });
+
+    this.logger.log(`AUDIT_LOG: { entityType: 'Application', entityId: '${appId}', action: 'DECISION_APPLIED', actorId: 'HR:${companyId}', after: { status: '${status}' } }`);
+
+    return updated;
   }
 }

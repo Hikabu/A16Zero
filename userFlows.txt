@@ -60,3 +60,18 @@
 
 		5. SHARE SCORECARD
 		
+
+
+>>>>>>	(HR) POST A JOB
+
+	Create draft
+		POST /jobs/draft
+
+	Paste JD → parse
+		POST /jobs/{id}/parse-jd
+
+	Review diff, confirm
+		POST /jobs/{id}/confirm-requirements
+	
+	Publish job
+		POST /jobs/{id}/publish
