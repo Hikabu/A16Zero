@@ -42,8 +42,6 @@ import { ParseJdResponseDto } from './dto/parseJdResponse.dto';
 import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Jobs')
-@ApiBearerAuth()
-@UseGuards(AuthGuard('jwt-employer'))
 @Controller('jobs')
 export class JobsController extends BaseController {
   private readonly logger = new Logger(JobsController.name);
@@ -60,6 +58,8 @@ export class JobsController extends BaseController {
   // ─────────────────────────────
 
   @Post("draft")
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
   @ApiOperation({
     summary: 'Create a new job post draft',
     description:
@@ -130,6 +130,8 @@ export class JobsController extends BaseController {
   }
 
   @Get('me')
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
   @ApiOperation({
     summary: 'Get all jobs created by the authenticated company',
     description:
@@ -181,6 +183,8 @@ export class JobsController extends BaseController {
   // ─────────────────────────────
 
   @Post(':id/publish')
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
   @ApiOperation({
     summary: 'Publish a job',
     description:
@@ -214,6 +218,8 @@ export class JobsController extends BaseController {
   // ─────────────────────────────
 
   @Post(':id/close')
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
   @ApiOperation({
     summary: 'Close a job',
     description:
@@ -243,6 +249,8 @@ export class JobsController extends BaseController {
   // ─────────────────────────────
 
   @Post(':id/parse-jd')
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
   @ApiOperation({
     summary: 'Parse job description into structured requirements',
     description:
@@ -281,6 +289,8 @@ export class JobsController extends BaseController {
   // ─────────────────────────────
 
   @Post(':id/confirm-requirements')
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
   @ApiOperation({
     summary: 'Confirm parsed job requirements',
     description:
