@@ -40,11 +40,12 @@ import { Prisma } from '@prisma/client';
 import { CreateAnalysisDto, RecomputeAnalysisDto } from './dto/analysis.dto';
 
 import {
-  JobResponseDto,
+  JobQueueResponseDto,
   JobStatusResponseDto,
   JobResultResponseDto,
   AnalysisErrorResponseDto,
 } from './dto/analysis-response.dto';
+import { JobResponseDto } from '../../jobs/dto/jobResponse.dto';
 
 @ApiTags('Proof Of Talent')
 @Controller('api/analysis')
@@ -83,7 +84,7 @@ Optional if authenticated.
 - If no JWT → must provide githubUsername or walletAddress
 `,
 })
-  @ApiCreatedResponse({ type: JobResponseDto })
+  @ApiCreatedResponse({ type: JobQueueResponseDto })
   @ApiBadRequestResponse({ type: AnalysisErrorResponseDto })
   async createAnalysis(
     @Req() req: any,

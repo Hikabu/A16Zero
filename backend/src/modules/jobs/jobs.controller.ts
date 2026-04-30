@@ -21,6 +21,8 @@ import {
   ApiUnauthorizedResponse,
   ApiParam,
   ApiBody,
+  ApiQuery,
+  ApiPropertyOptional,
 } from '@nestjs/swagger';
 
 import { JobsService } from './jobs.service';
@@ -31,6 +33,7 @@ import {
   ParsedJobRequirementsDto,
   ParsedJobRequirementsSchema,
 } from './dto/confirm-requirements.dto';
+import { GetJobsQueryDto } from './dto/getJobsQuery.dto';
 import { JobDescriptionParserService } from '../scoring/gap-analysis/job-description-parser.service';
 import { diffParsedRequirements } from '../scoring/gap-analysis/jd-diff.util';
 import { BaseController } from '../../shared/base.controller';
@@ -52,6 +55,83 @@ export class JobsController extends BaseController {
   ) {
     super();
   }
+
+  // ─────────────────────────────
+  // PUBLIC: BROWSE JOBS
+  // ─────────────────────────────
+
+  @Public()
+  @Get()
+  @ApiOperation({
+    summary: 'Browse open jobs (Public)',
+    description: 'Returns a list of published jobs with filtering and pagination.',
+  })
+  async getPublicJobs(@Query() query: GetJobsQueryDto) {
+    const jobs = await this.jobsService.getPublicJobs({
+      search: query.search,
+      roleType: query.roleType,
+      seniority: query.seniority,
+      isWeb3: query.isWeb3,
+      page: query.page,
+      limit: query.limit,
+    });
+    return this.handleSuccess(jobs);
+  }
+
+  // ─────────────────────────────
+  // COMAPNY JOBS
+  // ─────────────────────────────
+
+  @Get('me')
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
+  @ApiOperation({
+    summary: 'Get all jobs created by the authenticated company',
+    description:
+      'Returns all job posts owned by the authenticated company, ordered by newest first.\n\n' +
+      'Useful for dashboards and job management views.',
+  })
+  @ApiOkResponse({
+    description: 'List of jobs',
+    type: [JobResponseDto],
+    schema: {
+      example: {
+        success: true,
+        data: [
+          {
+            id: 'job_1',
+            title: 'Backend Engineer',
+            status: 'ACTIVE',
+          },
+        ],
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
+    type: ErrorResponseDto,
+  })
+  async getMyJobs(@Req() req: any) {
+    console.log("user: ", req.user);
+    const jobs = await this.jobsService.findMyJobs(req.user.id);
+    return this.handleSuccess(jobs);
+  }
+
+  // ─────────────────────────────
+  // PUBLIC: JOB DETAILS
+  // ─────────────────────────────
+
+  @Public()
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get job details (Public)',
+    description: 'Returns detailed information about a published job.',
+  })
+  async getPublicJobById(@Param('id') id: string) {
+    const job = await this.jobsService.getPublicJobById(id);
+    return this.handleSuccess(job);
+  }
+
 
   // ─────────────────────────────
   // CREATE JOB
@@ -95,153 +175,8 @@ export class JobsController extends BaseController {
     type: ErrorResponseDto,
   })
   async create(@Req() req: any, @Body() dto: CreateJobDto) {
-    console.log("user: ", req.user);
     const job = await this.jobsService.create(req.user.id, dto);
     return this.handleCreated(job, 'Job created successfully');
-  }
-
-  // ─────────────────────────────
-  // PUBLIC: BROWSE JOBS
-  // ─────────────────────────────
-
-  @Public()
-  @Get()
-  @ApiOperation({
-    summary: 'Browse open jobs (Public)',
-    description: 'Returns a list of published jobs with filtering and pagination.',
-  })
-  async getPublicJobs(
-    @Query('search') search?: string,
-    @Query('roleType') roleType?: string,
-    @Query('seniority') seniority?: string,
-    @Query('isWeb3') isWeb3?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    const jobs = await this.jobsService.getPublicJobs({
-      search,
-      roleType,
-      seniority,
-      isWeb3: isWeb3 === 'true' ? true : isWeb3 === 'false' ? false : undefined,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-    });
-    return this.handleSuccess(jobs);
-  }
-
-  @Get('me')
-  @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt-employer'))
-  @ApiOperation({
-    summary: 'Get all jobs created by the authenticated company',
-    description:
-      'Returns all job posts owned by the authenticated company, ordered by newest first.\n\n' +
-      'Useful for dashboards and job management views.',
-  })
-  @ApiOkResponse({
-    description: 'List of jobs',
-    type: [JobResponseDto],
-    schema: {
-      example: {
-        success: true,
-        data: [
-          {
-            id: 'job_1',
-            title: 'Backend Engineer',
-            status: 'ACTIVE',
-          },
-        ],
-      },
-    },
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Unauthorized',
-    type: ErrorResponseDto,
-  })
-  async getMyJobs(@Req() req: any) {
-    const jobs = await this.jobsService.findMyJobs(req.user.id);
-    return this.handleSuccess(jobs);
-  }
-
-  // ─────────────────────────────
-  // PUBLIC: JOB DETAILS
-  // ─────────────────────────────
-
-  @Public()
-  @Get(':id')
-  @ApiOperation({
-    summary: 'Get job details (Public)',
-    description: 'Returns detailed information about a published job.',
-  })
-  async getPublicJobById(@Param('id') id: string) {
-    const job = await this.jobsService.getPublicJobById(id);
-    return this.handleSuccess(job);
-  }
-
-  // ─────────────────────────────
-  // PUBLISH JOB
-  // ─────────────────────────────
-
-  @Post(':id/publish')
-  @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt-employer'))
-  @ApiOperation({
-    summary: 'Publish a job',
-    description:
-      'Changes job status from DRAFT to ACTIVE.\n\n' +
-      'Once published, the job becomes visible to candidates.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Job ID',
-    example: 'cma9x1k2p0000qwert123',
-  })
-  @ApiOkResponse({
-    description: 'Job published',
-    type: JobResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'Job not found or does not belong to user',
-    type: ErrorResponseDto,
-  })
-  @ApiForbiddenResponse({
-    description: 'Forbidden',
-    type: ErrorResponseDto,
-  })
-  async publish(@Req() req: any, @Param('id') id: string) {
-    const job = await this.jobsService.publish(id, req.user.id);
-    return this.handleSuccess(job, 'Job published successfully');
-  }
-
-  // ─────────────────────────────
-  // CLOSE JOB
-  // ─────────────────────────────
-
-  @Post(':id/close')
-  @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt-employer'))
-  @ApiOperation({
-    summary: 'Close a job',
-    description:
-      'Marks the job as CLOSED.\n\n' +
-      'Closed jobs are no longer visible or accepting applications.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Job ID',
-    example: 'cma9x1k2p0000qwert123',
-  })
-  @ApiOkResponse({
-    description: 'Job closed',
-    type: JobResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'Job not found',
-    type: ErrorResponseDto,
-  })
-  async close(@Req() req: any, @Param('id') id: string) {
-    const job = await this.jobsService.close(id, req.user.id);
-    return this.handleSuccess(job, 'Job closed successfully');
   }
 
   // ─────────────────────────────
@@ -335,5 +270,70 @@ export class JobsController extends BaseController {
       updatedJob,
       'Job requirements confirmed and updated',
     );
+  }
+  // ─────────────────────────────
+  // PUBLISH JOB
+  // ─────────────────────────────
+
+  @Post(':id/publish')
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
+  @ApiOperation({
+    summary: 'Publish a job',
+    description:
+      'Changes job status from DRAFT to ACTIVE.\n\n' +
+      'Once published, the job becomes visible to candidates.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job ID',
+    example: 'cma9x1k2p0000qwert123',
+  })
+  @ApiOkResponse({
+    description: 'Job published',
+    type: JobResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found or does not belong to user',
+    type: ErrorResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden',
+    type: ErrorResponseDto,
+  })
+  async publish(@Req() req: any, @Param('id') id: string) {
+    const job = await this.jobsService.publish(id, req.user.id);
+    return this.handleSuccess(job, 'Job published successfully');
+  }
+
+  // ─────────────────────────────
+  // CLOSE JOB
+  // ─────────────────────────────
+
+  @Post(':id/close')
+  @ApiBearerAuth()
+@UseGuards(AuthGuard('jwt-employer'))
+  @ApiOperation({
+    summary: 'Close a job',
+    description:
+      'Marks the job as CLOSED.\n\n' +
+      'Closed jobs are no longer visible or accepting applications.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job ID',
+    example: 'cma9x1k2p0000qwert123',
+  })
+  @ApiOkResponse({
+    description: 'Job closed',
+    type: JobResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Job not found',
+    type: ErrorResponseDto,
+  })
+  async close(@Req() req: any, @Param('id') id: string) {
+    const job = await this.jobsService.close(id, req.user.id);
+    return this.handleSuccess(job, 'Job closed successfully');
   }
 }

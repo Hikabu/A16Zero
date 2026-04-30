@@ -1,3 +1,5 @@
+
+
 1[HR] POST A JOB 
 		1. START JOB POST 
 				@post /jobs/draft
@@ -8,6 +10,8 @@
 				@post /jobs/{id}/escrow
 		4. PUBLISH
 				@post /jons/{id}/publish
+
+
 
 2[CD] APPLY FOR JOB
 		1. BROWSE JOBS 
@@ -27,6 +31,7 @@
 					4.3 PipelineStage = APPLIED
 		5. SEE MY APPLICATIONS
 				@get /applications/me
+
 
 
 3[HR] ATS - SORT APPLICATIONS 

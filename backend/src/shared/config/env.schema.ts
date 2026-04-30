@@ -1,3 +1,4 @@
+import { A } from '@faker-js/faker/dist/airline-eVQV6kbz';
 import { z } from 'zod';
 
 export const envSchema = z.object({
@@ -46,6 +47,8 @@ export const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
+
+  ANTHROPIC_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

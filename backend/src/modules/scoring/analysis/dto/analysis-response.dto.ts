@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class JobResponseDto {
+export class JobQueueResponseDto {
   @ApiProperty({ example: '12345', description: 'BullMQ job ID' })
   jobId: string;
 }

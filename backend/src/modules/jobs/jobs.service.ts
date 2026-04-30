@@ -1,24 +1,42 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
-import { JobStatus } from '@prisma/client';
+import { JobStatus, RoleType, Seniority } from '@prisma/client';
 import { AppException } from '../../shared/app.exception';
 
 @Injectable()
 export class JobsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(companyId: string, dto: CreateJobDto) {
-    return this.prisma.jobPost.create({
-      data: {
-        ...dto,
-        companyId,
-        status: JobStatus.DRAFT,
-      },
-    });
+ 
+async create(companyId: string, dto: CreateJobDto) {
+  const data: any = {
+    title: dto.title,
+    description: dto.description,
+    companyId,
+    status: JobStatus.DRAFT,
+  };
+
+  if (dto.location) {
+    data.location = dto.location;
   }
 
+  if (dto.employmentType) {
+    data.employmentType = dto.employmentType;
+  }
+
+  if (dto.currency) {
+    data.currency = dto.currency;
+  }
+
+  if (dto.bonusAmount !== undefined) {
+    data.bonusAmount = dto.bonusAmount;
+  }
+
+  return this.prisma.jobPost.create({ data });
+}
   async findMyJobs(companyId: string) {
+    console.log("Finding jobs for companyId: ", companyId);
     return this.prisma.jobPost.findMany({
       where: { companyId },
       orderBy: { createdAt: 'desc' },
@@ -70,6 +88,8 @@ export class JobsService {
       where: { id },
       data: {
         parsedRequirements: requirements,
+        roleType: requirements.requiredRoleType,
+        seniorityLevel: requirements.requiredSeniority,
         dynamicWeights: {
           collaborationWeight: requirements.collaborationWeight,
           ownershipWeight: requirements.ownershipWeight,
@@ -83,8 +103,8 @@ export class JobsService {
 
   async getPublicJobs(query: {
     search?: string;
-    roleType?: string;
-    seniority?: string;
+    roleType?: RoleType;
+    seniority?: Seniority;
     isWeb3?: boolean;
     page?: number;
     limit?: number;
@@ -105,23 +125,11 @@ export class JobsService {
     }
 
     if (roleType) {
-      where.AND = where.AND || [];
-      where.AND.push({
-        parsedRequirements: {
-          path: ['requiredRoleType'],
-          equals: roleType,
-        },
-      });
+      where.roleType = roleType;
     }
 
     if (seniority) {
-      where.AND = where.AND || [];
-      where.AND.push({
-        parsedRequirements: {
-          path: ['requiredSeniority'],
-          equals: seniority,
-        },
-      });
+      where.seniorityLevel = seniority;
     }
 
     if (isWeb3 !== undefined) {
@@ -135,6 +143,8 @@ export class JobsService {
           id: true,
           title: true,
           description: true,
+          roleType: true,
+          seniorityLevel: true,
           isWeb3Role: true,
           createdAt: true,
           publishedAt: true,
@@ -163,6 +173,8 @@ export class JobsService {
         id: true,
         title: true,
         description: true,
+        roleType: true,
+        seniorityLevel: true,
         isWeb3Role: true,
         createdAt: true,
         publishedAt: true,
@@ -171,7 +183,6 @@ export class JobsService {
             name: true,
             logoUrl: true,
             website: true,
-            description: true,
           },
         },
         _count: {
@@ -183,7 +194,7 @@ export class JobsService {
     });
 
     if (!job) {
-      throw new AppException('Job not found or is no longer active', 404);
+      throw new NotFoundException('Job not found or is no longer active');
     }
 
     const { _count, ...rest } = job;

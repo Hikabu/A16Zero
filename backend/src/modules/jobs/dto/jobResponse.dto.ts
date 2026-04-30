@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { RoleType, Seniority, JobStatus } from '@prisma/client';
 
 export class JobResponseDto {
   @ApiProperty({ example: 'cma9x1k2p0000qwert123' })
@@ -12,15 +13,24 @@ export class JobResponseDto {
   })
   description: string;
 
-  @ApiProperty({ example: 'DRAFT', description: 'Job status' })
-  status: string;
+  @ApiProperty({ enum: JobStatus, example: JobStatus.ACTIVE, description: 'Job status' })
+  status: JobStatus;
 
   @ApiProperty({ example: 'company_123' })
   companyId: string;
 
-  @ApiProperty({ example: '2026-04-27T10:00:00.000Z' })
-  createdAt: string;
+  @ApiProperty({ enum: RoleType, example: RoleType.BACKEND })
+  roleType?: RoleType | null;
+
+  @ApiProperty({ enum: Seniority, example: Seniority.SENIOR })
+  seniorityLevel?: Seniority | null;
+
+  @ApiProperty({ example: true })
+  isWeb3Role: boolean;
 
   @ApiProperty({ example: '2026-04-27T10:00:00.000Z' })
-  updatedAt: string;
+  createdAt: Date;
+
+  @ApiProperty({ example: '2026-04-27T10:00:00.000Z' })
+  updatedAt: Date;
 }

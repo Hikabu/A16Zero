@@ -3,11 +3,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsNumber,
-  IsEnum,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-
-import { RoleType } from '@prisma/client';
 
 export class CreateJobDto {
   @ApiProperty({ example: 'Senior NestJS Engineer' })
@@ -22,32 +19,23 @@ export class CreateJobDto {
   @IsNotEmpty()
   description: string;
 
-  @ApiProperty({ example: 'Remote' })
+  @ApiProperty({ example: 'Remote', required: false })
   @IsString()
   @IsOptional()
   location?: string;
 
-  @ApiProperty({ example: 'Full-time' })
+  @ApiProperty({ example: 'Full-time', required: false })
   @IsString()
   @IsOptional()
   employmentType?: string;
 
-  @ApiProperty({ example: 1000 })
+  @ApiProperty({ example: 1000, required: false })
   @IsNumber()
-  bonusAmount: number;
+  @IsOptional()
+  bonusAmount?: number;
 
-  @ApiProperty({ example: 'USD' })
+  @ApiProperty({ example: 'USD', required: false })
   @IsString()
   @IsOptional()
   currency?: string;
-
-  @ApiProperty({ enum: RoleType, example: RoleType.BACKEND })
-  @IsEnum(RoleType)
-  roleType: RoleType;
-
-  // (optional but matches schema)
-  @ApiProperty({ enum: ['JUNIOR', 'MID', 'SENIOR', 'LEAD'], required: false })
-  @IsOptional()
-  @IsEnum(['JUNIOR', 'MID', 'SENIOR', 'LEAD'])
-  seniorityLevel?: 'JUNIOR' | 'MID' | 'SENIOR' | 'LEAD';
 }

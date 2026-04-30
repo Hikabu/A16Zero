@@ -80,7 +80,7 @@ model JobPost {
   bonusAmount    Decimal    @db.Decimal(10, 2)
   currency       String     @default("USD")
   status         JobStatus  @default(DRAFT)
-  roleType       RoleType
+  roleType       RoleType?
   seniorityLevel Seniority?
   publishedAt    DateTime?
   closedAt       DateTime?
