@@ -1,447 +1,397 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::{
+    associated_token::{get_associated_token_address, AssociatedToken, ID as ASSOCIATED_TOKEN_ID},
+    token::{self, CloseAccount, Mint, Token, TokenAccount, Transfer},
+};
 
 declare_id!("4jmvrfqG2Mhx9Wc92NaJvXwzNp2d6xAHFfymz6N3x1Ar");
 
-// ── Constants ────────────────────────────────────────────────────────────────
-/// Hardcoded platform wallet — not changeable by anyone.
-/// Replace with your actual platform pubkey before deploying.
-const PLATFORM_WALLET: &str = "E3QW5XjxFax9Jx4Wvd9Pqwyrvr8ySB1Rp43bVCYvzvDj";
+pub const USDT_MINT: Pubkey = pubkey!("29NaQXG4m9LYBgptcDrpm4fUCkehFiToSgDWjPbcC4GD");
+pub const PLATFORM_WALLET: Pubkey = pubkey!("E3QW5XjxFax9Jx4Wvd9Pqwyrvr8ySB1Rp43bVCYvzvDj");
+pub const FEE_BPS: u64 = 100;
+pub const BPS_DENOMINATOR: u64 = 10_000;
 
-/// 1% platform fee on successful hire  (basis points: 100 / 10_000 = 1%)
-const PLATFORM_FEE_BPS: u64 = 100;
-/// 7% penalty charged to employer on refund (basis points: 700 / 10_000 = 7%)
-const REFUND_PENALTY_BPS: u64 = 700;
-const BPS_DIVISOR: u64 = 10_000;
-
-// ── Program ──────────────────────────────────────────────────────────────────
 #[program]
 pub mod escrow {
     use super::*;
 
-    /// Employer calls this once to create the escrow and deposit USDT.
-    /// `amount` is in USDT smallest units (6 decimals → 1 USDT = 1_000_000).
-    pub fn initialize(ctx: Context<Initialize>, amount: u64) -> Result<()> {
+    pub fn create_escrow(ctx: Context<CreateEscrow>, escrow_id: u64, amount: u64) -> Result<()> {
         require!(amount > 0, EscrowError::ZeroAmount);
+        require!(amount % 100 == 0, EscrowError::AmountNotDivisible);
 
-        // Verify the platform wallet matches our hardcoded constant
-        let expected: Pubkey = PLATFORM_WALLET.parse().unwrap();
-        require_keys_eq!(
-            ctx.accounts.platform_token_account.owner,
-            expected,
-            EscrowError::InvalidPlatformWallet
-        );
+        let escrow = &mut ctx.accounts.escrow;
+        escrow.employer = ctx.accounts.employer.key();
+        escrow.candidate = None;
+        escrow.amount = amount;
+        escrow.bump = ctx.bumps.escrow;
+        escrow.vault_bump = Pubkey::find_program_address(
+            &[
+                escrow.key().as_ref(),
+                ctx.accounts.token_program.key().as_ref(),
+                USDT_MINT.as_ref(),
+            ],
+            &ASSOCIATED_TOKEN_ID,
+        )
+        .1;
+        escrow.released = false;
 
-        let escrow = &mut ctx.accounts.escrow_state;
-        escrow.employer        = ctx.accounts.employer.key();
-        escrow.candidate       = Pubkey::default(); // not set yet
-        escrow.deposited_amount = amount;
-        escrow.bump            = ctx.bumps.escrow_state;
-        escrow.status          = EscrowStatus::Active;
+        token::transfer(ctx.accounts.transfer_to_vault_ctx(), amount)?;
 
-        // Transfer USDT from employer → escrow vault
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.key(),
-                Transfer {
-                    from:      ctx.accounts.employer_token_account.to_account_info(),
-                    to:        ctx.accounts.vault.to_account_info(),
-                    authority: ctx.accounts.employer.to_account_info(),
-                },
-            ),
-            amount,
-        )?;
-
-        emit!(EscrowInitialized {
-            employer: escrow.employer,
-            amount,
-        });
-
+        let _ = escrow_id;
         Ok(())
     }
 
-    /// Employer sets (or updates) the approved candidate wallet.
-    /// Only callable by the employer while the escrow is Active.
-    pub fn set_candidate(ctx: Context<SetCandidate>, candidate: Pubkey) -> Result<()> {
-        require!(
-            candidate != Pubkey::default(),
-            EscrowError::InvalidCandidate
-        );
+    pub fn set_candidate(
+        ctx: Context<SetCandidate>,
+        _escrow_id: u64,
+        candidate: Pubkey,
+    ) -> Result<()> {
+        require_keys_neq!(candidate, Pubkey::default(), EscrowError::InvalidCandidate);
 
-        let escrow = &mut ctx.accounts.escrow_state;
-        require!(escrow.status == EscrowStatus::Active, EscrowError::NotActive);
+        let escrow = &mut ctx.accounts.escrow;
+        require!(!escrow.released, EscrowError::EscrowResolved);
+        require!(escrow.candidate.is_none(), EscrowError::CandidateAlreadySet);
 
-        escrow.candidate = candidate;
-
-        emit!(CandidateSet {
-            employer:  escrow.employer,
-            candidate,
-        });
-
+        escrow.candidate = Some(candidate);
         Ok(())
     }
 
-    /// Employer releases funds to the candidate.
-    /// • Platform receives 1% of deposited_amount
-    /// • Candidate receives the remaining 99%
-    /// Caller must pass the candidate's USDT token account.
-    pub fn release(ctx: Context<Release>) -> Result<()> {
-        let escrow = &ctx.accounts.escrow_state;
+    pub fn release(ctx: Context<Release>, escrow_id: u64) -> Result<()> {
+        let escrow = &ctx.accounts.escrow;
+        let employer = escrow.employer;
+        let amount = escrow.amount;
+        let bump = escrow.bump;
 
-        require!(escrow.status == EscrowStatus::Active,  EscrowError::NotActive);
+        require!(!escrow.released, EscrowError::EscrowResolved);
+        let candidate = escrow.candidate.ok_or(EscrowError::CandidateNotSet)?;
         require!(
-            escrow.candidate != Pubkey::default(),
-            EscrowError::CandidateNotSet
+            ctx.accounts.candidate_ata.owner == candidate,
+            EscrowError::WrongTokenOwner
         );
-        // Candidate token account must be owned by the stored candidate pubkey
-        require_keys_eq!(
-            ctx.accounts.candidate_token_account.owner,
-            escrow.candidate,
-            EscrowError::WrongCandidateAccount
+        require!(
+            ctx.accounts.candidate_ata.key()
+                == get_associated_token_address(&candidate, &USDT_MINT),
+            EscrowError::InvalidAta
+        );
+        require!(
+            ctx.accounts.vault.amount == amount,
+            EscrowError::InvalidVaultAmount
         );
 
-        let amount    = escrow.deposited_amount;
-        let fee       = fee_of(amount, PLATFORM_FEE_BPS);      // 1%
-        let candidate_gets = amount.checked_sub(fee)
-            .ok_or(EscrowError::MathOverflow)?;
+        let fee = platform_fee(amount)?;
+        let candidate_amount = amount.checked_sub(fee).ok_or(EscrowError::MathOverflow)?;
 
-        let seeds: &[&[u8]] = &[
+        let escrow_id_bytes = escrow_id.to_le_bytes();
+        let signer_seeds: &[&[&[u8]]] = &[&[
             b"escrow",
-            escrow.employer.as_ref(),
-            &[escrow.bump],
-        ];
-        let signer = &[seeds];
+            employer.as_ref(),
+            escrow_id_bytes.as_ref(),
+            &[bump],
+        ]];
 
-        // → Platform (1%)
         token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.key(),
-                Transfer {
-                    from:      ctx.accounts.vault.to_account_info(),
-                    to:        ctx.accounts.platform_token_account.to_account_info(),
-                    authority: ctx.accounts.escrow_state.to_account_info(),
-                },
-                signer,
-            ),
+            ctx.accounts.pay_platform_ctx().with_signer(signer_seeds),
             fee,
         )?;
-
-        // → Candidate (99%)
         token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.key(),
-                Transfer {
-                    from:      ctx.accounts.vault.to_account_info(),
-                    to:        ctx.accounts.candidate_token_account.to_account_info(),
-                    authority: ctx.accounts.escrow_state.to_account_info(),
-                },
-                signer,
-            ),
-            candidate_gets,
+            ctx.accounts.pay_candidate_ctx().with_signer(signer_seeds),
+            candidate_amount,
         )?;
 
-        // Mark closed — prevents re-entry / double release
-        let escrow = &mut ctx.accounts.escrow_state;
-        escrow.status = EscrowStatus::Released;
+        ctx.accounts.escrow.released = true;
 
-        emit!(FundsReleased {
-            employer:       escrow.employer,
-            candidate:      escrow.candidate,
-            candidate_gets,
-            platform_fee:   fee,
-        });
-
+        token::close_account(ctx.accounts.close_vault_ctx().with_signer(signer_seeds))?;
         Ok(())
     }
 
-    /// Employer cancels and gets a refund.
-    /// • Platform receives 7% penalty
-    /// • Employer receives 93%
-    pub fn refund(ctx: Context<Refund>) -> Result<()> {
-        let escrow = &ctx.accounts.escrow_state;
-        require!(escrow.status == EscrowStatus::Active, EscrowError::NotActive);
+    pub fn refund(ctx: Context<Refund>, escrow_id: u64) -> Result<()> {
+        let escrow = &ctx.accounts.escrow;
+        let employer = escrow.employer;
+        let amount = escrow.amount;
+        let bump = escrow.bump;
 
-        let amount  = escrow.deposited_amount;
-        let penalty = fee_of(amount, REFUND_PENALTY_BPS);      // 7%
-        let employer_gets = amount.checked_sub(penalty)
-            .ok_or(EscrowError::MathOverflow)?;
+        require!(!escrow.released, EscrowError::EscrowResolved);
+        require!(
+            ctx.accounts.vault.amount == amount,
+            EscrowError::InvalidVaultAmount
+        );
 
-        let seeds: &[&[u8]] = &[
+        let fee = platform_fee(amount)?;
+        let employer_amount = amount.checked_sub(fee).ok_or(EscrowError::MathOverflow)?;
+
+        let escrow_id_bytes = escrow_id.to_le_bytes();
+        let signer_seeds: &[&[&[u8]]] = &[&[
             b"escrow",
-            escrow.employer.as_ref(),
-            &[escrow.bump],
-        ];
-        let signer = &[seeds];
+            employer.as_ref(),
+            escrow_id_bytes.as_ref(),
+            &[bump],
+        ]];
 
-        // → Platform (7% penalty)
         token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.key(),
-                Transfer {
-                    from:      ctx.accounts.vault.to_account_info(),
-                    to:        ctx.accounts.platform_token_account.to_account_info(),
-                    authority: ctx.accounts.escrow_state.to_account_info(),
-                },
-                signer,
-            ),
-            penalty,
+            ctx.accounts.pay_platform_ctx().with_signer(signer_seeds),
+            fee,
+        )?;
+        token::transfer(
+            ctx.accounts.pay_employer_ctx().with_signer(signer_seeds),
+            employer_amount,
         )?;
 
-        // → Employer (93%)
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.key(),
-                Transfer {
-                    from:      ctx.accounts.vault.to_account_info(),
-                    to:        ctx.accounts.employer_token_account.to_account_info(),
-                    authority: ctx.accounts.escrow_state.to_account_info(),
-                },
-                signer,
-            ),
-            employer_gets,
-        )?;
+        ctx.accounts.escrow.released = true;
 
-        let escrow = &mut ctx.accounts.escrow_state;
-        escrow.status = EscrowStatus::Refunded;
-
-        emit!(FundsRefunded {
-            employer:      escrow.employer,
-            employer_gets,
-            penalty,
-        });
-
+        token::close_account(ctx.accounts.close_vault_ctx().with_signer(signer_seeds))?;
         Ok(())
     }
 }
 
-// ── Fee helper (no floating point) ──────────────────────────────────────────
-/// Returns floor(amount * bps / 10_000). Rounds down in favour of the user.
-fn fee_of(amount: u64, bps: u64) -> u64 {
-    // u128 prevents overflow for large USDT amounts
-    ((amount as u128 * bps as u128) / BPS_DIVISOR as u128) as u64
+fn platform_fee(amount: u64) -> Result<u64> {
+    amount
+        .checked_mul(FEE_BPS)
+        .ok_or(EscrowError::MathOverflow)?
+        .checked_div(BPS_DENOMINATOR)
+        .ok_or(EscrowError::MathOverflow.into())
 }
 
-// ── Accounts ─────────────────────────────────────────────────────────────────
-
 #[derive(Accounts)]
-pub struct Initialize<'info> {
+#[instruction(escrow_id: u64)]
+pub struct CreateEscrow<'info> {
     #[account(mut)]
     pub employer: Signer<'info>,
-
-    /// PDA that stores all escrow metadata.
-    /// Seeded by [b"escrow", employer.key] so each employer gets exactly one
-    /// escrow at a time (deploy another program instance for multiple escrows).
     #[account(
         init,
-        payer  = employer,
-        space  = EscrowState::LEN,
-        seeds  = [b"escrow", employer.key().as_ref()],
-        bump,
+        payer = employer,
+        space = 8 + Escrow::INIT_SPACE,
+        seeds = [b"escrow", employer.key().as_ref(), escrow_id.to_le_bytes().as_ref()],
+        bump
     )]
-    pub escrow_state: Account<'info, EscrowState>,
-
-    /// SPL token vault — owned by the PDA, holds the USDT.
+    pub escrow: Account<'info, Escrow>,
+    #[account(address = USDT_MINT @ EscrowError::WrongMint)]
+    pub usdt_mint: Account<'info, Mint>,
     #[account(
         init,
-        payer  = employer,
-        token::mint      = usdt_mint,
-        token::authority = escrow_state,   // PDA controls the vault
-        seeds  = [b"vault", employer.key().as_ref()],
-        bump,
+        payer = employer,
+        associated_token::mint = usdt_mint,
+        associated_token::authority = escrow,
+        associated_token::token_program = token_program
     )]
     pub vault: Account<'info, TokenAccount>,
-
-    /// Employer's USDT token account (source of funds).
     #[account(
         mut,
-        constraint = employer_token_account.owner == employer.key() @ EscrowError::WrongOwner,
-        constraint = employer_token_account.mint   == usdt_mint.key() @ EscrowError::WrongMint,
+        constraint = employer_ata.mint == USDT_MINT @ EscrowError::WrongMint,
+        constraint = employer_ata.owner == employer.key() @ EscrowError::WrongTokenOwner,
+        constraint = employer_ata.key() == get_associated_token_address(&employer.key(), &USDT_MINT) @ EscrowError::InvalidAta
     )]
-    pub employer_token_account: Account<'info, TokenAccount>,
-
-    /// Platform's USDT token account — validated against hardcoded pubkey.
-    #[account(
-        mut,
-        constraint = platform_token_account.mint == usdt_mint.key() @ EscrowError::WrongMint,
-    )]
-    pub platform_token_account: Account<'info, TokenAccount>,
-
-    /// The USDT mint on Solana mainnet:
-    /// Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB
-    pub usdt_mint: Account<'info, anchor_spl::token::Mint>,
-
-    pub token_program:  Program<'info, Token>,
+    pub employer_ata: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
-    pub rent:           Sysvar<'info, Rent>,
+}
+
+impl<'info> CreateEscrow<'info> {
+    fn transfer_to_vault_ctx(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.key(),
+            Transfer {
+                from: self.employer_ata.to_account_info(),
+                to: self.vault.to_account_info(),
+                authority: self.employer.to_account_info(),
+            },
+        )
+    }
 }
 
 #[derive(Accounts)]
+#[instruction(escrow_id: u64)]
 pub struct SetCandidate<'info> {
-    #[account(mut)]
-    pub employer: Signer<'info>,
-
     #[account(
         mut,
-        seeds  = [b"escrow", employer.key().as_ref()],
-        bump   = escrow_state.bump,
-        constraint = escrow_state.employer == employer.key() @ EscrowError::Unauthorized,
+        has_one = employer @ EscrowError::Unauthorized,
+        seeds = [b"escrow", employer.key().as_ref(), escrow_id.to_le_bytes().as_ref()],
+        bump = escrow.bump
     )]
-    pub escrow_state: Account<'info, EscrowState>,
+    pub escrow: Account<'info, Escrow>,
+    #[account(mut)]
+    pub employer: Signer<'info>,
 }
 
 #[derive(Accounts)]
+#[instruction(escrow_id: u64)]
 pub struct Release<'info> {
+    #[account(
+        mut,
+        has_one = employer @ EscrowError::Unauthorized,
+        seeds = [b"escrow", employer.key().as_ref(), escrow_id.to_le_bytes().as_ref()],
+        bump = escrow.bump
+    )]
+    pub escrow: Account<'info, Escrow>,
     #[account(mut)]
     pub employer: Signer<'info>,
-
     #[account(
         mut,
-        seeds  = [b"escrow", employer.key().as_ref()],
-        bump   = escrow_state.bump,
-        constraint = escrow_state.employer == employer.key() @ EscrowError::Unauthorized,
-    )]
-    pub escrow_state: Account<'info, EscrowState>,
-
-    #[account(
-        mut,
-        seeds  = [b"vault", employer.key().as_ref()],
-        bump,
-        constraint = vault.mint == usdt_mint.key() @ EscrowError::WrongMint,
+        associated_token::mint = usdt_mint,
+        associated_token::authority = escrow,
+        associated_token::token_program = token_program
     )]
     pub vault: Account<'info, TokenAccount>,
-
-    /// Candidate's USDT token account — must be owned by stored candidate key.
     #[account(
         mut,
-        constraint = candidate_token_account.mint == usdt_mint.key() @ EscrowError::WrongMint,
+        constraint = platform_ata.mint == USDT_MINT @ EscrowError::WrongMint,
+        constraint = platform_ata.owner == PLATFORM_WALLET @ EscrowError::WrongTokenOwner,
+        constraint = platform_ata.key() == get_associated_token_address(&PLATFORM_WALLET, &USDT_MINT) @ EscrowError::InvalidAta
     )]
-    pub candidate_token_account: Account<'info, TokenAccount>,
-
-    /// Platform's USDT token account.
+    pub platform_ata: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = platform_token_account.mint == usdt_mint.key() @ EscrowError::WrongMint,
+        constraint = candidate_ata.mint == USDT_MINT @ EscrowError::WrongMint
     )]
-    pub platform_token_account: Account<'info, TokenAccount>,
+    pub candidate_ata: Account<'info, TokenAccount>,
+    #[account(address = USDT_MINT @ EscrowError::WrongMint)]
+    pub usdt_mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
+}
 
-    pub usdt_mint:      Account<'info, anchor_spl::token::Mint>,
-    pub token_program:  Program<'info, Token>,
+impl<'info> Release<'info> {
+    fn pay_platform_ctx(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        self.transfer_from_vault_to(&self.platform_ata)
+    }
+
+    fn pay_candidate_ctx(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        self.transfer_from_vault_to(&self.candidate_ata)
+    }
+
+    fn close_vault_ctx(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        CpiContext::new(
+            self.token_program.key(),
+            CloseAccount {
+                account: self.vault.to_account_info(),
+                destination: self.employer.to_account_info(),
+                authority: self.escrow.to_account_info(),
+            },
+        )
+    }
+
+    fn transfer_from_vault_to(
+        &self,
+        to: &Account<'info, TokenAccount>,
+    ) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.key(),
+            Transfer {
+                from: self.vault.to_account_info(),
+                to: to.to_account_info(),
+                authority: self.escrow.to_account_info(),
+            },
+        )
+    }
 }
 
 #[derive(Accounts)]
+#[instruction(escrow_id: u64)]
 pub struct Refund<'info> {
+    #[account(
+        mut,
+        has_one = employer @ EscrowError::Unauthorized,
+        seeds = [b"escrow", employer.key().as_ref(), escrow_id.to_le_bytes().as_ref()],
+        bump = escrow.bump
+    )]
+    pub escrow: Account<'info, Escrow>,
     #[account(mut)]
     pub employer: Signer<'info>,
-
     #[account(
         mut,
-        seeds  = [b"escrow", employer.key().as_ref()],
-        bump   = escrow_state.bump,
-        constraint = escrow_state.employer == employer.key() @ EscrowError::Unauthorized,
-    )]
-    pub escrow_state: Account<'info, EscrowState>,
-
-    #[account(
-        mut,
-        seeds  = [b"vault", employer.key().as_ref()],
-        bump,
-        constraint = vault.mint == usdt_mint.key() @ EscrowError::WrongMint,
+        associated_token::mint = usdt_mint,
+        associated_token::authority = escrow,
+        associated_token::token_program = token_program
     )]
     pub vault: Account<'info, TokenAccount>,
-
-    /// Employer's USDT token account (refund destination).
     #[account(
         mut,
-        constraint = employer_token_account.owner == employer.key() @ EscrowError::WrongOwner,
-        constraint = employer_token_account.mint   == usdt_mint.key() @ EscrowError::WrongMint,
+        constraint = platform_ata.mint == USDT_MINT @ EscrowError::WrongMint,
+        constraint = platform_ata.owner == PLATFORM_WALLET @ EscrowError::WrongTokenOwner,
+        constraint = platform_ata.key() == get_associated_token_address(&PLATFORM_WALLET, &USDT_MINT) @ EscrowError::InvalidAta
     )]
-    pub employer_token_account: Account<'info, TokenAccount>,
-
-    /// Platform's USDT token account.
+    pub platform_ata: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = platform_token_account.mint == usdt_mint.key() @ EscrowError::WrongMint,
+        constraint = employer_ata.mint == USDT_MINT @ EscrowError::WrongMint,
+        constraint = employer_ata.owner == employer.key() @ EscrowError::WrongTokenOwner,
+        constraint = employer_ata.key() == get_associated_token_address(&employer.key(), &USDT_MINT) @ EscrowError::InvalidAta
     )]
-    pub platform_token_account: Account<'info, TokenAccount>,
-
-    pub usdt_mint:      Account<'info, anchor_spl::token::Mint>,
-    pub token_program:  Program<'info, Token>,
+    pub employer_ata: Account<'info, TokenAccount>,
+    #[account(address = USDT_MINT @ EscrowError::WrongMint)]
+    pub usdt_mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
 }
 
-// ── State ────────────────────────────────────────────────────────────────────
+impl<'info> Refund<'info> {
+    fn pay_platform_ctx(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        self.transfer_from_vault_to(&self.platform_ata)
+    }
+
+    fn pay_employer_ctx(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        self.transfer_from_vault_to(&self.employer_ata)
+    }
+
+    fn close_vault_ctx(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        CpiContext::new(
+            self.token_program.key(),
+            CloseAccount {
+                account: self.vault.to_account_info(),
+                destination: self.employer.to_account_info(),
+                authority: self.escrow.to_account_info(),
+            },
+        )
+    }
+
+    fn transfer_from_vault_to(
+        &self,
+        to: &Account<'info, TokenAccount>,
+    ) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.key(),
+            Transfer {
+                from: self.vault.to_account_info(),
+                to: to.to_account_info(),
+                authority: self.escrow.to_account_info(),
+            },
+        )
+    }
+}
 
 #[account]
-pub struct EscrowState {
-    pub employer:         Pubkey,       // 32
-    pub candidate:        Pubkey,       // 32
-    pub deposited_amount: u64,          // 8
-    pub bump:             u8,           // 1
-    pub status:           EscrowStatus, // 1
-}
-
-impl EscrowState {
-    // discriminator(8) + fields
-    pub const LEN: usize = 8 + 32 + 32 + 8 + 1 + 1;
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum EscrowStatus {
-    Active,    // 0 — funds locked
-    Released,  // 1 — paid to candidate
-    Refunded,  // 2 — returned to employer (with penalty)
-}
-
-// ── Events ───────────────────────────────────────────────────────────────────
-
-#[event]
-pub struct EscrowInitialized {
+#[derive(InitSpace)]
+pub struct Escrow {
     pub employer: Pubkey,
-    pub amount:   u64,
+    pub candidate: Option<Pubkey>,
+    pub amount: u64,
+    pub bump: u8,
+    pub vault_bump: u8,
+    pub released: bool,
 }
-
-#[event]
-pub struct CandidateSet {
-    pub employer:  Pubkey,
-    pub candidate: Pubkey,
-}
-
-#[event]
-pub struct FundsReleased {
-    pub employer:       Pubkey,
-    pub candidate:      Pubkey,
-    pub candidate_gets: u64,
-    pub platform_fee:   u64,
-}
-
-#[event]
-pub struct FundsRefunded {
-    pub employer:      Pubkey,
-    pub employer_gets: u64,
-    pub penalty:       u64,
-}
-
-// ── Errors ───────────────────────────────────────────────────────────────────
 
 #[error_code]
 pub enum EscrowError {
     #[msg("Amount must be greater than zero")]
     ZeroAmount,
-    #[msg("Escrow is not in Active state")]
-    NotActive,
-    #[msg("Candidate wallet has not been set")]
-    CandidateNotSet,
-    #[msg("Invalid candidate address")]
-    InvalidCandidate,
-    #[msg("Candidate token account does not match stored candidate")]
-    WrongCandidateAccount,
-    #[msg("Platform wallet does not match the hardcoded address")]
-    InvalidPlatformWallet,
-    #[msg("Token account has wrong mint")]
-    WrongMint,
-    #[msg("Token account has wrong owner")]
-    WrongOwner,
-    #[msg("Caller is not the employer")]
-    Unauthorized,
-    #[msg("Arithmetic overflow")]
+    #[msg("Amount must be divisible by 100 so the 1% fee is exact")]
+    AmountNotDivisible,
+    #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Only the employer can perform this action")]
+    Unauthorized,
+    #[msg("Candidate has already been set")]
+    CandidateAlreadySet,
+    #[msg("Candidate cannot be the default public key")]
+    InvalidCandidate,
+    #[msg("Candidate has not been set")]
+    CandidateNotSet,
+    #[msg("Escrow has already been released or refunded")]
+    EscrowResolved,
+    #[msg("Token account mint is not the hardcoded USDT mint")]
+    WrongMint,
+    #[msg("Token account owner is invalid")]
+    WrongTokenOwner,
+    #[msg("Expected an associated token account")]
+    InvalidAta,
+    #[msg("Vault balance does not match escrow amount")]
+    InvalidVaultAmount,
 }

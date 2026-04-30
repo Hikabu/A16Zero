@@ -26,9 +26,9 @@ Employer deposits USDT
   OR
 
   ┌─────────┐           ┌───────────────┐
-  │ refund()│──93%─────▶│  Employer     │
+  │ refund()│──99%─────▶│  Employer     │
   └────┬────┘           └───────────────┘
-       └──────7%───────▶  Platform wallet (penalty)
+       └──────1%───────▶  Platform wallet
 ```
 
 ---
@@ -38,7 +38,7 @@ Employer deposits USDT
 | Event      | Employer gets | Candidate gets | Platform gets |
 |------------|:---:|:---:|:---:|
 | `release`  | 0%  | 99% | 1%  |
-| `refund`   | 93% | 0%  | 7%  |
+| `refund`   | 99% | 0%  | 1%  |
 
 ---
 
@@ -109,3 +109,13 @@ anchor test
 - Status enum prevents double-release / double-refund.
 - All fee math uses `u128` internally to prevent overflow on large amounts.
 - Only the employer (signer) can call `set_candidate`, `release`, and `refund`.
+
+---
+
+## Mint tokens devnet 
+| Step       | Command                                   | Description                                                   |
+| ---------- | ----------------------------------------- | ------------------------------------------------------------- |
+| 1. Airdrop | `solana airdrop 2`                        | You need SOL to pay for the token’s “rent”.                   |
+| 2. Create  | `spl-token create-token`                  | This creates the Mint Address (the “type” of token).          |
+| 3. Account | `spl-token create-account <MINT_ADDRESS>` | Creates a storage box in your wallet for that specific token. |
+| 4. Mint    | `spl-token mint <MINT_ADDRESS> 100`       | Actually prints 100 units of the token into your account.     |
