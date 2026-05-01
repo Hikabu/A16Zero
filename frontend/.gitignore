@@ -40,3 +40,47 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# frontend/.gitignore
+
+# Dependencies
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.*
+
+# Next.js Build Output
+frontend/.next/
+frontend/out/
+
+# Production Build
+frontend/build/
+
+# Tailwind / PostCSS
+# Tailwind v4 handles most caching internally, but keep an eye on:
+frontend/.cache/
+
+# Testing and Coverage
+frontend/coverage/
+
+# Environment Files
+# (Crucial for @privy-io keys and sensitive auth variables)
+frontend/.env*
+!frontend/.env.example
+
+# Debugging Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+
+# Vercel
+frontend/.vercel/
+
+# TypeScript
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.pem
