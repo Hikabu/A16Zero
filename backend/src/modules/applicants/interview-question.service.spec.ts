@@ -1,12 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { InterviewQuestionService } from './interview-question.service';
 import { PipelineStage } from '@prisma/client';
-import Anthropic from '@anthropic-ai/sdk';
 import { InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-// Mock Anthropic
-jest.mock('@anthropic-ai/sdk', () => {
+// Mock Google AI
+jest.mock('@google/generative-ai', () => {
   return jest.fn().mockImplementation(() => {
     return {
       messages: {

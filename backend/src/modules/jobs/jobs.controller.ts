@@ -21,8 +21,6 @@ import {
   ApiUnauthorizedResponse,
   ApiParam,
   ApiBody,
-  ApiQuery,
-  ApiPropertyOptional,
 } from '@nestjs/swagger';
 
 import { JobsService } from './jobs.service';

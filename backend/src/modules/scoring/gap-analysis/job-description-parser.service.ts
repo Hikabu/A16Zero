@@ -1,62 +1,101 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { ParsedJobRequirements } from './parsed-job-requirements.inteface';
 
 @Injectable()
 export class JobDescriptionParserService {
-  private readonly anthropic: Anthropic;
+  private readonly ai: GoogleGenAI;
   private readonly logger = new Logger(JobDescriptionParserService.name);
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    this.anthropic = new Anthropic({
-      apiKey: apiKey,
-    });
+    const apiKey = this.configService.get<string>('GOOGLE_AI_API_KEY');
+
+    if (!apiKey) {
+      throw new Error('Missing GOOGLE_AI_API_KEY');
+    }
+
+    this.ai = new GoogleGenAI({ apiKey });
   }
 
   async parse(jdText: string): Promise<ParsedJobRequirements> {
     try {
-      const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        system:
-          'You are a structured job requirements extractor. Extract requirements from the job description and return ONLY a valid JSON object. No preamble. No markdown.',
-        messages: [
-          {
-            role: 'user',
-            content: `Extract requirements from this job description: \n\n${jdText}`,
-          },
-        ],
+      const prompt = `
+Extract structured job requirements from this job description.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "requiredTechnologies": string[],
+  "requiredRoleType": string,
+  "requiredSeniority": string,
+  "parserConfidence": number
+}
+
+Rules:
+- requiredTechnologies: list all technologies mentioned
+- requiredRoleType: one of [BACKEND, FRONTEND, FULLSTACK, DEVOPS, MOBILE, DATA]
+- requiredSeniority: one of [JUNIOR, MID, SENIOR]
+- parserConfidence: number between 0 and 1
+
+Job Description:
+${jdText}
+`;
+
+      const result = await this.ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
       });
 
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response format from Anthropic');
-      }
+const raw = result.text ?? '';
+      // 🔥 CLEAN RESPONSE (Gemini sometimes wraps JSON)
+     const cleaned = raw
+  .replace(/```json/g, '')
+  .replace(/```/g, '')
+  .trim();
 
-      let jsonString = content.text.trim();
-      
-      // Strip accidental markdown fences
-      if (jsonString.startsWith('```')) {
-        jsonString = jsonString.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-      }
+if (!cleaned) {
+  throw new Error('Empty response from Gemini');
+}
 
-      const parsed: ParsedJobRequirements = JSON.parse(jsonString);
+const parsed = JSON.parse(cleaned);
 
-      // Simple validation of required fields
-      if (!parsed.requiredTechnologies || !parsed.requiredRoleType || !parsed.requiredSeniority) {
-        throw new Error('Missing required fields in parsed JSON');
-      }
+
+      // ✅ Normalize (prevents DB crashes later)
+      parsed.requiredRoleType = this.normalizeRole(parsed.requiredRoleType);
+      parsed.requiredSeniority = this.normalizeSeniority(parsed.requiredSeniority);
 
       if (parsed.parserConfidence < 0.75) {
-        this.logger.warn(`Low parser confidence (${parsed.parserConfidence}) for JD parsing`);
+        this.logger.warn(`Low confidence score: ${parsed.parserConfidence}`);
       }
 
       return parsed;
+
     } catch (error) {
-      this.logger.error(`Failed to parse job description: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Job description parsing failed: ${error.message}`);
+      this.logger.error(`Gemini Parsing Error: ${error.message}`);
+      throw new InternalServerErrorException('Failed to parse JD');
     }
+  }
+
+  private normalizeRole(role: string): string {
+    const r = role?.toUpperCase();
+
+    if (r?.includes('BACK')) return 'BACKEND';
+    if (r?.includes('FRONT')) return 'FRONTEND';
+    if (r?.includes('FULL')) return 'FULLSTACK';
+    if (r?.includes('DEVOPS')) return 'DEVOPS';
+    if (r?.includes('DATA')) return 'DATA';
+    if (r?.includes('MOBILE')) return 'MOBILE';
+
+    return 'BACKEND'; // fallback
+  }
+
+  private normalizeSeniority(level: string): string {
+    const l = level?.toUpperCase();
+
+    if (l?.includes('JUNIOR')) return 'JUNIOR';
+    if (l?.includes('MID')) return 'MID';
+    if (l?.includes('SENIOR')) return 'SENIOR';
+
+    return 'MID'; // fallback
   }
 }

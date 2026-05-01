@@ -48,7 +48,7 @@ export const envSchema = z.object({
   RESEND_FROM: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
 
-  ANTHROPIC_API_KEY: z.string().optional(),
+  GOOGLE_AI_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

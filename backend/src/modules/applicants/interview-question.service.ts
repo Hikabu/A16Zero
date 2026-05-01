@@ -1,7 +1,8 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { PipelineStage } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 
 export interface InterviewQuestion {
   question: string;
@@ -17,21 +18,22 @@ export interface InterviewQuestionSet {
   generatedAt: Date;
 }
 
-import { PrismaService } from '../../prisma/prisma.service';
-
 @Injectable()
 export class InterviewQuestionService {
-  private readonly anthropic: Anthropic;
+  private readonly ai: GoogleGenAI;
   private readonly logger = new Logger(InterviewQuestionService.name);
 
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService
   ) {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    this.anthropic = new Anthropic({
-      apiKey: apiKey,
-    });
+    const apiKey = this.configService.get<string>('GOOGLE_AI_API_KEY');
+
+    if (!apiKey) {
+      throw new Error('Missing GOOGLE_AI_API_KEY');
+    }
+
+    this.ai = new GoogleGenAI({ apiKey });
   }
 
   async generateForApplication(appId: string, targetStage: PipelineStage) {
@@ -47,15 +49,15 @@ export class InterviewQuestionService {
       if (!app) return;
 
       const generatedSet = await this.generate(app, targetStage);
-      
-      // Sort questions: MUST_ASK > SHOULD_ASK > NICE_TO_HAVE
-      const priorityOrder = { 'MUST_ASK': 1, 'SHOULD_ASK': 2, 'NICE_TO_HAVE': 3 };
-      generatedSet.questions.sort((a, b) => 
-        (priorityOrder[a.priority] || 99) - (priorityOrder[b.priority] || 99)
+
+      // Sort questions by priority
+      const priorityOrder = { MUST_ASK: 1, SHOULD_ASK: 2, NICE_TO_HAVE: 3 };
+      generatedSet.questions.sort(
+        (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]
       );
 
       const existingQuestions = (app.interviewQuestions as any[]) || [];
-      
+
       await this.prisma.shortlist.update({
         where: { id: appId },
         data: {
@@ -63,9 +65,9 @@ export class InterviewQuestionService {
         }
       });
 
-      this.logger.log(`Generated and saved questions for application ${appId} stage ${targetStage}`);
+      this.logger.log(`Generated and saved questions for ${appId}`);
     } catch (error) {
-      this.logger.error(`Failed to generate/save questions for ${appId}: ${error.message}`);
+      this.logger.error(`Failed to generate/save questions: ${error.message}`);
     }
   }
 
@@ -75,76 +77,102 @@ export class InterviewQuestionService {
 
     if (targetStage === PipelineStage.INTERVIEW_HR) {
       audienceType = 'hr';
-      systemPrompt = "You are an HR interviewer preparing for a screening call. Generate 5 interview questions focused on: motivation and culture fit, career trajectory, communication and collaboration indicators, and verifying the candidate's self-reported background. Questions must be answerable by any developer — avoid deep technical specifics. Return ONLY a JSON array.";
+      systemPrompt = 'You are an HR interviewer.';
     } else if (targetStage === PipelineStage.INTERVIEW_FINAL) {
       audienceType = 'final';
-      systemPrompt = "You are preparing a final-round interview for a senior decision-maker. Generate 5 questions that assess leadership potential, system-level thinking, past decision-making in ambiguous situations, and long-term motivation. Questions should be appropriate for an experienced candidate who has already passed technical screening. Return ONLY a JSON array.";
-    } else if (targetStage === PipelineStage.INTERVIEW_TECHNICAL) {
-      audienceType = 'technical';
-      systemPrompt = "You are a senior engineer preparing a technical interview. Generate 6 interview questions based on the candidate's actual GitHub data and gap analysis. Questions must probe specific gaps identified, validate claimed strengths with concrete scenarios, and test depth of knowledge in their stated technologies. Reference real numbers from the data. Return ONLY a JSON array.";
+      systemPrompt = 'You are preparing a final-round interview.';
     } else {
-      // Fallback
       audienceType = 'technical';
-      systemPrompt = "You are preparing a technical interview. Generate 5 relevant interview questions. Return ONLY a JSON array.";
+      systemPrompt = 'You are a senior engineer conducting a technical interview.';
     }
 
     const { decisionCard = {}, gapReport = {} } = application;
-    const analysisResult = await this.getAnalysisResult(application); // Helper logic if needed, but the prompt says to extract from application
 
-    // Structure prompt payload
     const payload = JSON.stringify({
       verdict: decisionCard.verdict,
-      hrSummary: decisionCard.hrSummary,
-      gaps: (gapReport.gaps || []).map((g: any) => ({
-        dimension: g.dimension,
-        severity: g.severity,
-        actual: g.actual,
-        expected: g.expected
-      })),
+      gaps: gapReport.gaps || [],
       strengths: decisionCard.strengths || [],
       risks: decisionCard.risks || [],
-      verifiedVouchCount: application.candidate?.user?.vouchesReceived?.length || 0 // approximate or passed explicitly
-    }, null, 2);
+    });
+
+    const prompt = `
+${systemPrompt}
+
+Generate 5 interview questions.
+
+Return ONLY valid JSON (no markdown, no explanation) in this exact format:
+[
+  {
+    "question": string,
+    "rationale": string,
+    "dimension": string,
+    "priority": "MUST_ASK" | "SHOULD_ASK" | "NICE_TO_HAVE"
+  }
+]
+
+Rules:
+- MUST_ASK = critical gaps or risks
+- SHOULD_ASK = important but not blocking
+- NICE_TO_HAVE = bonus insights
+- Keep questions concise and specific
+
+Candidate Data:
+${payload}
+`;
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514', // Claude 3.5 Sonnet
-        max_tokens: 1200,
-        system: systemPrompt + '\nJSON schema for each object in array: { "question": string, "rationale": string, "dimension": string, "priority": "MUST_ASK"|"SHOULD_ASK"|"NICE_TO_HAVE" }',
-        messages: [
-          { role: 'user', content: `Generate questions based on this raw application scoring profile:\n\n${payload}` }
-        ]
+      const result = await this.ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
       });
 
-      let responseText = '';
-      if (response.content[0].type === 'text') {
-        responseText = response.content[0].text;
+      const raw = result.text ?? '';
+
+      // 🔥 Clean response
+      const cleaned = raw
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+
+      if (!cleaned) {
+        throw new Error('Empty AI response');
       }
-      
-      const jsonStart = responseText.indexOf('[');
-      const jsonEnd = responseText.lastIndexOf(']') + 1;
-      
-      if (jsonStart === -1 || jsonEnd === 0) {
-        throw new Error('Failed to find JSON array in response');
+
+      let parsed: InterviewQuestion[];
+
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        this.logger.error('Bad JSON from Gemini:', raw);
+        throw new Error('Invalid JSON');
       }
-      
-      const cleanJson = responseText.substring(jsonStart, jsonEnd);
-      const parsedQuestions: InterviewQuestion[] = JSON.parse(cleanJson);
+
+      // ✅ Normalize priorities (bulletproof)
+      parsed = parsed.map(q => ({
+        ...q,
+        priority: this.normalizePriority(q.priority),
+      }));
 
       return {
         stage: targetStage,
         audienceType,
-        questions: parsedQuestions,
-        generatedAt: new Date()
+        questions: parsed,
+        generatedAt: new Date(),
       };
+
     } catch (e: any) {
-      this.logger.error(`Anthropic API or parse error: ${e.message}`);
-      throw new InternalServerErrorException('Failed to generate interview questions. Please try again or construct manual questions.');
+      this.logger.error(`Gemini API error: ${e.message}`);
+      throw new InternalServerErrorException('Failed to generate interview questions.');
     }
   }
 
-  // Fallback to fetch if the analysisResult wasn't fully preloaded on the application scope.
-  private async getAnalysisResult(app: any) {
-    return app.analysisResult || {}; 
+  private normalizePriority(p: string): InterviewQuestion['priority'] {
+    const val = p?.toUpperCase();
+
+    if (val?.includes('MUST')) return 'MUST_ASK';
+    if (val?.includes('SHOULD')) return 'SHOULD_ASK';
+    if (val?.includes('NICE')) return 'NICE_TO_HAVE';
+
+    return 'SHOULD_ASK';
   }
 }
