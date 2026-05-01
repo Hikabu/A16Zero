@@ -16,8 +16,8 @@ escrow = "4jmvrfqG2Mhx9Wc92NaJvXwzNp2d6xAHFfymz6N3x1Ar"
 # escrow = "REPLACE_WITH_YOUR_PROGRAM_ID"
 
 [provider]
-cluster = "localnet"
-wallet = ".anchor/test-wallet.json"
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
 
 [test]
 startup_wait = 10000

@@ -10,3 +10,7 @@ test-ledger
 target/
 node_modules/
 ~/.config/solana/
+test-ledger/
+.anchor/
+**/*.rs.bk
+*.log
