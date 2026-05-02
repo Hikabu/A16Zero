@@ -73,8 +73,16 @@ export class GithubAdapterService {
     token: string,
   ): Promise<GitHubRawData> {
     return this.withCache(`github:v2:raw:${githubUsername}`, async () => {
-      const octokit = new Octokit({ auth: token });
+    //   const octokit = new Octokit({ auth: token });
 
+const octokit = new Octokit({
+  auth: token,
+  request: {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  },
+});
       // 1. Fetch Profile
       const profileData = await this.fetchProfile(octokit, githubUsername);
 

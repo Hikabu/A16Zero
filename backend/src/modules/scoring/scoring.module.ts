@@ -17,6 +17,7 @@ import { ConfigModule } from '@nestjs/config';
 
 import { GapAnalysisModule } from './gap-analysis/gap-analysis.module';
 import { DecisionCardModule } from './decision-card/decision-card.module';
+import { ProfileResolverModule } from '../profile-candidate/profile-resolver.module';
 
 @Global()
 @Module({
@@ -26,6 +27,8 @@ import { DecisionCardModule } from './decision-card/decision-card.module';
     RedisModule,
     GapAnalysisModule,
     DecisionCardModule,
+		ProfileResolverModule,
+	
     BullModule.registerQueue({ name: 'signal-compute' }),
   ],
   providers: [

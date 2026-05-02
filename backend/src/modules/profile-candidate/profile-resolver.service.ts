@@ -18,6 +18,7 @@ export class ProfileResolverService {
 		devProfile: {
 		  include: {
 			githubProfile: true, 
+			 web3Profile: true,
 		  },
 		},
 	  },
@@ -32,6 +33,7 @@ export class ProfileResolverService {
 		},
 		include: {
 		  githubProfile: true, 
+		   web3Profile: true,
 		},
 	  });
 	}

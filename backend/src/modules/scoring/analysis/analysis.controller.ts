@@ -46,6 +46,7 @@ import {
   AnalysisErrorResponseDto,
 } from './dto/analysis-response.dto';
 import { JobResponseDto } from '../../jobs/dto/jobResponse.dto';
+import { ProfileResolverService } from '../../profile-candidate/profile-resolver.service';
 
 @ApiTags('Proof Of Talent')
 @Controller('api/analysis')
@@ -54,6 +55,7 @@ export class AnalysisController {
     @InjectQueue('signal-compute') private readonly signalQueue: Queue,
     private readonly cacheService: CacheService,
     private readonly prisma: PrismaService,
+	private readonly profileResolver: ProfileResolverService
   ) {}
 
   @Post()
@@ -95,12 +97,18 @@ Optional if authenticated.
 
     if (req.user) {
       const userId = req.user.id;
-      const githubProfile = await this.prisma.githubProfile.findUnique({
-        where: { userId },
-      });
-      const web3Profile = await this.prisma.web3Profile.findUnique({
-        where: { userId },
-      });
+    //   const githubProfile = await this.prisma.githubProfile.findUnique({
+    //     where: { userId },
+    //   });
+	const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+
+const githubProfile = devProfile?.githubProfile;
+const web3Profile = devProfile?.web3Profile;
+console.log('devProfile:', devProfile);
+console.log('githubProfile:', githubProfile);
+    //   const web3Profile = await this.prisma.web3Profile.findUnique({
+    //     where: { userId },
+    //   });
 
       if (!githubProfile && !web3Profile) {
         throw new BadRequestException(

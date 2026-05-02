@@ -45,7 +45,7 @@ export class GithubSyncService {
   async connectGithub(
     githubData: {
       githubId: string;
-      login: string;
+      username: string;
       accessToken: string;
       scopes: string[];
     },
@@ -79,14 +79,14 @@ export class GithubSyncService {
       where: { devCandidateId: devProfile.id },
       create: {
         devCandidate: { connect: { id: devProfile.id } },
-        githubUsername: githubData.login,
+        githubUsername: githubData.username,
         githubUserId: githubData.githubId,
         encryptedToken,
         scopes: githubData.scopes,
       },
       update: {
         // Rotate token on re-connect (expired or user re-authorized)
-        githubUsername: githubData.login,
+        githubUsername: githubData.username,
         githubUserId: githubData.githubId,
         encryptedToken,
         scopes: githubData.scopes,
