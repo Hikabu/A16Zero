@@ -35,7 +35,7 @@ import { ApplyDecisionDto } from './dto/applyDecision.dto';
 export class ApplicantsController extends BaseController {
   constructor(
     private readonly applicantsService: ApplicantsService,
-    private readonly scorecardRendererService: ScorecardRendererService
+    private readonly scorecardRendererService: ScorecardRendererService,
   ) {
     super();
   }
@@ -65,6 +65,7 @@ export class ApplicantsController extends BaseController {
     if (!jobId) throw new BadRequestException('jobId is required');
 
     const preview = await this.applicantsService.getGapPreview(jobId, req.user.id);
+	console.log("preview: ", preview);
     return this.handleSuccess(preview);
   }
 

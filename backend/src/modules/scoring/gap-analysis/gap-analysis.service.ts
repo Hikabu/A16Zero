@@ -69,7 +69,7 @@ export class GapAnalysisService {
     const dimensions: (keyof typeof analysisResult.capabilities)[] = ['backend', 'frontend', 'devops'];
 
     dimensions.forEach((dim) => {
-      const score = analysisResult.capabilities[dim].score;
+      const score = analysisResult.capabilities[dim].score * 100;
       const delta = threshold - score;
 
       if (delta > 0) {

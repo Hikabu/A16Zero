@@ -6,6 +6,7 @@ import { InterviewQuestionService } from './interview-question.service';
 import { JobStatus, PipelineStage, ShortlistStatus, FitTier, Prisma } from '@prisma/client';
 import { AnalysisResult } from '../scoring/types/result.types';
 import { INTERVIEW_STAGES } from './interviewStages.set';
+import { ScorecardService } from '../scorecard/scorecard.service';
 
 @Injectable()
 export class ApplicantsService {
@@ -16,6 +17,8 @@ export class ApplicantsService {
     private readonly gapAnalysisService: GapAnalysisService,
     private readonly decisionCardService: DecisionCardService,
     private readonly interviewQuestionService: InterviewQuestionService,
+		private readonly scorecardService: ScorecardService
+
   ) {}
 
   async findByJob(jobId: string, companyId: string, filters: { fitTier?: FitTier, minScore?: number, pipelineStage?: PipelineStage }) {
@@ -286,7 +289,7 @@ export class ApplicantsService {
 
     const analysisResult = latestAnalysis.result as unknown as AnalysisResult;
     const gapReport = this.gapAnalysisService.compute(analysisResult, job);
-    const decisionCard = this.decisionCardService.generate(gapReport, analysisResult);
+	    const decisionCard = this.decisionCardService.generate(gapReport, analysisResult);
 
     const verdictMap: Record<string, FitTier> = {
       PROCEED: FitTier.STRONG,

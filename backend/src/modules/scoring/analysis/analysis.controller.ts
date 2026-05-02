@@ -95,35 +95,43 @@ Optional if authenticated.
     let walletAddress: string | null = null;
     let useGithubCache = false;
 
-    if (req.user) {
-      const userId = req.user.id;
-    //   const githubProfile = await this.prisma.githubProfile.findUnique({
-    //     where: { userId },
-    //   });
-	const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+//     if (req.user) {
+//       const userId = req.user.id;
+//     //   const githubProfile = await this.prisma.githubProfile.findUnique({
+//     //     where: { userId },
+//     //   });
+// 	const { devProfile } = await this.profileResolver.ensureDevStack(userId);
 
-const githubProfile = devProfile?.githubProfile;
-const web3Profile = devProfile?.web3Profile;
-console.log('devProfile:', devProfile);
-console.log('githubProfile:', githubProfile);
-    //   const web3Profile = await this.prisma.web3Profile.findUnique({
-    //     where: { userId },
-    //   });
+// const githubProfile = devProfile?.githubProfile;
+// const web3Profile = devProfile?.web3Profile;
+// console.log('devProfile:', devProfile);
+// console.log('githubProfile:', githubProfile);
+//     //   const web3Profile = await this.prisma.web3Profile.findUnique({
+//     //     where: { userId },
+//     //   });
 
-      if (!githubProfile && !web3Profile) {
-        throw new BadRequestException(
-          'No linked accounts. Use POST /sync/github or POST /sync/wallet first.',
-        );
-      }
+//       if (!githubProfile && !web3Profile) {
+//         throw new BadRequestException(
+//           'No linked accounts. Use POST /sync/github or POST /sync/wallet first.',
+//         );
+//       }
 
-      githubUsername = githubProfile?.githubUsername ?? null;
-      walletAddress = web3Profile?.solanaAddress ?? null;
+//       githubUsername = githubProfile?.githubUsername ?? null;
+//       walletAddress = web3Profile?.solanaAddress ?? null;
 
-      if (githubProfile?.lastSyncAt) {
-        useGithubCache =
-          githubProfile.lastSyncAt.getTime() > Date.now() - 86_400_000;
-      }
-    } else {
+//       if (githubProfile?.lastSyncAt) {
+//         useGithubCache =
+//           githubProfile.lastSyncAt.getTime() > Date.now() - 86_400_000;
+//       }
+//     } 
+if (req.user) {
+  const input = await this.resolveInputFromUser(req.user.id);
+
+  githubUsername = input.githubUsername;
+  walletAddress = input.walletAddress;
+  useGithubCache = input.useGithubCache ?? false;
+}
+	else {
       githubUsername = body?.githubUsername ?? null;
       walletAddress = body?.walletAddress ?? null;
 
@@ -216,11 +224,93 @@ Use this for admin/system reprocessing.
     description: 'Profile not found',
     type: AnalysisErrorResponseDto,
   })
-  async recompute(@Req() req: any, @Body() body: RecomputeAnalysisDto) {
-	// console.log(body);
-    return this.createAnalysis(req, { ...body, force: true });
+async recompute(@Body() body: RecomputeAnalysisDto) {
+  const { userId, force } = body;
+
+  if (!userId) {
+    throw new BadRequestException('userId is required');
   }
 
+  const input = await this.resolveInputFromUser(userId);
+
+  const cacheKey = this.cacheService.buildCacheKey(
+    input.githubUsername ?? undefined,
+    input.walletAddress ?? undefined,
+  );
+
+  if (!force) {
+    const cached = await this.cacheService.get(cacheKey);
+    if (cached) {
+      return { jobId: `cached-${cacheKey}`, cached: true, result: cached };
+    }
+  }
+
+  const jobRecord = await this.prisma.analysisJob.create({
+    data: {
+      status: 'pending',
+      input: {
+        githubUsername: input.githubUsername,
+        walletAddress: input.walletAddress,
+        mode: input.mode,
+        useGithubCache: input.useGithubCache ?? false,
+      } as any,
+      userId, // ✅ ALWAYS SET
+    },
+  });
+
+  await this.signalQueue.add('analyze', {
+    jobId: jobRecord.id,
+    githubUsername: input.githubUsername,
+    walletAddress: input.walletAddress,
+    mode: input.mode,
+    useGithubCache: input.useGithubCache,
+  });
+
+  return { jobId: jobRecord.id };
+}
+//   async recompute(@Req() req: any, @Body() body: RecomputeAnalysisDto) {
+// 	// console.log(body);
+//     return this.createAnalysis(req, { ...body, force: true });
+//   }
+private async resolveInputFromUser(userId: string):Promise<{
+  githubUsername: string | null;
+  walletAddress: string | null;
+  useGithubCache: boolean; // ✅ force strict boolean
+  mode: 'github+wallet' | 'wallet-only' | 'github-only';
+}>  {
+  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+
+  const githubProfile = devProfile?.githubProfile;
+  const web3Profile = devProfile?.web3Profile;
+
+  if (!githubProfile && !web3Profile) {
+    throw new NotFoundException(
+      'No linked accounts. Use POST /sync/github or POST /sync/wallet first.',
+    );
+  }
+
+  const githubUsername = githubProfile?.githubUsername ?? null;
+  const walletAddress = web3Profile?.solanaAddress ?? null;
+
+  const useGithubCache = !!(
+  githubProfile?.lastSyncAt &&
+  githubProfile.lastSyncAt.getTime() > Date.now() - 86_400_000
+);
+
+  const mode =
+    githubUsername && walletAddress
+      ? 'github+wallet'
+      : walletAddress
+      ? 'wallet-only'
+      : 'github-only';
+
+  return {
+    githubUsername,
+    walletAddress,
+    useGithubCache,
+    mode,
+  };
+}
   @Get(':jobId/status')
   @ApiOperation({
     summary: 'Get job status',

@@ -2,3 +2,10 @@
 
 > get all jobs and be able to sort them by different things... for the candidate search of jobs
 > get job detailed page ... 
+
+
+> scorecard is in terms od 0.75/1 and in gap preview we have a requirement of 50/100
+> make sure all scorecard is at 75/100 not 0.75 ....
+
+> refrsh automatic?
+> refressh fix...
