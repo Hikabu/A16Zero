@@ -199,8 +199,8 @@ export class AuthCandidateController {
   async completeOnboarding(
     @Body() dto: OnboardingDto,
     @Req() req: any,
-    @Res() res: Response,
-  ) {
+@Res() res: Response  ) {
+	console.log('DTO:', dto);
     const result = await this.authService.completeOnboarding(
       dto,
       req.onboarding,
