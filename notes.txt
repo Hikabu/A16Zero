@@ -1,11 +1,12 @@
 > Get rid of nfts with super team... leave balnk achievement or delete all together...
 
-> get all jobs and be able to sort them by different things... for the candidate search of jobs
-> get job detailed page ... 
-
-
-> scorecard is in terms od 0.75/1 and in gap preview we have a requirement of 50/100
-> make sure all scorecard is at 75/100 not 0.75 ....
-
 > refrsh automatic?
 > refressh fix...
+
+> weak /applications/hr/{appId}/scorecard
+Export candidate scorecard (HTML)
+	> can only see deciison card no more info?
+
+> view simplified for fr vs for cto with in deth ? where is it at?
+
+> skill comparison ??? stage 5

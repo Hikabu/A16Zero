@@ -30,6 +30,7 @@ export class AuthEmployerService {
       throw new UnauthorizedException('Invalid Privy token');
     }
 
+
     // Always fetch user from Privy to sync/verify privyId and get wallet address
     const privyUser = await this.privyService.getUser(privyId);
     const walletAccount = privyUser.linked_accounts?.find(
@@ -44,6 +45,26 @@ export class AuthEmployerService {
     if (!walletAddress) {
       throw new UnauthorizedException('No wallet linked to Privy user');
     }
+
+	const existingByWallet = await this.prisma.company.findUnique({
+  where: { walletAddress },
+});
+
+const existingBySmart = body.smartAccountAddress
+  ? await this.prisma.company.findUnique({
+      where: { smartAccountAddress: body.smartAccountAddress },
+    })
+  : null;
+
+  console.log("e w: ", existingByWallet);
+  console.log("e s: ", existingBySmart);
+  console.log("equal: ", existingBySmart?.walletAddress == walletAddress);
+  console.log("  input: ", walletAddress);
+  console.log("current: ", existingBySmart?.walletAddress);
+
+  	console.log("privy id inp: ", privyId);
+	  console.log("current id: ", existingBySmart?.privyId);
+
 
     // Use upsert keyed on walletAddress to avoid P2002 errors
     const company = await this.prisma.company.upsert({

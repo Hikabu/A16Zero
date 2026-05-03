@@ -99,6 +99,7 @@ model JobPost {
   @@map("job_posts")
 }
 
+
 //----APPLICATION----------------
 enum FraudTier {
   CLEAN

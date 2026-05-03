@@ -44,6 +44,7 @@ export class PrivyService {
         email: 'valeriia@test.com',
       };
     }
+	
     try {
       const appId = this.configService.get<string>('PRIVY_APP_ID');
 
