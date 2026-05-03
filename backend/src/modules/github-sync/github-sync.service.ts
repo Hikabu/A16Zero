@@ -35,7 +35,7 @@ export class GithubSyncService {
 
     const clientId = this.config.get('GITHUB_CLIENT_ID');
     const callbackUrl = `${this.config.get('app.url')}${this.config.get('auth.githubSyncConnectCallback')}`;
-    console.log('callback url: ', callbackUrl);
+    // console.log('callback url: ', callbackUrl);
     const scopes = encodeURIComponent('read:user repo');
 
     return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scopes}&state=${state}`;
@@ -45,7 +45,7 @@ export class GithubSyncService {
   async connectGithub(
     githubData: {
       githubId: string;
-      login: string;
+      username: string;
       accessToken: string;
       scopes: string[];
     },
@@ -79,14 +79,14 @@ export class GithubSyncService {
       where: { devCandidateId: devProfile.id },
       create: {
         devCandidate: { connect: { id: devProfile.id } },
-        githubUsername: githubData.login,
+        githubUsername: githubData.username,
         githubUserId: githubData.githubId,
         encryptedToken,
         scopes: githubData.scopes,
       },
       update: {
         // Rotate token on re-connect (expired or user re-authorized)
-        githubUsername: githubData.login,
+        githubUsername: githubData.username,
         githubUserId: githubData.githubId,
         encryptedToken,
         scopes: githubData.scopes,
@@ -141,7 +141,7 @@ export class GithubSyncService {
       },
     });
 
-    console.log('addign sync job to queue with data');
+    // console.log('addign sync job to queue with data');
 
     await this.githubSyncQueue.add('sync-profile', {
       candidateId: devProfile.candidateId,

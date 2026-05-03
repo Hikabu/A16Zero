@@ -73,8 +73,16 @@ export class GithubAdapterService {
     token: string,
   ): Promise<GitHubRawData> {
     return this.withCache(`github:v2:raw:${githubUsername}`, async () => {
-      const octokit = new Octokit({ auth: token });
+    //   const octokit = new Octokit({ auth: token });
 
+const octokit = new Octokit({
+  auth: token,
+  request: {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  },
+});
       // 1. Fetch Profile
       const profileData = await this.fetchProfile(octokit, githubUsername);
 
@@ -235,9 +243,9 @@ export class GithubAdapterService {
   }
 
   public decryptToken(encryptedToken: string): string {
-    console.log(
-      `Decrypting token, length: ${encryptedToken.length}, startsWith v1: ${encryptedToken.startsWith('v1:')}`,
-    );
+    // console.log(
+    //   `Decrypting token, length: ${encryptedToken.length}, startsWith v1: ${encryptedToken.startsWith('v1:')}`,
+    // );
     const key = process.env.AUTH_ENCRYPTION_KEY;
     if (!key) throw new Error('AUTH_ENCRYPTION_KEY not set');
 
@@ -246,7 +254,7 @@ export class GithubAdapterService {
       : encryptedToken;
 
     const decripted = decrypt(data, key);
-    console.log(`Decrypted token, length: ${decripted.length}`);
+    // console.log(`Decrypted token, length: ${decripted.length}`);
     return decripted;
   }
 

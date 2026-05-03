@@ -2,14 +2,6 @@ import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { Connection, PublicKey } from '@solana/web3.js';
-import { AchievementWhitelistService } from './achievement-whitelist.service';
-
-export interface Achievement {
-  type: 'bounty_completion';
-  source: 'superteam';
-  label: string;
-  year: number;
-}
 
 export interface ProgramInfo {
   programId: string;
@@ -34,11 +26,7 @@ export class SolanaAdapterService {
   constructor(
     private readonly config: ConfigService,
     @Inject('REDIS') private readonly redis: Redis,
-    private readonly achievementWhitelist: AchievementWhitelistService,
-  ) {
-	  console.log('HELIUS KEY:', this.config.get('HELIUS_API_KEY'));
-
-  }
+  ) {}
 
   async fetchProgramsByAuthority(
     walletAddress: string,
@@ -155,95 +143,15 @@ this.logger.log(`Using RPC: ${solanaRpcUrl}`);
     }
   }
 
-  async fetchAchievements(walletAddress: string): Promise<Achievement[]> {
-    const cacheKey = `solana:achievements:${walletAddress}`;
-
-    try {
-      const cached = await this.redis.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached);
-      }
-    } catch (e) {
-      // Ignore cache check errors
-    }
-
-    const apiKey = this.config.get<string>('HELIUS_API_KEY');
-	console.log("HELIUS API KEY:", apiKey);
-    if (!apiKey) {
-      this.logger.warn('HELIUS_API_KEY is not configured');
-      return [];
-    }
-
-    try {
-      const response = await fetch(
-        `https://mainnet.helius-rpc.com/?api-key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 'colosseum-1',
-            method: 'getAssetsByOwner',
-            params: { ownerAddress: walletAddress, page: 1, limit: 1000 },
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Helius API returned ${response.status}`);
-      }
-
-      const data = await response.json();
-      const achievements: Achievement[] = [];
-
-      for (const asset of data.result?.items || []) {
-        const authority = asset.authorities?.[0]?.address;
-        if (!authority) continue;
-
-        const superteamMatch =
-          this.achievementWhitelist.matchSuperteam(authority);
-        if (superteamMatch) {
-          achievements.push({
-            type: 'bounty_completion',
-            source: 'superteam',
-            label: superteamMatch.label,
-            year: superteamMatch.year,
-          });
-        }
-      }
-
-      try {
-        await this.redis.set(
-          cacheKey,
-          JSON.stringify(achievements),
-          'EX',
-          86400,
-        ); // 24h
-      } catch (e) {
-        // Ignore cache setting errors
-      }
-
-      return achievements;
-    } catch (err) {
-      this.logger.warn(
-        { walletAddress, err: (err as Error).message },
-        'fetchAchievements_fail',
-      );
-      return [];
-    }
-  }
 
   async fetchOnChainData(walletAddress: string) {
-	console.log("fetching on chain data ");
-    const [deployedPrograms, achievements] = await Promise.all([
-      this.fetchProgramsByAuthority(walletAddress),
-      this.fetchAchievements(walletAddress),
-    ]);
+	// console.log("fetching on chain data ");
+    const deployedPrograms = await this.fetchProgramsByAuthority(walletAddress);
     return {
       ecosystem: 'solana' as const,
       ecosystemPRs: 0,
       deployedPrograms,
-      achievements,
+      achievements: [],
     };
   }
 }

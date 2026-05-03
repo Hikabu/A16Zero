@@ -1,6 +1,6 @@
 import { registerSchema } from './schemas/register.schema';
 import { loginSchema } from './schemas/login.schema';
-import { encrypt, decrypt } from '../../shared/crypto.utils';
+import { encrypt, decrypt } from '../../shared/utils/crypto.utils';
 
 describe('Auth Module Pure Logic', () => {
   describe('Register Schema Validation', () => {

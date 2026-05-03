@@ -5,7 +5,7 @@ export default () => ({
   auth: {
     githubCallback: '/auth/candidate/github/callback',
     githubLinkCallback: '/auth/candidate/github/link/callback',
-    githubSyncConnectCallback: '/me/github/sync/connect/callback',
+    githubSyncConnectCallback: '/sync/github/connect/callback',
     googleCallback: '/auth/candidate/google/callback',
     googleLinkCallback: '/auth/candidate/google/link/callback',
     encryptionKey: process.env.AUTH_ENCRYPTION_KEY,

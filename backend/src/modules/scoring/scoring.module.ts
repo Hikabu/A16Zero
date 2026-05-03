@@ -12,8 +12,11 @@ import { StackFingerprintService } from './signal-extractor/stack-fingerprint.se
 import { SummaryGeneratorService } from './summary-generator/summary-generator.service';
 import { SolanaAdapterService } from './web3-adapter/solana-adapter.service';
 import { Web3MergeService } from './web3-merge/web3-merge.service';
-import { AchievementWhitelistService } from './web3-adapter/achievement-whitelist.service';
 import { ConfigModule } from '@nestjs/config';
+
+import { GapAnalysisModule } from './gap-analysis/gap-analysis.module';
+import { DecisionCardModule } from './decision-card/decision-card.module';
+import { ProfileResolverModule } from '../profile-candidate/profile-resolver.module';
 
 @Global()
 @Module({
@@ -21,6 +24,10 @@ import { ConfigModule } from '@nestjs/config';
 	ConfigModule,
     PrismaModule,
     RedisModule,
+    GapAnalysisModule,
+    DecisionCardModule,
+		ProfileResolverModule,
+	
     BullModule.registerQueue({ name: 'signal-compute' }),
   ],
   providers: [
@@ -33,7 +40,6 @@ import { ConfigModule } from '@nestjs/config';
     SummaryGeneratorService,
     SolanaAdapterService,
     Web3MergeService,
-    AchievementWhitelistService,
   ],
   controllers: [AnalysisController],
   exports: [

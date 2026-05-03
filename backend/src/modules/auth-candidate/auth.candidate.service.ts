@@ -189,27 +189,21 @@ export class AuthCandidateService {
   }
 
   async refresh(user: any) {
-    const userId = user.id;
-    const storedJti = await this.redis.get(`refresh:${userId}`);
-    const decodedJti = this.jwt.decode(user.refreshToken)?.jti;
+  const userId = user.userId;
+  const jti = user.jti;
 
-    if (!storedJti || storedJti !== decodedJti) {
-      if (storedJti) {
-        // Token reuse detected. Hijack scenario! Revoke all sessions.
-        await this.redis.del(`refresh:${userId}`);
-        this.logger.warn(
-          `MFA_BYPASS_ATTEMPT / TOKEN REUSE DETECTED: Revoked sessions for user ${userId}`,
-        );
-      }
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
+  const storedJti = await this.redis.get(`refresh:${userId}`);
 
-    const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!dbUser) throw new UnauthorizedException('User not found');
-
-    return await this.issueTokens(userId, (dbUser as any).isEmailVerified);
+  if (!storedJti || storedJti !== jti) {
+    await this.redis.del(`refresh:${userId}`);
+    throw new UnauthorizedException('Invalid or expired refresh token');
   }
 
+  const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
+  if (!dbUser) throw new UnauthorizedException('User not found');
+
+  return this.issueTokens(userId, dbUser.isEmailVerified);
+}
   async logout(user: any) {
     await this.redis.del(`refresh:${user.id}`);
     return { message: 'Logged out' };
@@ -260,92 +254,193 @@ export class AuthCandidateService {
     if (provider === 'GOOGLE') return profile.googleId;
     throw new Error('Unsupported provider');
   }
-  async oauthLogin(profile: any, provider: Provider) {
-    // console.log("hello?????????");
-    // console.log("profile: ", profile);
-    const id = this.extractProfileId(profile, provider);
-    // console.log(">id>: ", id);
 
-    if (!profile) throw new UnauthorizedException();
+  private async createOnboarding(profile: any, provider: Provider, id: string) {
+  const claimId = crypto.randomBytes(32).toString('hex');
 
-    const account = await this.prisma.authAccount.findUnique({
-      where: { provider_providerId: { provider, providerId: id } },
-      include: { user: true },
-    });
+  await this.redis.set(
+    `onboarding_claim:${claimId}`,
+    JSON.stringify({
+      provider,
+      providerId: id,
+      email: profile.email ?? null,
+      firstName: profile.firstName ?? null,
+      lastName: profile.lastName ?? null,
+    }),
+    'EX',
+    900,
+  );
 
-    if (account) return this.handleLoginResponse(account.user);
+  const tempToken = this.jwt.sign(
+    {
+      claimId,
+      type: 'onboarding',
+      jti: crypto.randomUUID(),
+    },
+    {
+      secret: this.config.get('jwt_secret.onboarding'),
+      expiresIn: '15m',
+    },
+  );
 
-    const user = await this.prisma.user.findUnique({
-      where: { email: profile.email },
-      include: { authAccounts: true },
-    });
+  return {
+    type: AuthState.NEEDS_ONBOARDING,
+    data: { tempToken },
+  };
+}
+//   async oauthLogin(profile: any, provider: Provider) {
+//     // console.log("hello?????????");
+//     // console.log("profile: ", profile);
+//     const id = this.extractProfileId(profile, provider);
+//     // console.log(">id>: ", id);
 
-    if (user) {
-      // SECURITY: Only auto-link if BOTH the local account AND the OAuth provider affirm verification.
-      if (!user.isEmailVerified) {
-        this.logger.warn(
-          `LINKING_FAILURE: Attempted auto-link to unverified local account ${user.email}`,
-        );
-        throw new UnauthorizedException(
-          'Email is already registered but not verified. Please verify locally first.',
-        );
-      }
+//     if (!profile) throw new UnauthorizedException();
 
-      if (profile.email_verified === false) {
-        this.logger.warn(
-          `LINKING_FAILURE: OAuth provider ${provider} email not verified for ${profile.email}`,
-        );
-        throw new UnauthorizedException(
-          'OAuth email not verified. Please verify your social account or log in locally.',
-        );
-      }
+//     const account = await this.prisma.authAccount.findUnique({
+//       where: { provider_providerId: { provider, providerId: id } },
+//       include: { user: true },
+//     });
 
-      const existingAccount = user.authAccounts.find(
-        (a) => a.provider === provider,
-      );
-      if (!existingAccount) {
-        await this.prisma.authAccount.create({
-          data: { userId: user.id, provider, providerId: id },
-        });
-        this.logger.log(
-          `ACCOUNT_LINKED: User ${user.id} auto-linked to ${provider}`,
-        );
-      }
-      return this.handleLoginResponse(user);
-    }
+//    if (account) return this.handleLoginResponse(account.user);
 
-    const claimId = crypto.randomBytes(32).toString('hex');
-    await this.redis.set(
-      `onboarding_claim:${claimId}`,
-      JSON.stringify({
-        provider,
-        providerId: id,
-        email: profile.email,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-      }),
-      'EX',
-      900,
-    );
+// //  no email → onboarding
+// if (!profile.email) {
+//   this.logger.warn(`OAUTH_NO_EMAIL: ${provider} user ${id}`);
+//   return this.createOnboarding(profile, provider, id);
+// }
 
-    const tempToken = this.jwt.sign(
-      {
-        claimId,
-        type: 'onboarding',
-        jti: crypto.randomUUID(),
-      },
-      {
-        secret: this.config.get('jwt_secret.onboarding'),
-        expiresIn: '15m',
-      },
-    );
-    console.log('Generated onboarding token: ', tempToken);
-    return {
-      type: AuthState.NEEDS_ONBOARDING,
-      data: { tempToken },
-    };
+// // try match by email
+// const user = await this.prisma.user.findUnique({
+//   where: { email: profile.email },
+//   include: { authAccounts: true },
+// });
+
+
+
+//     if (user) {
+//       // SECURITY: Only auto-link if BOTH the local account AND the OAuth provider affirm verification.
+//       if (!user.isEmailVerified) {
+//         this.logger.warn(
+//           `LINKING_FAILURE: Attempted auto-link to unverified local account ${user.email}`,
+//         );
+//         throw new UnauthorizedException(
+//           'Email is already registered but not verified. Please verify locally first.',
+//         );
+//       }
+
+// if (profile.email && profile.email_verified === false){        this.logger.warn(
+//           `LINKING_FAILURE: OAuth provider ${provider} email not verified for ${profile.email}`,
+//         );
+//         throw new UnauthorizedException(
+//           'OAuth email not verified. Please verify your social account or log in locally.',
+//         );
+//       }
+
+//       const existingAccount = user.authAccounts.find(
+//         (a) => a.provider === provider,
+//       );
+//       if (!existingAccount) {
+//         await this.prisma.authAccount.create({
+//           data: { userId: user.id, provider, providerId: id },
+//         });
+//         this.logger.log(
+//           `ACCOUNT_LINKED: User ${user.id} auto-linked to ${provider}`,
+//         );
+//       }
+//       return this.handleLoginResponse(user);
+//     }
+
+//     const claimId = crypto.randomBytes(32).toString('hex');
+//     await this.redis.set(
+//       `onboarding_claim:${claimId}`,
+//       JSON.stringify({
+//         provider,
+//         providerId: id,
+// email: profile.email ?? null,        firstName: profile.firstName,
+//         lastName: profile.lastName,
+//       }),
+//       'EX',
+//       900,
+//     );
+
+//     const tempToken = this.jwt.sign(
+//       {
+//         claimId,
+//         type: 'onboarding',
+//         jti: crypto.randomUUID(),
+//       },
+//       {
+//         secret: this.config.get('jwt_secret.onboarding'),
+//         expiresIn: '15m',
+//       },
+//     );
+//     console.log('Generated onboarding token: ', tempToken);
+//     return {
+//       type: AuthState.NEEDS_ONBOARDING,
+//       data: { tempToken },
+//     };
+// return this.createOnboarding(profile, provider, id);
+//   }
+
+async oauthLogin(profile: any, provider: Provider) {
+  if (!profile) throw new UnauthorizedException();
+
+  const id = this.extractProfileId(profile, provider);
+
+  // 1. Existing OAuth account → login
+  const account = await this.prisma.authAccount.findUnique({
+    where: { provider_providerId: { provider, providerId: id } },
+    include: { user: true },
+  });
+
+  if (account) return this.handleLoginResponse(account.user);
+
+  // 2. No email → cannot link → onboarding
+  if (!profile.email) {
+    this.logger.warn(`OAUTH_NO_EMAIL: ${provider} user ${id}`);
+    return this.createOnboarding(profile, provider, id);
   }
 
+  // 3. Try find existing user by email
+  const user = await this.prisma.user.findUnique({
+    where: { email: profile.email },
+    include: { authAccounts: true },
+  });
+
+  // 4. Existing user → attempt secure linking
+  if (user) {
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException(
+        'Email registered but not verified. Verify locally first.',
+      );
+    }
+
+    if (profile.email_verified === false) {
+      throw new UnauthorizedException(
+        'OAuth email not verified.',
+      );
+    }
+
+    const existingAccount = user.authAccounts.find(
+      (a) => a.provider === provider,
+    );
+
+    if (!existingAccount) {
+      await this.prisma.authAccount.create({
+        data: { userId: user.id, provider, providerId: id },
+      });
+
+      this.logger.log(
+        `ACCOUNT_LINKED: User ${user.id} auto-linked to ${provider}`,
+      );
+    }
+
+    return this.handleLoginResponse(user);
+  }
+
+  // 5. No user → onboarding
+  return this.createOnboarding(profile, provider, id);
+}
   async generateLinkState(userId: string): Promise<string> {
     const state = crypto.randomBytes(16).toString('hex');
     await this.redis.set(`link_state:${state}`, userId, 'EX', 300);
@@ -358,15 +453,15 @@ export class AuthCandidateService {
     provider: Provider,
     state: string,
   ) {
-    console.log('linkauth1!!!!!');
-    console.log('Linking profile: ', profile);
-    console.log('Linking provider: ', provider);
+    // console.log('linkauth1!!!!!');
+    // console.log('Linking profile: ', profile);
+    // console.log('Linking provider: ', provider);
     const storedUserId = await this.redis.get(`link_state:${state}`);
     if (!storedUserId || storedUserId !== userId)
       throw new UnauthorizedException('Invalid link state');
     await this.redis.del(`link_state:${state}`);
     const id = this.extractProfileId(profile, provider);
-    console.log('Extracted provider ID: ', id);
+    // console.log('Extracted provider ID: ', id);
     const existing = await this.prisma.authAccount.findUnique({
       where: { provider_providerId: { provider, providerId: id } },
     });
@@ -578,7 +673,7 @@ export class AuthCandidateService {
 
     const clientId = this.config.get('GITHUB_CLIENT_ID');
     const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
-    console.log('!!!!GITHUB Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
+    // console.log('!!!!GITHUB Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
 
     return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`;
   }
@@ -591,7 +686,7 @@ export class AuthCandidateService {
 
     const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.googleLinkCallback')}`;
 
-    console.log('!!!!Google Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
+    // console.log('!!!!Google Link Callback URL: ', redirectUri); // Debug log to check the callback URL being generated
     const scope = encodeURIComponent('openid email profile');
 
     return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;

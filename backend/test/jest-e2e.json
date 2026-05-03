@@ -7,9 +7,10 @@
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
+  "moduleNameMapper": {
+    "^src/(.*)$": "<rootDir>/../src/$1"
+  },
   "transformIgnorePatterns": [
-    "node_modules/(?!(jose|@privy-io)/)",
-	"node_modules/(?!(@scure|@noble|otplib|octokit|@octokit)/)",
-    "node_modules/(?!(@scure|@noble|otplib|octokit|@octokit)/)"
+    "node_modules/(?!(jose|@privy-io|@octokit|octokit|universal-user-agent|before-after-hook|is-plain-object|node-fetch|@scure|@noble|otplib)/)"
   ]
 }

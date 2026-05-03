@@ -1,12 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GithubSyncService } from './github-sync.service';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import { ProfileResolverService } from '../profile-candidate/profile-resolver.service';
 
-const mockPrisma = {};
+const mockPrisma = {
+  githubProfile: {
+    upsert: jest.fn(),
+    update: jest.fn(),
+    findFirst: jest.fn(),
+  },
+};
+
+const mockConfig = {
+  get: jest.fn((key: string) => {
+    if (key === 'AUTH_ENCRYPTION_KEY') return 'mock-key-32-chars-long-123456789012';
+    return 'mock-value';
+  }),
+};
+
+const mockProfileResolver = {
+  ensureDevStack: jest.fn().mockResolvedValue({ devProfile: { id: 'dev_1', candidateId: 'cand_1' } }),
+};
 
 const mockQueue = {
   add: jest.fn(),
-  process: jest.fn(),
+};
+
+const mockRedis = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
 };
 
 describe('GithubSyncService', () => {
@@ -17,6 +41,9 @@ describe('GithubSyncService', () => {
       providers: [
         GithubSyncService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: ConfigService, useValue: mockConfig },
+        { provide: ProfileResolverService, useValue: mockProfileResolver },
+        { provide: 'REDIS', useValue: mockRedis },
         { provide: 'BullQueue_github-sync', useValue: mockQueue },
       ],
     }).compile();

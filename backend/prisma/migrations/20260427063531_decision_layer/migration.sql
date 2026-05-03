@@ -26,6 +26,9 @@ CREATE TYPE "BehaviorPattern" AS ENUM ('REVIEW_HEAVY_SENIOR', 'COMMIT_HEAVY_MIDL
 CREATE TYPE "FitTier" AS ENUM ('STRONG', 'PROBE', 'PASS');
 
 -- CreateEnum
+CREATE TYPE "PipelineStage" AS ENUM ('APPLIED', 'REVIEWED', 'INTERVIEW_HR', 'INTERVIEW_TECHNICAL', 'INTERVIEW_FINAL', 'OFFER', 'HIRED', 'REJECTED');
+
+-- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('CANDIDATE', 'HR', 'HR_ADMIN', 'ORG_MANAGER', 'ADMIN');
 
 -- CreateEnum
@@ -71,6 +74,10 @@ CREATE TABLE "job_posts" (
     "publishedAt" TIMESTAMP(3),
     "closedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "parsedRequirements" JSONB,
+    "dynamicWeights" JSONB,
+    "isWeb3Role" BOOLEAN NOT NULL DEFAULT false,
+    "requirementsConfirmedAt" TIMESTAMP(3),
 
     CONSTRAINT "job_posts_pkey" PRIMARY KEY ("id")
 );
@@ -92,6 +99,11 @@ CREATE TABLE "shortlists" (
     "candidateNote" VARCHAR(280),
     "hrNotes" TEXT,
     "appliedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "decisionCard" JSONB,
+    "gapReport" JSONB,
+    "pipelineStage" "PipelineStage" NOT NULL DEFAULT 'APPLIED',
+    "pipelineStageHistory" JSONB,
+    "interviewQuestions" JSONB,
 
     CONSTRAINT "shortlists_pkey" PRIMARY KEY ("id")
 );
@@ -152,6 +164,7 @@ CREATE TABLE "DeveloperCandidate" (
 CREATE TABLE "GithubProfile" (
     "id" TEXT NOT NULL,
     "devCandidateId" TEXT NOT NULL,
+    "userId" TEXT,
     "githubUsername" TEXT NOT NULL,
     "githubUserId" TEXT NOT NULL,
     "encryptedToken" TEXT NOT NULL,
@@ -170,7 +183,8 @@ CREATE TABLE "GithubProfile" (
 CREATE TABLE "Web3Profile" (
     "id" TEXT NOT NULL,
     "devCandidateId" TEXT NOT NULL,
-    "walletAddress" TEXT,
+    "userId" TEXT NOT NULL,
+    "solanaAddress" TEXT,
     "verifiedContracts" JSONB,
     "onChainMetrics" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -204,6 +218,20 @@ CREATE TABLE "CachedResult" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CachedResult_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "analysis_jobs" (
+    "id" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "input" JSONB NOT NULL,
+    "result" JSONB,
+    "error" TEXT,
+    "userId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "analysis_jobs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -249,6 +277,9 @@ CREATE UNIQUE INDEX "DeveloperCandidate_candidateId_key" ON "DeveloperCandidate"
 CREATE UNIQUE INDEX "GithubProfile_devCandidateId_key" ON "GithubProfile"("devCandidateId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "GithubProfile_userId_key" ON "GithubProfile"("userId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "GithubProfile_githubUsername_key" ON "GithubProfile"("githubUsername");
 
 -- CreateIndex
@@ -256,6 +287,9 @@ CREATE UNIQUE INDEX "GithubProfile_githubUserId_key" ON "GithubProfile"("githubU
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Web3Profile_devCandidateId_key" ON "Web3Profile"("devCandidateId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Web3Profile_userId_key" ON "Web3Profile"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Vouch_txSignature_key" ON "Vouch"("txSignature");
@@ -294,7 +328,16 @@ ALTER TABLE "DeveloperCandidate" ADD CONSTRAINT "DeveloperCandidate_candidateId_
 ALTER TABLE "GithubProfile" ADD CONSTRAINT "GithubProfile_devCandidateId_fkey" FOREIGN KEY ("devCandidateId") REFERENCES "DeveloperCandidate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "GithubProfile" ADD CONSTRAINT "GithubProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Web3Profile" ADD CONSTRAINT "Web3Profile_devCandidateId_fkey" FOREIGN KEY ("devCandidateId") REFERENCES "DeveloperCandidate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Web3Profile" ADD CONSTRAINT "Web3Profile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Vouch" ADD CONSTRAINT "Vouch_candidateId_fkey" FOREIGN KEY ("candidateId") REFERENCES "Candidate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "analysis_jobs" ADD CONSTRAINT "analysis_jobs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

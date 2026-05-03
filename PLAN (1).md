@@ -1,4 +1,4 @@
-﻿# COLOSSEUM
+# COLOSSEUM
 
 ## Table of Contents
 
@@ -915,7 +915,7 @@ Deliverable: End-to-end validated across all three modes and all new signals.
 
 - `DecisionCardGenerator` — PROCEED / REVIEW / REJECT based on capability scores + confidence levels
 - `GapAnalysisEngine` — runs at apply-time against a job description; DEALBREAKER / SIGNIFICANT / MINOR severity
-- `JobDescriptionParser` — Anthropic API; extracts required capabilities and stack; HR confirmation before saving
+- `JobDescriptionParser` — Google API; extracts required capabilities and stack; HR confirmation before saving
 - `InterviewProbeLibrary` — STAR-format questions generated from gap severity; mandatory for DEALBREAKERs
 - `ApplicationsModule` — POST /api/jobs/:id/apply → freeze DecisionCard + GapReport at apply time
 - HR Application Views — ranked list with DecisionCard + summary card; full detail with GapReport + interview probes

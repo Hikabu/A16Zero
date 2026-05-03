@@ -18,6 +18,9 @@ model Company {
   id                 String    @id @default(uuid())
   name               String
   legalName          String? // exact registered business name 
+  logoUrl      String?
+  website   String?
+  description String?
   registrationNumber String?   @unique
   country            String
   isVerified         Boolean   @default(false)
@@ -84,11 +87,22 @@ model JobPost {
   bonusAmount    Decimal    @db.Decimal(10, 2)
   currency       String     @default("USD")
   status         JobStatus  @default(DRAFT)
-  roleType       RoleType
+  roleType       RoleType?
   seniorityLevel Seniority?
+  
+  // Structured fields promoted from parsedRequirements at confirm-requirements time
+  requiredSkills        String[]   @default([])  // e.g. ["TypeScript", "NestJS", "Solana"]
+  // requiredSeniority     Seniority? // promoted from parsedRequirements — duplicate of seniorityLevel for explicitness
+
   publishedAt    DateTime?
   closedAt       DateTime?
   createdAt      DateTime   @default(now())
+
+  // Stage 4 Features
+  parsedRequirements      Json?
+  dynamicWeights          Json? // { collaborationWeight, ownershipWeight, innovationWeight }
+  isWeb3Role              Boolean   @default(false)
+  requirementsConfirmedAt DateTime?
 
   escrowId        BigInt?       @unique
   escrowAddress   String?       @unique
@@ -102,6 +116,7 @@ model JobPost {
   @@map("job_posts")
 }
 
+
 //----APPLICATION----------------
 enum FraudTier {
   CLEAN
@@ -112,6 +127,7 @@ enum FraudTier {
 enum ShortlistStatus {
   PENDING
   REVIEWED
+  SHORTLISTED
   CONTACTED
   REJECTED
 }
@@ -146,6 +162,18 @@ enum FitTier {
   PASS
 }
 
+enum PipelineStage {
+  APPLIED
+  REVIEWED
+  SHORTLISTED
+  INTERVIEW_HR
+  INTERVIEW_TECHNICAL
+  INTERVIEW_FINAL
+  OFFER
+  HIRED
+  REJECTED
+}
+
 model Shortlist {
   id          String          @id @default(uuid())
   jobPostId   String
@@ -168,6 +196,14 @@ model Shortlist {
   hrNotes       String?
 
   appliedAt DateTime @default(now())
+
+  // Stage 4 Features
+  frozenScorecard      Json? // Full AnalysisResult snapshot captured at apply-time. Never mutated.
+  decisionCard         Json? // frozen at apply-time: { verdict, strengths[], risks[], reputationNote }
+  gapReport            Json? // frozen at apply-time: GapReport object
+  pipelineStage        PipelineStage @default(APPLIED)
+  pipelineStageHistory Json? // array of { stage, changedAt, changedBy } — append-only log
+  interviewQuestions   Json? // array of InterviewQuestionSet
 
   @@unique([jobPostId, candidateId]) // one entry per candidate per job
   //   @@index([jobPostId, roleFitScore])
@@ -208,11 +244,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  authAccounts AuthAccount[]
-  candidate    Candidate?
-  web3Profile  Web3Profile?
+  authAccounts  AuthAccount[]
+  candidate     Candidate?
+  web3Profile   Web3Profile?
   githubProfile GithubProfile?
-  analysisJobs AnalysisJob[]
+  analysisJobs  AnalysisJob[]
 }
 
 // ─── User AUTH  ──────────────────────────────────────────
@@ -248,7 +284,7 @@ model Candidate {
   devProfile DeveloperCandidate?
   shortlist  Shortlist[]
   scorecard  Json? // { roleType, seniorityLevel, signals: { key: value }, overallFit }
-  vouches         Vouch[] 
+  vouches    Vouch[]
   createdAt  DateTime            @default(now())
 }
 
@@ -271,23 +307,23 @@ enum SyncStatus {
 }
 
 model GithubProfile {
-  id              String             @id @default(uuid())
-  devCandidateId  String             @unique
-  devCandidate    DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  
-  userId          String?            @unique
-  user            User?              @relation(fields: [userId], references: [id])
+  id             String             @id @default(uuid())
+  devCandidateId String             @unique
+  devCandidate   DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
 
-  githubUsername  String             @unique
-  githubUserId    String             @unique
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  githubUsername  String     @unique
+  githubUserId    String     @unique
   encryptedToken  String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
   scopes          String[]
   lastSyncAt      DateTime?
-  syncStatus      SyncStatus         @default(PENDING)
-  syncProgress    String             @default("0")
+  syncStatus      SyncStatus @default(PENDING)
+  syncProgress    String     @default("0")
   syncError       String?
   rawDataSnapshot Json?
-  createdAt       DateTime           @default(now())
+  createdAt       DateTime   @default(now())
 }
 
 // ─── Web3 Profile (opt-in) ───────────────────────────────────
@@ -295,47 +331,48 @@ model GithubProfile {
 // Solana signals use RPC-native methods; there is no Solana equivalent of Etherscan.
 
 model Web3Profile {
-  id                String             @id @default(uuid())
-  devCandidateId    String             @unique
-  devCandidate      DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-  
-  userId            String             @unique
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String             @id @default(uuid())
+  devCandidateId String             @unique
+  devCandidate   DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   solanaAddress     String?
   // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
   verifiedContracts Json?
   onChainMetrics    Json?
-  createdAt         DateTime           @default(now())
+  createdAt         DateTime @default(now())
 }
 
 //-----Vouchers ---------------------------
 model Vouch {
-  id              String    @id @default(uuid())
+  id String @id @default(uuid())
 
   // Candidate side — FK to Candidate, not GithubProfile
-  candidateId     String
-  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   // Voucher side — wallet proving identity on-chain
-  voucherWallet   String
-  message         String    @db.VarChar(500)
-  txSignature     String    @unique
+  voucherWallet String
+  message       String @db.VarChar(500)
+  txSignature   String @unique
 
   // Weight & lifecycle
-  weight          String    @default("standard")  // 'verified' | 'standard' | 'new'
-  isActive        Boolean   @default(true)
-  flag            String?   // 'cluster_detected' | null
+  weight   String  @default("standard") // 'verified' | 'standard' | 'new'
+  isActive Boolean @default(true)
+  flag     String? // 'cluster_detected' | null
 
   // Timestamps
-  confirmedAt     DateTime  @default(now())
-  expiresAt       DateTime
-  revokedAt       DateTime?
+  confirmedAt DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
 
   @@unique([candidateId, voucherWallet])
   @@index([candidateId, isActive, expiresAt])
   @@index([voucherWallet, isActive, expiresAt])
 }
+
 // ─── Cache Layer ──────────────────────────────────────────────
 model CachedResult {
   id        String   @id @default(cuid())
@@ -348,7 +385,7 @@ model CachedResult {
 model AnalysisJob {
   id        String   @id @default(uuid())
   status    String   @default("pending")
-  input     Json     // { githubUsername, walletAddress, mode, useGithubCache }
+  input     Json // { githubUsername, walletAddress, mode, useGithubCache }
   result    Json?
   error     String?
   userId    String?

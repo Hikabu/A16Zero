@@ -1,3 +1,4 @@
+import { A } from '@faker-js/faker/dist/airline-eVQV6kbz';
 import { z } from 'zod';
 
 export const envSchema = z.object({
@@ -18,12 +19,18 @@ export const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string(),
   GOOGLE_CLIENT_SECRET: z.string(),
 
+  JWT_SECRET: z.string(),
   JWT_ACCESS_SECRET: z.string(),
   JWT_REFRESH_SECRET: z.string(),
   JWT_EXPIRY: z.string(),
   JWT_REFRESH_EXPIRY: z.string(),
   JWT_ISSUER: z.string(),
   JWT_AUDIENCE: z.string(),
+
+  PRIVY_APP_ID: z.string(),
+  PRIVY_SECRET: z.string(),
+  PRIVY_JWKS_URL: z.string(),
+  PRIVY_BYPASS: z.string(),
 
   ENCRYPTION_KEY: z.string().optional(),
   INTERNAL_API_KEY: z.string().optional(),
@@ -40,6 +47,8 @@ export const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
+
+  GOOGLE_AI_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

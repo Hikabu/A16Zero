@@ -23,12 +23,13 @@ export class AuthEmployerService {
   ) {}
 
   async login(token: string, body: LoginDto) {
-    console.log('LOGIN: ', token, 'body:', body);
+    // console.log('LOGIN: ', token, 'body:', body);
     const { privyId, email } = await this.privyService.verifyToken(token);
 
     if (!privyId) {
       throw new UnauthorizedException('Invalid Privy token');
     }
+
 
     // Always fetch user from Privy to sync/verify privyId and get wallet address
     const privyUser = await this.privyService.getUser(privyId);
@@ -38,6 +39,26 @@ export class AuthEmployerService {
     if (!walletAddress) {
       throw new UnauthorizedException('No wallet linked to Privy user');
     }
+
+	const existingByWallet = await this.prisma.company.findUnique({
+  where: { walletAddress },
+});
+
+const existingBySmart = body.smartAccountAddress
+  ? await this.prisma.company.findUnique({
+      where: { smartAccountAddress: body.smartAccountAddress },
+    })
+  : null;
+
+  console.log("e w: ", existingByWallet);
+  console.log("e s: ", existingBySmart);
+  console.log("equal: ", existingBySmart?.walletAddress == walletAddress);
+  console.log("  input: ", walletAddress);
+  console.log("current: ", existingBySmart?.walletAddress);
+
+  	console.log("privy id inp: ", privyId);
+	  console.log("current id: ", existingBySmart?.privyId);
+
 
     // Use upsert keyed on walletAddress to avoid P2002 errors
     const company = await this.prisma.company.upsert({
@@ -57,7 +78,7 @@ export class AuthEmployerService {
       },
     });
 
-    console.log('Logged in company: ', company);
+    // console.log('Logged in company: ', company);
 
     const payload = {
       sub: company.id,

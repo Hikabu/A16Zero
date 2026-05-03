@@ -20,14 +20,9 @@ export class CreateAnalysisDto extends createZodDto(CreateAnalysisSchema) {}
 
 export const RecomputeAnalysisSchema = z
   .object({
-    githubUsername: z.string().optional(),
-    walletAddress: z.string().optional(),
+    userId: z.string().optional(),
     force: z.boolean().optional(),
   })
-  .refine((data) => data.githubUsername || data.walletAddress, {
-    message: 'At least one of githubUsername or walletAddress is required',
-  });
-
 export class RecomputeAnalysisDto extends createZodDto(
   RecomputeAnalysisSchema,
 ) {}

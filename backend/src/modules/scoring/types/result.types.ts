@@ -15,12 +15,6 @@ export interface DeployedProgram {
   uniqueCallers: number;
   upgradeCount: number;
 }
-export interface Achievement {
-  type: 'bounty_completion';
-  source: 'superteam';
-  label: string;
-  year: number;
-}
 
 export interface VouchDisplay {
   voucherWallet: string; // truncated: first4...last4
@@ -65,7 +59,6 @@ export interface AnalysisResult {
     ecosystem: 'solana' | null;
     ecosystemPRs: number;
     deployedPrograms: DeployedProgram[];
-    achievements: Achievement[];
   } | null;
 }
 

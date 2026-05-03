@@ -56,7 +56,7 @@ export class SignalComputeProcessor extends WorkerHost {
     let rawData: any;
     let hasSnapshot = false;
 
-	console.log("mode: ", mode);
+	// console.log("mode: ", mode);
 
     try {
       // Update DB job record to processing
@@ -84,7 +84,7 @@ export class SignalComputeProcessor extends WorkerHost {
 
       if (mode === 'wallet-only') {
         web3Data = await this.solanaAdapter.fetchOnChainData(walletAddress!);
-		console.log("web3 data", web3Data);
+		// console.log("web3 data", web3Data);
         let result: AnalysisResult = {
           capabilities: {
             backend: { score: 0, confidence: 'low' },
@@ -139,7 +139,7 @@ export class SignalComputeProcessor extends WorkerHost {
           },
         });
 
-		console.log("result: ", result);
+		// console.log("result: ", result);
 
         this.logger.log(
           {

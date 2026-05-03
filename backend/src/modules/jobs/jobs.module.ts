@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { JobsController } from './jobs.controller';
-import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
+
+import { JobDescriptionParserService } from '../scoring/gap-analysis/job-description-parser.service';
 
 @Module({
   controllers: [JobsController],
-  providers: [JobsService, JwtAuthGuard],
-  exports: [JobsService],
+  providers: [JobsService, JobDescriptionParserService],
+  exports: [JobsService, JobDescriptionParserService],
 })
 export class JobsModule {}

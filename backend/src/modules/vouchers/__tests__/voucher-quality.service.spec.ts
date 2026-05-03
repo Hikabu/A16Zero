@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { VoucherQualityService } from '../voucher-quality.service';
-import { SolanaAdapterService } from '../../../scoring/web3-adapter/solana-adapter.service';
+import { SolanaAdapterService } from '../../scoring/web3-adapter/solana-adapter.service';
 import { Connection } from '@solana/web3.js';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────

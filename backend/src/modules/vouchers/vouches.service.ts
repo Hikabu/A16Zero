@@ -454,8 +454,8 @@ this.logger.log(`Using RPC: ${rpcUrl}`);
     }),
   });
 
-  console.log('RPC status:', res.status);
-  console.log('RPC text:', await res.text());
+  // console.log('RPC status:', res.status);
+  // console.log('RPC text:', await res.text());
 } catch (e) {
   console.error('RAW FETCH ERROR:', e);
 }

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Headers } from '@nestjs/common';
+import { Controller, Post, Body, Headers, UseGuards, Res } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -7,13 +7,16 @@ import {
   ApiOkResponse,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
+  ApiHeader,
 } from '@nestjs/swagger';
+import { Response } from 'express';
 
 import { AuthEmployerService } from './auth.employer.service';
 import { LoginDto } from './dto/login.dto';
 import { BaseController } from '../../shared/base.controller';
 import { Public } from './decorators/public.decorator';
 import { AppException } from '../../shared/app.exception';
+import { AuthGuard } from '@nestjs/passport/dist/auth.guard';
 
 class LoginResponseDto {
   accessToken: string;
@@ -36,11 +39,11 @@ export class AuthEmployerController extends BaseController {
 
   @Public()
   @Post('login')
-  @ApiBearerAuth() // 👈 THIS is the correct Swagger way
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Login with Privy token',
     description:
-      'Verifies a Privy access token from frontend authentication and returns a signed JWT for API access.',
+      'Verifies a Privy access token from frontend authentication and returns a signed JWT for API access. \nTESTING:\n 1. make sure .env > PRIVY_BYPASS="true"\n2. Bearer Token = debugtoken \n3. Authorization header = did:privy:test-user-123 ',
   })
   @ApiBody({
     type: LoginDto,
@@ -48,9 +51,10 @@ export class AuthEmployerController extends BaseController {
       'Optional login metadata used during company creation or update',
     examples: {
       default: {
-        value: {
-          smartAccountAddress: '0x123abc...',
-        },
+        value:{
+  walletAddress: "0x123456789abcdef0123456789abcdef012345678",
+  smartAccountAddress: "0x123456789abcdef0123456789abcdef012345678"
+},
       },
     },
   })
@@ -67,17 +71,41 @@ export class AuthEmployerController extends BaseController {
     type: AuthEmplErrorResponseDto,
   })
   async login(
+    @Res() res: Response,
     @Headers('authorization') authHeader: string,
     @Body() loginDto: LoginDto,
   ) {
+    console.log("LOGIN: authHeader:", authHeader, "loginDto:", loginDto);
     if (!authHeader) {
       throw new AppException('No authorization header found', 401);
     }
-
     const token = authHeader.replace('Bearer ', '');
 
     const result = await this.authService.login(token, loginDto);
+    console.log("Login result: ", result);
+    res.cookie('access_token', result.accessToken, { httpOnly: true });
+    console.log("set cookie with access token");
+    return res.json({
+    success: true,
+    message: 'Logged in successfully',
+    data: result,
+  });
+  }
 
-    return this.handleSuccess(result, 'Logged in successfully');
+  @Post('logout')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt-employer'))
+  @ApiOperation({
+    summary: 'Logout user',
+    description: 'Invalidates the user session or JWT token.',
+  })
+  async logout(@Res() res: Response) {
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+    return res.json({
+    success: true,
+    message: 'Logged out successfully',
+    data: null,
+  });
   }
 }

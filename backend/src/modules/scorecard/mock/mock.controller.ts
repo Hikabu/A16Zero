@@ -86,26 +86,6 @@ const MOCK_WALLET: AnalysisResult = {
         upgradeCount: 2,
       },
     ],
-    achievements: [
-      {
-        type: 'bounty_completion',
-        source: 'superteam',
-        label: 'Superteam DAO Grants Q1',
-        year: 2024,
-      },
-      {
-        type: 'bounty_completion',
-        source: 'superteam',
-        label: 'Build India Hackathon',
-        year: 2023,
-      },
-      {
-        type: 'bounty_completion',
-        source: 'superteam',
-        label: 'Breakpoint Side Event Bounty',
-        year: 2023,
-      },
-    ],
   },
 };
 
@@ -146,14 +126,6 @@ const MOCK_WALLET_ONLY: AnalysisResult = {
         isActive: true,
         uniqueCallers: 19,
         upgradeCount: 7,
-      },
-    ],
-    achievements: [
-      {
-        type: 'bounty_completion',
-        source: 'superteam',
-        label: 'Superteam Grants Q3 2023',
-        year: 2023,
       },
     ],
   },
@@ -582,14 +554,6 @@ const VIEWER_HTML = /* html */ `<!DOCTYPE html>
       </div>\`;
     }).join('');
 
-    const achievements = (w.achievements || []).map(a => \`<div class="achievement">
-      <span class="ach-icon">🏆</span>
-      <div>
-        <div class="ach-label">\${a.label}</div>
-        <div class="ach-meta">\${a.source} · \${a.year} · \${a.type}</div>
-      </div>
-    </div>\`).join('');
-
     const header = \`<div class="stat-row">
       <span class="stat-label">Ecosystem</span>
       <span class="stat-value" style="color:var(--accent2)">\${w.ecosystem}</span>
@@ -608,10 +572,6 @@ const VIEWER_HTML = /* html */ `<!DOCTYPE html>
         <span class="stat-label" style="font-size:0.72rem">Deployed Programs</span>
       </div>
       <div style="padding:12px 0">\${programs}</div>
-      <div class="panel-header" style="border-top:1px solid var(--border);padding-top:8px">
-        <span class="stat-label" style="font-size:0.72rem">Superteam Achievements</span>
-      </div>
-      \${achievements || '<div class="web3-null">No achievements</div>'}
     </div>\`;
   }
 

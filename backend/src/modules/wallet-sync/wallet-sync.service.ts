@@ -64,7 +64,7 @@ export class WalletSyncService {
 
     // Step 4 — delete challenge
     await this.redis.del(`wallet-challenge:${userId}`);
-console.log("userid: ", userId);
+// console.log("userid: ", userId);
     // Step 5 — ensure Candidate + DeveloperCandidate exist
 
 	// Step 5 — ensure stack + upsert Web3Profile

@@ -55,17 +55,18 @@ const BASE_INPUT = {
   txSignature: TX_SIG,
 };
 
-function makeMockTx(memoText = MESSAGE) {
+function makeMockTx(memoText = MESSAGE, candidate = 'alice') {
+  const jsonMemo = JSON.stringify({ type: 'vouch', candidate, msg: memoText });
   return {
     meta: { err: null },
     transaction: {
       message: {
         staticAccountKeys: [
           { toBase58: () => VOUCHER_WALLET },
-          { toBase58: () => 'MemoSq4ugJjltXmYYUsgPnvQUre2uZoana88Sfd3xc' },
+          { toBase58: () => 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr' },
         ],
         compiledInstructions: [
-          { programIdIndex: 1, data: Buffer.from(memoText, 'utf8') },
+          { programIdIndex: 1, data: Buffer.from(jsonMemo, 'utf8') },
         ],
       },
     },
