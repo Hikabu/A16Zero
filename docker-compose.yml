@@ -34,7 +34,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: npm run start:dev 
+    command: sh -c "npx prisma generate && npm run start:dev"
     env_file:
       - ./backend/.env.docker
     ports:
@@ -52,7 +52,7 @@ services:
     container_name: worker-container
     build:
       context: ./backend
-    command: npm run worker:dev  # you define this in package.json
+    command: sh -c "npx prisma generate && npm run worker:dev" # you define this in package.json
     env_file:
       - ./backend/.env.docker
     volumes:

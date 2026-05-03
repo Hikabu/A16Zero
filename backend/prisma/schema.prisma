@@ -47,13 +47,6 @@ enum JobStatus {
   CLOSED // finished, no longer accepting
 }
 
-enum EscrowStatus {
-  UNFUNDED
-  FUNDED
-  RELEASED
-  REFUNDED
-}
-
 enum Seniority {
   JUNIOR
   MID
@@ -77,6 +70,13 @@ enum RoleType {
   GENERALIST
 }
 
+enum EscrowStatus {
+  UNFUNDED
+  FUNDED
+  RELEASED
+  REFUNDED
+}
+
 model JobPost {
   id             String     @id @default(uuid())
   companyId      String
@@ -92,7 +92,11 @@ model JobPost {
   
   // Structured fields promoted from parsedRequirements at confirm-requirements time
   requiredSkills        String[]   @default([])  // e.g. ["TypeScript", "NestJS", "Solana"]
-  // requiredSeniority     Seniority? // promoted from parsedRequirements — duplicate of seniorityLevel for explicitness
+
+escrowId        BigInt?       @unique
+  escrowAddress   String?       @unique
+  candidateWallet String?
+  escrowStatus    EscrowStatus  @default(UNFUNDED)
 
   publishedAt    DateTime?
   closedAt       DateTime?
@@ -103,11 +107,6 @@ model JobPost {
   dynamicWeights          Json? // { collaborationWeight, ownershipWeight, innovationWeight }
   isWeb3Role              Boolean   @default(false)
   requirementsConfirmedAt DateTime?
-
-  escrowId        BigInt?       @unique
-  escrowAddress   String?       @unique
-  candidateWallet String?
-  escrowStatus    EscrowStatus  @default(UNFUNDED)
 
   company    Company     @relation(fields: [companyId], references: [id])
   shortlists Shortlist[]

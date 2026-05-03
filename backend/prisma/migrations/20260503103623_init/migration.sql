@@ -8,10 +8,13 @@ CREATE TYPE "Seniority" AS ENUM ('JUNIOR', 'MID', 'SENIOR', 'LEAD');
 CREATE TYPE "RoleType" AS ENUM ('BACKEND', 'FRONTEND', 'FULLSTACK', 'INFRASTRUCTURE', 'DATA_ML', 'SMART_CONTRACT', 'WEB3_BACKEND', 'WEB3_FRONTEND', 'WEB3_FULLSTACK', 'DEFI_PROTOCOL', 'SECURITY_WEB3', 'SECURITY', 'GENERALIST');
 
 -- CreateEnum
+CREATE TYPE "EscrowStatus" AS ENUM ('UNFUNDED', 'FUNDED', 'RELEASED', 'REFUNDED');
+
+-- CreateEnum
 CREATE TYPE "FraudTier" AS ENUM ('CLEAN', 'FLAGGED', 'DISQUALIFIED');
 
 -- CreateEnum
-CREATE TYPE "ShortlistStatus" AS ENUM ('PENDING', 'REVIEWED', 'CONTACTED', 'REJECTED');
+CREATE TYPE "ShortlistStatus" AS ENUM ('PENDING', 'REVIEWED', 'SHORTLISTED', 'CONTACTED', 'REJECTED');
 
 -- CreateEnum
 CREATE TYPE "RiskLevel" AS ENUM ('LOW_RISK', 'MEDIUM_RISK', 'HIGH_RISK', 'INSUFFICIENT_DATA');
@@ -26,7 +29,7 @@ CREATE TYPE "BehaviorPattern" AS ENUM ('REVIEW_HEAVY_SENIOR', 'COMMIT_HEAVY_MIDL
 CREATE TYPE "FitTier" AS ENUM ('STRONG', 'PROBE', 'PASS');
 
 -- CreateEnum
-CREATE TYPE "PipelineStage" AS ENUM ('APPLIED', 'REVIEWED', 'INTERVIEW_HR', 'INTERVIEW_TECHNICAL', 'INTERVIEW_FINAL', 'OFFER', 'HIRED', 'REJECTED');
+CREATE TYPE "PipelineStage" AS ENUM ('APPLIED', 'REVIEWED', 'SHORTLISTED', 'INTERVIEW_HR', 'INTERVIEW_TECHNICAL', 'INTERVIEW_FINAL', 'OFFER', 'HIRED', 'REJECTED');
 
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('CANDIDATE', 'HR', 'HR_ADMIN', 'ORG_MANAGER', 'ADMIN');
@@ -45,6 +48,9 @@ CREATE TABLE "companies" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "legalName" TEXT,
+    "logoUrl" TEXT,
+    "website" TEXT,
+    "description" TEXT,
     "registrationNumber" TEXT,
     "country" TEXT NOT NULL,
     "isVerified" BOOLEAN NOT NULL DEFAULT false,
@@ -69,8 +75,13 @@ CREATE TABLE "job_posts" (
     "bonusAmount" DECIMAL(10,2) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'USD',
     "status" "JobStatus" NOT NULL DEFAULT 'DRAFT',
-    "roleType" "RoleType" NOT NULL,
+    "roleType" "RoleType",
     "seniorityLevel" "Seniority",
+    "requiredSkills" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "escrowId" BIGINT,
+    "escrowAddress" TEXT,
+    "candidateWallet" TEXT,
+    "escrowStatus" "EscrowStatus" NOT NULL DEFAULT 'UNFUNDED',
     "publishedAt" TIMESTAMP(3),
     "closedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -99,6 +110,7 @@ CREATE TABLE "shortlists" (
     "candidateNote" VARCHAR(280),
     "hrNotes" TEXT,
     "appliedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "frozenScorecard" JSONB,
     "decisionCard" JSONB,
     "gapReport" JSONB,
     "pipelineStage" "PipelineStage" NOT NULL DEFAULT 'APPLIED',
@@ -248,6 +260,12 @@ CREATE UNIQUE INDEX "companies_smartAccountAddress_key" ON "companies"("smartAcc
 
 -- CreateIndex
 CREATE UNIQUE INDEX "companies_privyId_key" ON "companies"("privyId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "job_posts_escrowId_key" ON "job_posts"("escrowId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "job_posts_escrowAddress_key" ON "job_posts"("escrowAddress");
 
 -- CreateIndex
 CREATE INDEX "job_posts_companyId_status_roleType_idx" ON "job_posts"("companyId", "status", "roleType");
