@@ -277,7 +277,7 @@ export class ApplicantsController extends BaseController {
     @Param('appId') appId: string,
     @Res() res: Response
   ) {
-    const application = await this.applicantsService.findById(appId, req.user.id);
+    const application = await this.applicantsService.findRawById(appId, req.user.id);
     if (!application) throw new NotFoundException('Application not found');
 
     const html = this.scorecardRendererService.render(application);

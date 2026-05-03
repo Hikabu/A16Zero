@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
-import { JobStatus, RoleType, Seniority } from '@prisma/client';
+import { JobStatus, RoleType, Seniority, JobPost } from '@prisma/client';
 import { AppException } from '../../shared/app.exception';
 
 @Injectable()
@@ -83,21 +83,23 @@ async create(companyId: string, dto: CreateJobDto) {
     return job;
   }
 
-  async updateRequirements(id: string, requirements: any) {
+  async confirmRequirements(jobId: string, companyId: string, parsed: any): Promise<JobPost> {
+    const job = await this.prisma.jobPost.findUnique({ where: { id: jobId } });
+    if (!job || job.companyId !== companyId) throw new NotFoundException();
+
     return this.prisma.jobPost.update({
-      where: { id },
+      where: { id: jobId },
       data: {
-        parsedRequirements: requirements,
-        roleType: requirements.requiredRoleType,
-        seniorityLevel: requirements.requiredSeniority,
-        dynamicWeights: {
-          collaborationWeight: requirements.collaborationWeight,
-          ownershipWeight: requirements.ownershipWeight,
-          innovationWeight: requirements.innovationWeight,
-        },
-        isWeb3Role: requirements.isWeb3Role,
         requirementsConfirmedAt: new Date(),
-      },
+        parsedRequirements: parsed, // keep full blob intact
+
+        // ── Promote to typed columns ──────────────────────────────────────
+        roleType:         parsed.requiredRoleType ?? job.roleType,
+        seniorityLevel:   parsed.requiredSeniority ?? job.seniorityLevel,
+        requiredSkills:   parsed.requiredSkills ?? [],       // string array from AI parse
+        isWeb3Role:       parsed.isWeb3Role ?? job.isWeb3Role,
+        dynamicWeights:   parsed.dynamicWeights ?? job.dynamicWeights,
+      }
     });
   }
 
@@ -105,11 +107,12 @@ async create(companyId: string, dto: CreateJobDto) {
     search?: string;
     roleType?: RoleType;
     seniority?: Seniority;
+    skills?: string[];
     isWeb3?: boolean;
     page?: number;
     limit?: number;
   }) {
-    const { search, roleType, seniority, isWeb3, page = 1, limit = 20 } = query;
+    const { search, roleType, seniority, skills, isWeb3, page = 1, limit = 20 } = query;
     const take = Math.min(limit, 50);
     const skip = (page - 1) * take;
 
@@ -130,6 +133,10 @@ async create(companyId: string, dto: CreateJobDto) {
 
     if (seniority) {
       where.seniorityLevel = seniority;
+    }
+
+    if (skills?.length) {
+      where.requiredSkills = { hasSome: skills };
     }
 
     if (isWeb3 !== undefined) {

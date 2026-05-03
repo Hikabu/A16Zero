@@ -258,7 +258,7 @@ export class JobsController extends BaseController {
       return this.handleSuccess(job, 'Job requirements confirmed and updated');
     }
 
-    const updatedJob = await this.jobsService.updateRequirements(id, body);
+    const updatedJob = await this.jobsService.confirmRequirements(id, req.user.id, body);
 
     this.logger.log(
       `AUDIT_LOG: { entityType: 'Job', entityId: '${id}', action: 'REQUIREMENTS_CONFIRMED' }`,

@@ -189,27 +189,21 @@ export class AuthCandidateService {
   }
 
   async refresh(user: any) {
-    const userId = user.id;
-    const storedJti = await this.redis.get(`refresh:${userId}`);
-    const decodedJti = this.jwt.decode(user.refreshToken)?.jti;
+  const userId = user.userId;
+  const jti = user.jti;
 
-    if (!storedJti || storedJti !== decodedJti) {
-      if (storedJti) {
-        // Token reuse detected. Hijack scenario! Revoke all sessions.
-        await this.redis.del(`refresh:${userId}`);
-        this.logger.warn(
-          `MFA_BYPASS_ATTEMPT / TOKEN REUSE DETECTED: Revoked sessions for user ${userId}`,
-        );
-      }
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
+  const storedJti = await this.redis.get(`refresh:${userId}`);
 
-    const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!dbUser) throw new UnauthorizedException('User not found');
-
-    return await this.issueTokens(userId, (dbUser as any).isEmailVerified);
+  if (!storedJti || storedJti !== jti) {
+    await this.redis.del(`refresh:${userId}`);
+    throw new UnauthorizedException('Invalid or expired refresh token');
   }
 
+  const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
+  if (!dbUser) throw new UnauthorizedException('User not found');
+
+  return this.issueTokens(userId, dbUser.isEmailVerified);
+}
   async logout(user: any) {
     await this.redis.del(`refresh:${user.id}`);
     return { message: 'Logged out' };

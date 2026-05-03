@@ -82,6 +82,11 @@ model JobPost {
   status         JobStatus  @default(DRAFT)
   roleType       RoleType?
   seniorityLevel Seniority?
+  
+  // Structured fields promoted from parsedRequirements at confirm-requirements time
+  requiredSkills        String[]   @default([])  // e.g. ["TypeScript", "NestJS", "Solana"]
+  requiredSeniority     Seniority? // promoted from parsedRequirements — duplicate of seniorityLevel for explicitness
+
   publishedAt    DateTime?
   closedAt       DateTime?
   createdAt      DateTime   @default(now())
@@ -181,6 +186,7 @@ model Shortlist {
   appliedAt DateTime @default(now())
 
   // Stage 4 Features
+  frozenScorecard      Json? // Full AnalysisResult snapshot captured at apply-time. Never mutated.
   decisionCard         Json? // frozen at apply-time: { verdict, strengths[], risks[], reputationNote }
   gapReport            Json? // frozen at apply-time: GapReport object
   pipelineStage        PipelineStage @default(APPLIED)

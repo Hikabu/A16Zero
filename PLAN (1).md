@@ -1,4 +1,4 @@
-﻿# COLOSSEUM
+# COLOSSEUM
 
 ## Table of Contents
 

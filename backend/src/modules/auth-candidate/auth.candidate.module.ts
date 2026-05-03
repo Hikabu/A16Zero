@@ -34,6 +34,7 @@ import { GithubSyncConnectStrategy } from './strategies/github.sync.connect.stra
     GoogleLinkStrategy,
     GithubSyncConnectStrategy,
     JwtStrategy,
+    RefreshStrategy,
     GithubLinkGuard,
     GoogleLinkGuard,
     RefreshStrategy,

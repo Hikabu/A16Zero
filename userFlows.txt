@@ -1,4 +1,18 @@
 
+1. AUTHORIZATION:
+
+1.1 AUTHORIZING EMPLOYERS:
+	1. /auth/employer/login
+Login with Privy token
+Authorization header = privy id
+Grants access cookies after successful login. All employer-only endpoints direclty available without headers.
+	2. /auth/employer/logout
+Logout, removes access cookies.
+
+
+1.2 AUTHORIZING CANDIDATE:
+
+
 
 1[HR] POST A JOB 
 		1. START JOB POST 

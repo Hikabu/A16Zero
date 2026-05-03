@@ -7,6 +7,8 @@ import { JobStatus, PipelineStage, ShortlistStatus, FitTier, Prisma } from '@pri
 import { AnalysisResult } from '../scoring/types/result.types';
 import { INTERVIEW_STAGES } from './interviewStages.set';
 import { ScorecardService } from '../scorecard/scorecard.service';
+import { buildFrozenScorecard } from './helpers/freeze';
+import { buildHrView, buildTechnicalView } from './helpers/view-builder';
 
 @Injectable()
 export class ApplicantsService {
@@ -42,30 +44,11 @@ export class ApplicantsService {
       }
     });
 
-    return applications.map(app => {
-      const decisionCard = (app.decisionCard as any) || {};
-      return {
-        id: app.id,
-        hrView: {
-          verdict: decisionCard.verdict || null,
-          hrSummary: decisionCard.hrSummary || null,
-          reputationNote: decisionCard.reputationNote ?? null,
-          appliedAt: app.appliedAt,
-          pipelineStage: app.pipelineStage,
-          candidate: {
-            name: `${app.candidate.user.firstName || ''} ${app.candidate.user.lastName || ''}`.trim(),
-            username: app.candidate.user.username
-          }
-        },
-        technicalView: {
-          technicalSummary: decisionCard.technicalSummary || null,
-          strengths: decisionCard.strengths || [],
-          risks: decisionCard.risks || [],
-          roleFitScore: app.roleFitScore,
-          fitTier: app.fitTier
-        }
-      };
-    });
+    return applications.map(app => ({
+      id:           app.id,
+      hrView:       buildHrView(app),
+      technicalView: buildTechnicalView(app),
+    }));
   }
 
   async findById(appId: string, companyId: string) {
@@ -97,63 +80,45 @@ export class ApplicantsService {
       throw new BadRequestException('Application not found or access denied');
     }
 
-    const { decisionCard, gapReport, interviewQuestions, pipelineStageHistory } = app as any;
+    return {
+      id:                 app.id,
+      hrView:             buildHrView(app),
+      technicalView:      buildTechnicalView(app),
 
-    // Build embedded gap detail
-    // Determine interview questions
-    let activeQuestions = null;
-    if (interviewQuestions && Array.isArray(interviewQuestions) && interviewQuestions.length > 0) {
-      activeQuestions = interviewQuestions[interviewQuestions.length - 1];
+      // Full detail fields (HR only — never returned on candidate endpoints)
+      pipelineStageHistory: (app as any).pipelineStageHistory ?? [],
+      interviewQuestions:   (app as any).interviewQuestions   ?? [],
+
+      // Job context
+      job: {
+        id:    app.jobPost?.id,
+        title: (app as any).jobPost?.title,
+      },
+
+      // Meta
+      appliedAt:   app.appliedAt,
+      frozenAt:    ((app as any).frozenScorecard as any)?.capturedAt ?? null,
+    };
+  }
+
+  async findRawById(appId: string, companyId: string) {
+    const app = await this.prisma.shortlist.findUnique({
+      where: { id: appId },
+      include: {
+        candidate: {
+          include: {
+            user: { select: { firstName: true, lastName: true, username: true, email: true } }
+          }
+        },
+        jobPost: true
+      }
+    });
+
+    if (!app || app.jobPost.companyId !== companyId) {
+      throw new NotFoundException('Application not found or access denied');
     }
 
-    const githubProfile = (app as any).candidate?.devProfile?.githubProfile || null;
-    const web3Profile = (app as any).candidate?.devProfile?.web3Profile || null;
-
-    return {
-      id: app.id,
-      hrView: {
-        verdict: decisionCard?.verdict || null,
-        hrSummary: decisionCard?.hrSummary || null,
-        reputationNote: decisionCard?.reputationNote || null,
-        appliedAt: (app as any).appliedAt || app.createdAt,
-        pipelineStage: (app as any).pipelineStage,
-        candidate: {
-          name: `${app.candidate.user.firstName || ''} ${app.candidate.user.lastName || ''}`.trim(),
-          username: app.candidate.user.username
-        }
-      },
-      technicalView: {
-        technicalSummary: decisionCard?.technicalSummary || null,
-        strengths: decisionCard?.strengths || [],
-        risks: decisionCard?.risks || [],
-        roleFitScore: app.roleFitScore,
-        fitTier: app.fitTier
-      },
-      decisionCard: decisionCard ? {
-        verdict: decisionCard.verdict,
-        hrSummary: decisionCard.hrSummary,
-        technicalSummary: decisionCard.technicalSummary,
-        strengths: decisionCard.strengths || [],
-        risks: decisionCard.risks || [],
-        reputationNote: decisionCard.reputationNote || null,
-        gapDetail: gapReport ? {
-          overallVerdict: gapReport.overallVerdict,
-          technologyFitScore: gapReport.technologyFitScore,
-          missingTechnologies: gapReport.missingTechnologies,
-          matchedTechnologies: gapReport.matchedTechnologies,
-          gaps: gapReport.gaps
-        } : null
-      } : null,
-      interviewQuestions: activeQuestions,
-      notObservable: [
-        "Communication quality",
-        "System design thinking (PRs are a proxy)",
-        "Management capability",
-        "Cultural fit",
-        "Interview performance"
-      ],
-      pipelineStageHistory: pipelineStageHistory || []
-    };
+    return app;
   }
 
   async updateDecision(appId: string, companyId: string, status: string) {
@@ -251,7 +216,7 @@ export class ApplicantsService {
       where: { candidateId: candidate.id },
       include: {
         jobPost: {
-          select: { title: true, company: { select: { name: true } } }
+          select: { id: true, title: true, company: { select: { name: true } } }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -259,11 +224,14 @@ export class ApplicantsService {
 
     return applications.map(app => ({
       id: app.id,
+      jobId: app.jobPost.id,
       jobTitle: app.jobPost.title,
       companyName: app.jobPost.company?.name || 'Unknown Company',
       pipelineStage: app.pipelineStage,
       appliedAt: app.appliedAt,
-      fitTier: app.fitTier
+      fitTier: app.fitTier,
+      roleFitScore: app.roleFitScore,
+      status: app.status
     }));
   }
 
@@ -320,6 +288,15 @@ export class ApplicantsService {
     // 1. Resolve candidate from user ID
     const candidate = await this.prisma.candidate.findUnique({
       where: { userId: candidateUserId },
+      include: {
+        user: true,
+        devProfile: {
+          include: {
+            githubProfile: true,
+            web3Profile: true
+          }
+        }
+      }
     });
     if (!candidate) throw new BadRequestException('Candidate profile not found');
 
@@ -366,6 +343,9 @@ export class ApplicantsService {
     // 8. roleFitScore
     const roleFitScore = this.computeRoleFitScore(gapReport);
 
+    // 8.5 Build frozenScorecard
+    const frozenScorecard = buildFrozenScorecard(analysisResult, candidate);
+
     // 9. Create application (Shortlist model)
     return this.prisma.shortlist.create({
       data: {
@@ -373,6 +353,10 @@ export class ApplicantsService {
         candidateId,
         roleFitScore,
         fitTier,
+        confidenceTier:  (analysisResult as any).confidenceTier ?? null,
+        fraudTier:       ((analysisResult as any).fraudTier) ?? 'CLEAN',
+        behaviorPattern: ((analysisResult as any).behaviorPattern) ?? null,
+        frozenScorecard: frozenScorecard as any,
         decisionCard: decisionCard as unknown as Prisma.JsonObject,
         gapReport: gapReport as unknown as Prisma.JsonObject,
         pipelineStage: PipelineStage.APPLIED,

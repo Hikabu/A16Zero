@@ -289,6 +289,8 @@ export class AuthCandidateController {
     summary: 'Refresh tokens',
   })
   async refresh(@Req() req: any, @Res() res: Response) {
+    console.log('REFRESH ENDPOINT HIT');
+    console.log('USER:', req.user);
     const result = await this.authService.refresh(req.user);
     return this.handleAuthResponse(res, result);
   }
