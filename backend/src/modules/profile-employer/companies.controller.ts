@@ -1,4 +1,4 @@
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -10,9 +10,11 @@ import {
 import { CompaniesService } from './companies.service';
 import { BaseController } from '../../shared/base.controller';
 import { CompanyProfileResponseDto } from './dto/company.response.dto';
+import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
 
 @ApiTags('Profile (company)')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('me/company')
 export class CompaniesController extends BaseController {
   constructor(private readonly companiesService: CompaniesService) {

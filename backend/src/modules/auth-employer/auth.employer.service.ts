@@ -33,14 +33,8 @@ export class AuthEmployerService {
 
     // Always fetch user from Privy to sync/verify privyId and get wallet address
     const privyUser = await this.privyService.getUser(privyId);
-    const walletAccount = privyUser.linked_accounts?.find(
-      (acc) => acc.type === 'wallet',
-    );
-    // Type guard: ensure walletAccount has address property
-    const walletAddress =
-      walletAccount && 'address' in walletAccount
-        ? walletAccount.address
-        : null;
+    const walletAddress = (privyUser as any).wallet?.address ?? body.walletAddress ?? null;
+    const userEmail = (privyUser as any).email?.address ?? (privyUser as any).google?.email ?? email ?? null;
 
     if (!walletAddress) {
       throw new UnauthorizedException('No wallet linked to Privy user');
@@ -71,11 +65,11 @@ const existingBySmart = body.smartAccountAddress
       where: { walletAddress },
       update: {
         privyId,
-        email: email || undefined,
+        email: userEmail || undefined,
       },
       create: {
         privyId,
-        email,
+        email: userEmail,
         walletAddress,
         smartAccountAddress: body.smartAccountAddress || walletAddress,
         name: 'New company',

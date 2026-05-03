@@ -36,7 +36,7 @@ import { WalletSyncModule } from './modules/wallet-sync/wallet-sync.module';
       throttlers: [
         {
           ttl: 60000,
-          limit: 10,
+          limit: 300,
         },
       ],
     }),

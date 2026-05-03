@@ -14,6 +14,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { BaseController } from '../../shared/base.controller';
+import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
 import { CandidateListResponseDto } from './dto/candidateListResponse.dto';
 import { ShortlistResponseDto } from './dto/shortListResponse.dto';
 import { UpdateShortlistStatusDto } from './dto/updateStatus.dto';

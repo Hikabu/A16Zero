@@ -1,17 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as jose from 'jose';
+import { PrivyClient } from '@privy-io/server-auth';
 import { AppException } from '../../shared/app.exception';
 import { Public } from './decorators/public.decorator';
-import { PrivyClient } from '@privy-io/node';
-require('dotenv').config();
 
 @Injectable()
 @Public()
 export class PrivyService {
   private readonly logger = new Logger(PrivyService.name);
-  //signing tokens
-  private readonly jwks: ReturnType<typeof jose.createRemoteJWKSet>;
   private readonly privyClient: PrivyClient;
 
   constructor(private configService: ConfigService) {
@@ -20,25 +16,11 @@ export class PrivyService {
     if (!appId || !appSecret) {
       throw new Error('Privy credentials missing');
     }
-    this.privyClient = new PrivyClient({
-      appId: appId,
-      appSecret: appSecret,
-    });
-
-    const jwksUrl = this.configService.get<string>(
-      'PRIVY_JWKS_URL',
-      `https://auth.privy.io/api/v1/apps/${appId}/jwks.json`,
-    );
-
-    this.jwks = jose.createRemoteJWKSet(new URL(jwksUrl));
+    this.privyClient = new PrivyClient(appId, appSecret);
   }
 
-  //verify token
   async verifyToken(token: string) {
-    // console.log('TOKEN', token);
-    // console.log('PRIVY_BYPASS', process.env.PRIVY_BYPASS);
     if (process.env.PRIVY_BYPASS === 'true' && token === 'debugtoken') {
-      // console.log('Using PRIVY_BYPASS mode');
       return {
         privyId: 'did:privy:test-user-123',
         email: 'valeriia@test.com',
@@ -46,22 +28,17 @@ export class PrivyService {
     }
 	
     try {
-      const appId = this.configService.get<string>('PRIVY_APP_ID');
-
-      const { payload } = await jose.jwtVerify(token, this.jwks, {
-        issuer: 'privy.io',
-        audience: appId,
-      });
-
+      const verifiedClaims = await this.privyClient.verifyAuthToken(token);
       return {
-        privyId: payload.sub as string,
-        email: (payload as any).email as string | undefined,
+        privyId: verifiedClaims.userId,
+        email: undefined as string | undefined,
       };
     } catch (error) {
       this.logger.error(`Privy token verification failed: ${error.message}`);
       throw new AppException('Invalid or expired Privy token', 401);
     }
   }
+
   async getUser(privyId: string) {
     if (
       process.env.PRIVY_BYPASS === 'true' &&
@@ -78,7 +55,7 @@ export class PrivyService {
       };
     }
     try {
-      const user = await this.privyClient.users()._get(privyId);
+      const user = await this.privyClient.getUserById(privyId);
       return user;
     } catch (error) {
       this.logger.error(`Privy getUser failed: ${error.message}`);
