@@ -1,9 +1,9 @@
 import { RoleType, Seniority } from '@prisma/client';
 
 export interface ParsedJobRequirements {
-  requiredTechnologies: string[];
+  requiredSkills: string[];
   requiredRoleType: RoleType;
-  requiredSeniority: Seniority;
+  seniorityLevel: Seniority;
   collaborationWeight: 'LOW' | 'MEDIUM' | 'HIGH';
   ownershipWeight: 'LOW' | 'MEDIUM' | 'HIGH';
   innovationWeight: 'LOW' | 'MEDIUM' | 'HIGH';

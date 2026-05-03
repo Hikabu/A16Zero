@@ -85,7 +85,7 @@ model JobPost {
   
   // Structured fields promoted from parsedRequirements at confirm-requirements time
   requiredSkills        String[]   @default([])  // e.g. ["TypeScript", "NestJS", "Solana"]
-  requiredSeniority     Seniority? // promoted from parsedRequirements — duplicate of seniorityLevel for explicitness
+  // requiredSeniority     Seniority? // promoted from parsedRequirements — duplicate of seniorityLevel for explicitness
 
   publishedAt    DateTime?
   closedAt       DateTime?

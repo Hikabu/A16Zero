@@ -1,12 +1,12 @@
 import { ParsedJobRequirements } from './parsed-job-requirements.inteface';
 
 const JD_DEFAULTS: Partial<ParsedJobRequirements> = {
-  requiredSeniority: 'MID' as any,
+  seniorityLevel: 'MID' as any,
   collaborationWeight: 'MEDIUM',
   ownershipWeight: 'MEDIUM',
   innovationWeight: 'MEDIUM',
   isWeb3Role: false,
-  requiredTechnologies: []
+  requiredSkills: []
 };
 
 export function diffParsedRequirements(parsed: ParsedJobRequirements): {
@@ -24,19 +24,19 @@ export function diffParsedRequirements(parsed: ParsedJobRequirements): {
   });
 
   const checkFields: Array<keyof ParsedJobRequirements> = [
-    'requiredSeniority',
+    'seniorityLevel',
     'collaborationWeight',
     'ownershipWeight',
     'innovationWeight',
     'isWeb3Role',
-    'requiredTechnologies'
+    'requiredSkills'
   ];
 
   for (const field of checkFields) {
     const defaultVal = JD_DEFAULTS[field];
     const parsedVal = parsed[field];
 
-    if (field === 'requiredTechnologies') {
+    if (field === 'requiredSkills') {
       const techList = parsedVal as string[];
       if (Array.isArray(techList) && techList.length > 0) {
         changed.push({ field, parsedValue: techList, defaultValue: defaultVal });

@@ -31,12 +31,12 @@ describe('GapAnalysisService', () => {
     };
     const job = {
       parsedRequirements: {
-        requiredSeniority: 'MID',
+        seniorityLevel: 'MID',
         collaborationWeight: 'MEDIUM',
         ownershipWeight: 'MEDIUM',
         innovationWeight: 'MEDIUM',
         isWeb3Role: false,
-        requiredTechnologies: ['Typescript', 'NodeJS'],
+        requiredSkills: ['Typescript', 'NodeJS'],
         requiredRoleType: 'FULLSTACK'
       }
     };

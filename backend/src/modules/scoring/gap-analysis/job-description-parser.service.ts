@@ -25,16 +25,16 @@ Extract structured job requirements from this job description.
 
 Return ONLY valid JSON with this exact shape:
 {
-  "requiredTechnologies": string[],
+  "requiredSkills": string[],
   "requiredRoleType": string,
-  "requiredSeniority": string,
+  "seniorityLevel": string,
   "parserConfidence": number
 }
 
 Rules:
-- requiredTechnologies: list all technologies mentioned
+- requiredSkills: list all technologies mentioned
 - requiredRoleType: one of [BACKEND, FRONTEND, FULLSTACK, DEVOPS, MOBILE, DATA]
-- requiredSeniority: one of [JUNIOR, MID, SENIOR]
+- seniorityLevel: one of [JUNIOR, MID, SENIOR]
 - parserConfidence: number between 0 and 1
 
 Job Description:
@@ -62,7 +62,7 @@ const parsed = JSON.parse(cleaned);
 
       // ✅ Normalize (prevents DB crashes later)
       parsed.requiredRoleType = this.normalizeRole(parsed.requiredRoleType);
-      parsed.requiredSeniority = this.normalizeSeniority(parsed.requiredSeniority);
+      parsed.seniorityLevel = this.normalizeSeniority(parsed.seniorityLevel);
 
       if (parsed.parserConfidence < 0.75) {
         this.logger.warn(`Low confidence score: ${parsed.parserConfidence}`);

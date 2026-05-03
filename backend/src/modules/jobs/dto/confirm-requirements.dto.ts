@@ -3,9 +3,9 @@ import { RoleType, Seniority } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 
 export const ParsedJobRequirementsSchema = z.object({
-  requiredTechnologies: z.array(z.string()),
+  requiredSkills: z.array(z.string()),
   requiredRoleType: z.nativeEnum(RoleType),
-  requiredSeniority: z.nativeEnum(Seniority),
+  seniorityLevel: z.nativeEnum(Seniority),
   collaborationWeight: z.enum(['LOW', 'MEDIUM', 'HIGH']),
   ownershipWeight: z.enum(['LOW', 'MEDIUM', 'HIGH']),
   innovationWeight: z.enum(['LOW', 'MEDIUM', 'HIGH']),
@@ -21,7 +21,7 @@ export class ParsedJobRequirementsSwaggerDto {
     description: 'Technologies required for the role',
     example: ['Node.js', 'NestJS', 'PostgreSQL'],
   })
-  requiredTechnologies: string[];
+  requiredSkills: string[];
 
   @ApiProperty({
     enum: RoleType,
@@ -35,7 +35,7 @@ export class ParsedJobRequirementsSwaggerDto {
     example: Seniority.SENIOR,
     description: 'Expected seniority level',
   })
-  requiredSeniority: Seniority;
+  seniorityLevel: Seniority;
 
   @ApiProperty({
     enum: ['LOW', 'MEDIUM', 'HIGH'],

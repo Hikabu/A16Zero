@@ -27,7 +27,7 @@ export class GapAnalysisService {
     const gaps: Gap[] = [];
 
     // Step 1 — Technology matching
-    const requiredTechs = parsedReqs?.requiredTechnologies || [];
+    const requiredTechs = parsedReqs?.requiredSkills || [];
     const candidateTechs = [
       ...analysisResult.stack.languages,
       ...analysisResult.stack.tools,
@@ -57,7 +57,7 @@ export class GapAnalysisService {
       : 100;
 
     // Step 2 — Capability threshold gaps
-    const seniority = parsedReqs?.requiredSeniority || Seniority.MID;
+    const seniority = parsedReqs?.seniorityLevel || Seniority.MID;
     const thresholds: Record<Seniority, number> = {
       [Seniority.JUNIOR]: 30,
       [Seniority.MID]: 50,

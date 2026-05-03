@@ -95,7 +95,7 @@ async create(companyId: string, dto: CreateJobDto) {
 
         // ── Promote to typed columns ──────────────────────────────────────
         roleType:         parsed.requiredRoleType ?? job.roleType,
-        seniorityLevel:   parsed.requiredSeniority ?? job.seniorityLevel,
+        seniorityLevel:   parsed.seniorityLevel ?? job.seniorityLevel,
         requiredSkills:   parsed.requiredSkills ?? [],       // string array from AI parse
         isWeb3Role:       parsed.isWeb3Role ?? job.isWeb3Role,
         dynamicWeights:   parsed.dynamicWeights ?? job.dynamicWeights,
