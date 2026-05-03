@@ -71,12 +71,6 @@ export class DecisionCardService {
       strengths.push(`Strong external contribution record (${analysisResult.impact.externalContributions} PRs)`);
     }
 
-    // 4. Web3 Achievements
-    const achievementsCount = analysisResult.web3?.achievements.length || 0;
-    if (achievementsCount > 0) {
-      strengths.push(`Verified ecosystem credentials (${achievementsCount} achievements)`);
-    }
-
     return strengths.slice(0, 3);
   }
 

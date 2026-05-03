@@ -46,15 +46,6 @@ export class SummaryGeneratorService {
       summary += ' Active in the Solana ecosystem.';
     }
 
-    if (result.web3?.achievements) {
-      const superteamBounties = result.web3.achievements.filter(
-        (a) => a.type === 'bounty_completion' && a.source === 'superteam',
-      );
-      if (superteamBounties.length > 0) {
-        summary += ` Superteam bounty contributor (${superteamBounties.length} completions).`;
-      }
-    }
-
     if (result.reputation && result.reputation.verifiedVouchCount >= 2) {
       summary += ` Vouched for by ${result.reputation.verifiedVouchCount} verified developers.`;
     }

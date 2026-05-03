@@ -20,12 +20,11 @@ describe('Wallet Sync (e2e)', () => {
 
   const solanaMock = {
     fetchProgramsByAuthority: jest.fn().mockResolvedValue([]),
-    fetchAchievements: jest.fn().mockResolvedValue([]),
+
     fetchOnChainData: jest.fn().mockResolvedValue({
       ecosystem: 'solana',
       ecosystemPRs: 0,
       deployedPrograms: [],
-      achievements: [],
     }),
   };
 

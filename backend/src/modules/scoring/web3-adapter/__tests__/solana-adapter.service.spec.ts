@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SolanaAdapterService } from '../solana-adapter.service';
 import { ConfigService } from '@nestjs/config';
 import { Connection, PublicKey } from '@solana/web3.js';
-import { AchievementWhitelistService } from '../achievement-whitelist.service';
 
 const mockGetProgramAccounts = jest.fn();
 const mockGetSignaturesForAddress = jest.fn();
@@ -50,12 +49,7 @@ describe('SolanaAdapterService', () => {
         SolanaAdapterService,
         { provide: ConfigService, useValue: mockConfigService },
         { provide: 'REDIS', useValue: mockRedis },
-        {
-          provide: AchievementWhitelistService,
-          useValue: {
-            matchSuperteam: jest.fn().mockReturnValue(null),
-          },
-        },
+
       ],
     }).compile();
 

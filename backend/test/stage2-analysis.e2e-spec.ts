@@ -107,7 +107,6 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
             ecosystem: 'solana',
             ecosystemPRs: 0,
             deployedPrograms: [],
-            achievements: [],
           };
         }
         if (walletAddress === '11111111111111111111111111111112') {
@@ -122,13 +121,12 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
                 deployedAt: new Date().toISOString(),
               },
             ],
-            achievements: [],
           };
         }
         return null;
       }),
     fetchProgramsByAuthority: jest.fn().mockResolvedValue([]),
-    fetchAchievements: jest.fn().mockResolvedValue([]),
+
   };
 
   beforeAll(async () => {

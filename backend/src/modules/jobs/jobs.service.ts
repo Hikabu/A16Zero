@@ -108,7 +108,7 @@ async create(companyId: string, dto: CreateJobDto) {
     roleType?: RoleType;
     seniority?: Seniority;
     skills?: string[];
-    isWeb3?: boolean;
+    isWeb3?: any;
     page?: number;
     limit?: number;
   }) {
@@ -138,9 +138,14 @@ async create(companyId: string, dto: CreateJobDto) {
     if (skills?.length) {
       where.requiredSkills = { hasSome: skills };
     }
+    
+    const isWeb3Bool =
+  isWeb3 === undefined
+    ? undefined
+    : isWeb3 === true || isWeb3 === 'true';
 
     if (isWeb3 !== undefined) {
-      where.isWeb3Role = isWeb3;
+      where.isWeb3Role = isWeb3Bool ?? false;
     }
 
     const [jobs, total] = await Promise.all([

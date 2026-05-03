@@ -60,7 +60,6 @@ export class ScoringService {
         ecosystem: s9Ecosystem,
         ecosystemPRs: s10EcosystemPRs,
         deployedPrograms: [], // stub
-        achievements: [], // stub
       };
     }
 
