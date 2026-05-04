@@ -1,9 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EscrowStatus } from '@prisma/client';
+import { EscrowStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SolanaService } from './solana.service';
 import {
@@ -11,6 +12,7 @@ import {
   ConfirmResolvedDto,
   SetCandidateDto,
 } from './dto/escrow.dto';
+import { jobUuidToEscrowId } from './escrow.util';
 
 @Injectable()
 export class EscrowService {
@@ -19,22 +21,51 @@ export class EscrowService {
     private readonly solana: SolanaService,
   ) {}
 
-  async confirmFunded(companyId: string, dto: ConfirmFundedDto) {
-    const escrowId = this.parseU64(dto.escrowId, 'escrowId');
-    const expectedAmount = this.parseU64(dto.expectedAmount, 'expectedAmount');
-    if (expectedAmount <= 0n || expectedAmount % 100n !== 0n) {
-      throw new BadRequestException(
-        'expectedAmount must be positive and divisible by 100',
-      );
-    }
+  async getInitParams(
+    companyId: string,
+    employerWalletPubkey: string,
+    jobPostId: string,
+  ) {
+    const job = await this.getCompanyJob(jobPostId, companyId);
+    const employerWallet = this.getVerifiedEmployerWallet(
+      job,
+      employerWalletPubkey,
+    );
+    const escrowId = jobUuidToEscrowId(job.id);
+    const expectedAmount = this.decimalToAtomicUnits(job.bonusAmount);
+    const escrowAddress = this.solana
+      .deriveEscrowPda(
+        this.solana.parsePublicKey(employerWallet, 'employerPubkey'),
+        escrowId,
+      )
+      .toBase58();
 
+    return {
+      escrowId: escrowId.toString(),
+      expectedAmount: expectedAmount.toString(),
+      escrowAddress,
+    };
+  }
+
+  async confirmFunded(
+    companyId: string,
+    employerWalletPubkey: string,
+    dto: ConfirmFundedDto,
+  ) {
     const job = await this.getCompanyJob(dto.jobPostId, companyId);
-    const employerWallet = job.company.walletAddress;
-    if (!employerWallet) {
-      throw new BadRequestException('Employer company has no wallet address');
-    }
+    const employerWallet = this.getVerifiedEmployerWallet(
+      job,
+      employerWalletPubkey,
+    );
+    const escrowId = jobUuidToEscrowId(job.id);
+    const expectedAmount = this.decimalToAtomicUnits(job.bonusAmount);
 
-    const derivedAddress = this.solana.derivePDA(employerWallet, escrowId);
+    const derivedAddress = this.solana
+      .deriveEscrowPda(
+        this.solana.parsePublicKey(employerWallet, 'employerPubkey'),
+        escrowId,
+      )
+      .toBase58();
     if (derivedAddress !== dto.escrowAddress) {
       throw new BadRequestException(
         'Client escrow address does not match derived PDA',
@@ -48,7 +79,7 @@ export class EscrowService {
 
     if (onChainState.employer !== employerWallet) {
       throw new BadRequestException(
-        'On-chain employer does not match company wallet',
+        'On-chain employer does not match authenticated wallet',
       );
     }
 
@@ -80,6 +111,7 @@ export class EscrowService {
       dto.candidateWallet,
       'candidateWallet',
     );
+    await this.ensureCandidateWalletBelongsToCandidate(candidateWallet);
     const onChainState = await this.solana.getEscrowState(escrowAddress);
     this.ensureEmployerMatches(
       job.company.walletAddress,
@@ -170,11 +202,62 @@ export class EscrowService {
       include: { company: true },
     });
 
-    if (!job || job.companyId !== companyId) {
+    if (!job) {
       throw new NotFoundException('Job post not found');
+    }
+    if (job.companyId !== companyId) {
+      throw new ForbiddenException(
+        'Authenticated company does not own job post',
+      );
     }
 
     return job;
+  }
+
+  private getVerifiedEmployerWallet(
+    job: Awaited<ReturnType<EscrowService['getCompanyJob']>>,
+    employerWalletPubkey: string,
+  ) {
+    const employerWallet = job.company.walletAddress;
+    if (!employerWallet) {
+      throw new BadRequestException('Employer company has no wallet address');
+    }
+
+    const normalizedCompanyWallet = this.solana.validatePublicKey(
+      employerWallet,
+      'company.walletAddress',
+    );
+    const normalizedAuthenticatedWallet = this.solana.validatePublicKey(
+      employerWalletPubkey,
+      'req.user.walletPubkey',
+    );
+
+    if (normalizedCompanyWallet !== normalizedAuthenticatedWallet) {
+      throw new ForbiddenException(
+        'Authenticated wallet does not match employer company wallet',
+      );
+    }
+
+    return normalizedAuthenticatedWallet;
+  }
+
+  private async ensureCandidateWalletBelongsToCandidate(
+    candidateWallet: string,
+  ) {
+    const profile = await this.prisma.web3Profile.findFirst({
+      where: {
+        solanaAddress: candidateWallet,
+        user: { role: UserRole.CANDIDATE },
+        devCandidate: { candidate: { is: {} } },
+      },
+      select: { userId: true },
+    });
+
+    if (!profile) {
+      throw new BadRequestException(
+        'candidateWallet is not linked to a candidate profile',
+      );
+    }
   }
 
   private verifiedStoredEscrowAddress(
@@ -211,12 +294,25 @@ export class EscrowService {
     }
   }
 
-  private parseU64(value: string, fieldName: string): bigint {
-    const parsed = BigInt(value);
-    if (parsed < 0n || parsed > 18_446_744_073_709_551_615n) {
-      throw new BadRequestException(`${fieldName} must fit in u64`);
+  private decimalToAtomicUnits(value: { toString(): string }): bigint {
+    const decimal = value.toString();
+    const match = decimal.match(/^(\d+)(?:\.(\d+))?$/);
+    if (!match) {
+      throw new BadRequestException('Job amount is invalid');
     }
-    return parsed;
+
+    const whole = match[1];
+    const fraction = match[2] ?? '';
+    if (fraction.length > 6) {
+      throw new BadRequestException('Job amount has more than 6 decimals');
+    }
+
+    const atomicUnits = BigInt(`${whole}${fraction.padEnd(6, '0')}`);
+    if (atomicUnits <= 0n || atomicUnits > 18_446_744_073_709_551_615n) {
+      throw new BadRequestException('Job amount must fit in u64 token units');
+    }
+
+    return atomicUnits;
   }
 
   private serializeJob<T extends { escrowId: bigint | null }>(job: T) {

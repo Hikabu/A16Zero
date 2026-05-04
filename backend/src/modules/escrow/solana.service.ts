@@ -17,6 +17,13 @@ export interface EscrowOnChainState {
 const ESCROW_PROGRAM_ID = new PublicKey(
   '4jmvrfqG2Mhx9Wc92NaJvXwzNp2d6xAHFfymz6N3x1Ar',
 );
+const USDT_MINT = new PublicKey('29NaQXG4m9LYBgptcDrpm4fUCkehFiToSgDWjPbcC4GD');
+const TOKEN_PROGRAM_ID = new PublicKey(
+  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+);
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
+);
 
 const ESCROW_DISCRIMINATOR = createHash('sha256')
   .update('account:Escrow')
@@ -36,15 +43,21 @@ export class SolanaService {
     this.connection = new Connection(rpcUrl, 'confirmed');
   }
 
-  derivePDA(employerPubkey: string, escrowId: bigint): string {
-    const employer = this.publicKeyFromString(employerPubkey, 'employerPubkey');
+  deriveEscrowPda(employerPubkey: PublicKey, escrowId: bigint): PublicKey {
     const escrowIdBytes = Buffer.alloc(8);
     escrowIdBytes.writeBigUInt64LE(escrowId);
 
     const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('escrow'), employer.toBuffer(), escrowIdBytes],
+      [Buffer.from('escrow'), employerPubkey.toBuffer(), escrowIdBytes],
       ESCROW_PROGRAM_ID,
     );
+
+    return pda;
+  }
+
+  derivePDA(employerPubkey: string, escrowId: bigint): string {
+    const employer = this.publicKeyFromString(employerPubkey, 'employerPubkey');
+    const pda = this.deriveEscrowPda(employer, escrowId);
 
     return pda.toBase58();
   }
@@ -61,6 +74,11 @@ export class SolanaService {
 
     if (BigInt(state.amount) !== expectedAmount) {
       throw new BadRequestException('On-chain escrow amount mismatch');
+    }
+
+    const vaultAmount = await this.getEscrowVaultAmount(address);
+    if (vaultAmount !== expectedAmount) {
+      throw new BadRequestException('On-chain escrow vault amount mismatch');
     }
 
     return state;
@@ -85,6 +103,50 @@ export class SolanaService {
 
   validatePublicKey(value: string, fieldName: string): string {
     return this.publicKeyFromString(value, fieldName).toBase58();
+  }
+
+  parsePublicKey(value: string, fieldName: string): PublicKey {
+    return this.publicKeyFromString(value, fieldName);
+  }
+
+  private async getEscrowVaultAmount(address: string): Promise<bigint> {
+    const escrowAddress = this.publicKeyFromString(address, 'escrowAddress');
+    const vaultAddress = this.deriveAssociatedTokenAddress(escrowAddress);
+    const account = await this.connection.getAccountInfo(vaultAddress);
+
+    if (!account) {
+      throw new NotFoundException('Escrow vault not found on-chain');
+    }
+
+    if (!account.owner.equals(TOKEN_PROGRAM_ID)) {
+      throw new BadRequestException(
+        'Escrow vault is not owned by token program',
+      );
+    }
+
+    if (account.data.length < 72) {
+      throw new BadRequestException('Escrow vault data is too short');
+    }
+
+    const mint = new PublicKey(account.data.subarray(0, 32));
+    const owner = new PublicKey(account.data.subarray(32, 64));
+    if (!mint.equals(USDT_MINT)) {
+      throw new BadRequestException('Escrow vault mint mismatch');
+    }
+    if (!owner.equals(escrowAddress)) {
+      throw new BadRequestException('Escrow vault authority mismatch');
+    }
+
+    return account.data.readBigUInt64LE(64);
+  }
+
+  private deriveAssociatedTokenAddress(owner: PublicKey): PublicKey {
+    const [address] = PublicKey.findProgramAddressSync(
+      [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), USDT_MINT.toBuffer()],
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+    );
+
+    return address;
   }
 
   private decodeEscrowAccount(data: Buffer): EscrowOnChainState {
