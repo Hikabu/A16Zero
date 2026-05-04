@@ -41,6 +41,12 @@ const escrowJobExample = {
   escrowStatus: 'FUNDED',
 };
 
+const initParamsExample = {
+  escrowId: '1234567890123456789',
+  expectedAmount: '250000000',
+  escrowAddress: ESCROW_ADDRESS,
+};
+
 const statusExample = {
   dbState: {
     jobPostId: JOB_POST_ID,
@@ -68,6 +74,38 @@ const errorSchema = (statusCode: number, message: string, error: string) => ({
 export class EscrowController extends BaseController {
   constructor(private readonly escrowService: EscrowService) {
     super();
+  }
+
+  @Get('init-params/:jobPostId')
+  @ApiOperation({
+    summary: 'Get escrow initialization params',
+    description:
+      'Employer-only endpoint called before creating escrow on-chain. The backend derives the deterministic escrow id from the job UUID, derives the PDA from the authenticated employer wallet, and returns the exact USDT amount in 6-decimal base units.',
+  })
+  @ApiParam({
+    name: 'jobPostId',
+    description: 'Job post id owned by the authenticated employer.',
+    example: JOB_POST_ID,
+  })
+  @ApiOkResponse({
+    description: 'Escrow init params returned.',
+    schema: { example: { success: true, data: initParamsExample } },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid JWT.',
+    schema: errorSchema(401, 'Unauthorized', 'Unauthorized'),
+  })
+  @ApiForbiddenResponse({
+    description: 'Authenticated company or wallet does not own the job post.',
+    schema: errorSchema(403, 'Forbidden resource', 'Forbidden'),
+  })
+  async initParams(@Req() req: any, @Param('jobPostId') jobPostId: string) {
+    const result = await this.escrowService.getInitParams(
+      this.getCompanyId(req),
+      this.getWalletPubkey(req),
+      jobPostId,
+    );
+    return this.handleSuccess(result);
   }
 
   @Post('confirm-funded')
@@ -106,7 +144,11 @@ export class EscrowController extends BaseController {
     schema: errorSchema(409, 'Escrow already funded', 'Conflict'),
   })
   async confirmFunded(@Req() req: any, @Body() dto: ConfirmFundedDto) {
-    const result = await this.escrowService.confirmFunded(req.user.id, dto);
+    const result = await this.escrowService.confirmFunded(
+      this.getCompanyId(req),
+      this.getWalletPubkey(req),
+      dto,
+    );
     return this.handleSuccess(result, 'Escrow funded on-chain');
   }
 
@@ -151,7 +193,10 @@ export class EscrowController extends BaseController {
     schema: errorSchema(409, 'Candidate already set', 'Conflict'),
   })
   async setCandidate(@Req() req: any, @Body() dto: SetCandidateDto) {
-    const result = await this.escrowService.setCandidate(req.user.id, dto);
+    const result = await this.escrowService.setCandidate(
+      this.getCompanyId(req),
+      dto,
+    );
     return this.handleSuccess(result, 'Candidate wallet saved');
   }
 
@@ -195,7 +240,10 @@ export class EscrowController extends BaseController {
     schema: errorSchema(409, 'Escrow already resolved', 'Conflict'),
   })
   async confirmReleased(@Req() req: any, @Body() dto: ConfirmResolvedDto) {
-    const result = await this.escrowService.confirmReleased(req.user.id, dto);
+    const result = await this.escrowService.confirmReleased(
+      this.getCompanyId(req),
+      dto,
+    );
     return this.handleSuccess(result, 'Escrow released on-chain');
   }
 
@@ -239,7 +287,10 @@ export class EscrowController extends BaseController {
     schema: errorSchema(409, 'Escrow already released', 'Conflict'),
   })
   async confirmRefunded(@Req() req: any, @Body() dto: ConfirmResolvedDto) {
-    const result = await this.escrowService.confirmRefunded(req.user.id, dto);
+    const result = await this.escrowService.confirmRefunded(
+      this.getCompanyId(req),
+      dto,
+    );
     return this.handleSuccess(result, 'Escrow refunded on-chain');
   }
 
@@ -275,7 +326,18 @@ export class EscrowController extends BaseController {
     schema: errorSchema(409, 'Escrow state conflict', 'Conflict'),
   })
   async status(@Req() req: any, @Param('jobPostId') jobPostId: string) {
-    const result = await this.escrowService.status(req.user.id, jobPostId);
+    const result = await this.escrowService.status(
+      this.getCompanyId(req),
+      jobPostId,
+    );
     return this.handleSuccess(result);
+  }
+
+  private getCompanyId(req: any): string {
+    return req.user.companyId ?? req.user.id;
+  }
+
+  private getWalletPubkey(req: any): string {
+    return req.user.walletPubkey ?? req.user.walletAddress;
   }
 }
