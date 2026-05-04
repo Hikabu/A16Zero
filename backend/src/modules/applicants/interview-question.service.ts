@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
+// import { GoogleGenAI } from '@google/generative-ai';
 import { PipelineStage } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 

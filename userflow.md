@@ -421,7 +421,61 @@ GET /applications/hr/{appId}/interview-questions
 
 ---
 
-# 8. Close Job
+# 8. Escrow
+
+Payment escrow management for job compensation.
+
+## Set Candidate Wallet
+
+```
+POST /escrow/set-candidate
+```
+
+* Store candidate wallet address for payment
+
+---
+
+## Confirm Funded
+
+```
+POST /escrow/confirm-funded
+```
+
+* Confirm escrow has been funded on-chain
+
+---
+
+## Confirm Released
+
+```
+POST /escrow/confirm-released
+```
+
+* Confirm payment has been released to candidate
+
+---
+
+## Confirm Refunded
+
+```
+POST /escrow/confirm-refunded
+```
+
+* Confirm escrow has been refunded (if job cancelled)
+
+---
+
+## Check Escrow Status
+
+```
+GET /escrow/status/{jobPostId}
+```
+
+* Get current escrow status for a job posting
+
+---
+
+# 9. Close Job
 
 ```
 POST /jobs/{id}/close

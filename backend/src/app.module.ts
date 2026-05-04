@@ -22,6 +22,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ApplicantsModule } from './modules/applicants/applicants.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { WalletSyncModule } from './modules/wallet-sync/wallet-sync.module';
+import { EscrowModule } from './modules/escrow/escrow.module';
 
 @Module({
   providers: [
@@ -69,6 +70,7 @@ import { WalletSyncModule } from './modules/wallet-sync/wallet-sync.module';
     CompaniesModule,
     VouchersModule,
     WalletSyncModule,
+    EscrowModule,
   ],
 })
 export class AppModule {}
