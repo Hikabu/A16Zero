@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { GithubAdapterService } from '../src/scoring/github-adapter/github-adapter.service';
-import { SignalExtractorService } from '../src/scoring/signal-extractor/signal-extractor.service';
-import { ScoringService } from '../src/scoring/scoring-service/scoring.service';
-import { SummaryGeneratorService } from '../src/scoring/summary-generator/summary-generator.service';
+import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
+import { SignalExtractorService } from '../src/modules/scoring/signal-extractor/signal-extractor.service';
+import { ScoringService } from '../src/modules/scoring/scoring-service/scoring.service';
+import { SummaryGeneratorService } from '../src/modules/scoring/summary-generator/summary-generator.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { performance } from 'perf_hooks';
-import { ALEX_BACKEND } from '../src/scoring/signal-extractor/__fixtures__/seed-developers';
+import { ALEX_BACKEND } from '../src/modules/scoring/signal-extractor/__fixtures__/seed-developers';
 
 // Mock Octokit to return instantly
 jest.mock('octokit', () => {

@@ -1,5 +1,5 @@
 process.env.DATABASE_URL =
-  'postgresql://user:password@localhost:5432/a16zero_test';
+  'postgresql://user:paswd@localhost:5432/16signals_test';
 
 jest.mock(
   'otplib',
@@ -18,7 +18,7 @@ jest.mock(
   { virtual: true },
 );
 process.env.DATABASE_URL =
-  'postgresql://user:password@localhost:5432/a16zero_test';
+  'postgresql://user:paswd@localhost:5432/16signals_test';
 
 jest.mock(
   'otplib',

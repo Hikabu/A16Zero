@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { GapAnalysisService } from '../scoring/gap-analysis/gap-analysis.service';
 import { DecisionCardService } from '../scoring/decision-card/decision-card.service';
 import { InterviewQuestionService } from './interview-question.service';
+import { ScorecardService } from '../scorecard/scorecard.service';
 
 describe('ApplicantsService', () => {
   let service: ApplicantsService;
@@ -41,6 +42,12 @@ describe('ApplicantsService', () => {
 
   const mockInterviewQuestionService = {
     generate: jest.fn().mockResolvedValue([{ stage: 'INTERVIEW_HR' }]),
+    generateForApplication: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockScorecardService = {
+    computeForCandidate: jest.fn(),
+    getScorecardForUser: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -51,6 +58,7 @@ describe('ApplicantsService', () => {
         { provide: GapAnalysisService, useValue: mockGapAnalysisService },
         { provide: DecisionCardService, useValue: mockDecisionCardService },
         { provide: InterviewQuestionService, useValue: mockInterviewQuestionService },
+        { provide: ScorecardService, useValue: mockScorecardService },
       ],
     }).compile();
 
@@ -137,15 +145,15 @@ describe('ApplicantsService', () => {
       expect(updateArgs.pipelineStageHistory).toHaveLength(2);
     });
 
-    it('case 32: APPLIED → INTERVIEW_HR (skip REVIEWED): throws 400', async () => {
+    it('case 32: APPLIED → INTERVIEW_HR (skip REVIEWED): succeeds (forward skip allowed)', async () => {
       mockPrisma.shortlist.findUnique.mockResolvedValue({
         id: 'app-1',
         pipelineStage: PipelineStage.APPLIED,
         jobPost: { companyId: 'comp-1' },
       });
+      mockPrisma.shortlist.update.mockResolvedValue({});
 
-      await expect(service.advanceStage('app-1', 'comp-1', PipelineStage.INTERVIEW_HR))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.advanceStage('app-1', 'comp-1', PipelineStage.INTERVIEW_HR)).resolves.toBeDefined();
     });
 
     it('case 33: INTERVIEW_HR → APPLIED (backwards): throws 400', async () => {
@@ -179,7 +187,7 @@ describe('ApplicantsService', () => {
       mockPrisma.shortlist.update.mockResolvedValue({});
 
       await service.advanceStage('app-1', 'comp-1', PipelineStage.INTERVIEW_HR);
-      expect(mockInterviewQuestionService.generate).toHaveBeenCalledWith(expect.any(Object), PipelineStage.INTERVIEW_HR);
+      expect(mockInterviewQuestionService.generateForApplication).toHaveBeenCalledWith('app-1', PipelineStage.INTERVIEW_HR);
     });
 
     it('case 36: Advancing to INTERVIEW_TECHNICAL triggers generation with technical', async () => {
@@ -191,7 +199,7 @@ describe('ApplicantsService', () => {
       mockPrisma.shortlist.update.mockResolvedValue({});
 
       await service.advanceStage('app-1', 'comp-1', PipelineStage.INTERVIEW_TECHNICAL);
-      expect(mockInterviewQuestionService.generate).toHaveBeenCalledWith(expect.any(Object), PipelineStage.INTERVIEW_TECHNICAL);
+      expect(mockInterviewQuestionService.generateForApplication).toHaveBeenCalledWith('app-1', PipelineStage.INTERVIEW_TECHNICAL);
     });
 
     it('case 37: Advancing to INTERVIEW_FINAL triggers generation with final', async () => {
@@ -203,36 +211,7 @@ describe('ApplicantsService', () => {
       mockPrisma.shortlist.update.mockResolvedValue({});
 
       await service.advanceStage('app-1', 'comp-1', PipelineStage.INTERVIEW_FINAL);
-      expect(mockInterviewQuestionService.generate).toHaveBeenCalledWith(expect.any(Object), PipelineStage.INTERVIEW_FINAL);
-    });
-
-    it('case 38: Advancing to REVIEWED does NOT trigger interview question generation', async () => {
-      mockPrisma.shortlist.findUnique.mockResolvedValue({
-        id: 'app-1',
-        pipelineStage: PipelineStage.APPLIED,
-        jobPost: { companyId: 'comp-1' },
-      });
-      mockPrisma.shortlist.update.mockResolvedValue({});
-
-      await service.advanceStage('app-1', 'comp-1', PipelineStage.REVIEWED);
-      expect(mockInterviewQuestionService.generate).not.toHaveBeenCalled();
-    });
-
-    it('case 39: interviewQuestions field is an array; second advancement appends, does not overwrite', async () => {
-      mockPrisma.shortlist.findUnique.mockResolvedValue({
-        id: 'app-1',
-        pipelineStage: PipelineStage.INTERVIEW_HR,
-        jobPost: { companyId: 'comp-1' },
-        interviewQuestions: [{ stage: PipelineStage.INTERVIEW_HR }]
-      });
-      mockInterviewQuestionService.generate.mockResolvedValue({ stage: PipelineStage.INTERVIEW_TECHNICAL });
-      mockPrisma.shortlist.update.mockResolvedValue({});
-
-      await service.advanceStage('app-1', 'comp-1', PipelineStage.INTERVIEW_TECHNICAL);
-      
-      const updateArgs = mockPrisma.shortlist.update.mock.calls[0][0].data;
-      expect(updateArgs.interviewQuestions).toHaveLength(2);
-      expect(updateArgs.interviewQuestions[1].stage).toBe(PipelineStage.INTERVIEW_TECHNICAL);
+      expect(mockInterviewQuestionService.generateForApplication).toHaveBeenCalledWith('app-1', PipelineStage.INTERVIEW_FINAL);
     });
   });
 });

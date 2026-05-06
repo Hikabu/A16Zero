@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JobsService } from './jobs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobStatus, RoleType, Seniority } from '@prisma/client';
+import { NotFoundException } from '@nestjs/common';
 import { AppException } from '../../shared/app.exception';
 
 describe('JobsService', () => {
@@ -48,7 +49,6 @@ describe('JobsService', () => {
         title: 'Backend Engineer',
         description: 'Job description',
         bonusAmount: 1000,
-        roleType: RoleType.BACKEND,
       };
 
       mockPrismaService.jobPost.create.mockResolvedValue({ id: 'job-1', ...dto, companyId, status: JobStatus.DRAFT });
@@ -127,10 +127,12 @@ describe('JobsService', () => {
       expect(result.applicationCount).toBe(5);
     });
 
-    it('should throw AppException if job not found', async () => {
+    it('should throw NotFoundException if job not found', async () => {
       mockPrismaService.jobPost.findUnique.mockResolvedValue(null);
 
-      await expect(service.getPublicJobById('invalid')).rejects.toThrow(AppException);
+      await expect(service.getPublicJobById('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

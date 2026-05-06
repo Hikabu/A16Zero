@@ -4,15 +4,15 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { GithubAdapterService } from '../src/scoring/github-adapter/github-adapter.service';
+import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
 import {
   ALEX_BACKEND,
   SARAH_FULLSTACK,
   MAYA_DEVOPS,
   NEW_DEV,
   GHOST_PROFILE,
-} from '../src/scoring/signal-extractor/__fixtures__/seed-developers';
-import { AnalysisResult } from '../src/scoring/types/result.types';
+} from '../src/modules/scoring/signal-extractor/__fixtures__/seed-developers';
+import { AnalysisResult } from '../src/modules/scoring/types/result.types';
 import { PrismaService } from '../src/prisma/prisma.service';
 import Redis from 'ioredis';
 import { WorkerModule } from '../src/queues/worker.module';

@@ -3,7 +3,7 @@ import { INestApplication, HttpStatus, ValidationPipe, ExecutionContext } from '
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { GithubAdapterService } from '../src/scoring/github-adapter/github-adapter.service';
+import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
 import { SolanaAdapterService } from '../src/modules/scoring/web3-adapter/solana-adapter.service';
 import { OptionalJwtAuthGuard } from '../src/modules/auth-candidate/guards/optional-jwt-auth.guard';
 import Redis from 'ioredis';

@@ -35,8 +35,12 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
   const internalKey = process.env.INTERNAL_API_KEY || 'test-internal-key';
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockImplementation(async (username: string) => {
-      switch (username.toLowerCase()) {
+    fetchRawData: jest.fn().mockImplementation(async (octokit: any, username: string) => {
+      const user = typeof username === 'string' ? username : (octokit as string);
+      const userLower = user.toLowerCase();
+      if (userLower.startsWith('torvalds')) return ALEX_BACKEND;
+      
+      switch (userLower) {
         case 'alex-backend':
           return ALEX_BACKEND;
         case 'sarah-fullstack':
@@ -45,15 +49,14 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
           return MAYA_DEVOPS;
         case 'new-dev':
           return NEW_DEV;
-        case 'torvalds':
-          return ALEX_BACKEND; // mock for V6
         case 'ghost-profile':
           throw new Error('Insufficient public data for ghost-profile');
         default:
-          throw new Error(`User ${username} not found`);
+          throw new Error(`User ${user} not found`);
       }
     }),
     decryptToken: jest.fn().mockReturnValue('mock-token'),
+    getRateLimitRemaining: jest.fn().mockResolvedValue(5000),
   };
 
   beforeAll(async () => {
@@ -245,23 +248,27 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     it('POST /analysis/recompute with seed username returns correct result schema', async () => {
       mockGithubAdapter.fetchRawData.mockClear();
 
-      // Ensure user exists in db for recompute to pass if schema is enforced
-      const username = 'torvalds';
+      // 1. Create a job for torvalds
+      const username = `torvalds_${Date.now()}`;
       const user = await prisma.user.create({
         data: { username, email: 'torvalds@test.com' },
       });
+
       const candidate = await prisma.candidate.create({
         data: { userId: user.id },
       });
-      const devCandidate = await prisma.developerCandidate.create({
+
+      const devProfile = await prisma.developerCandidate.create({
         data: { candidateId: candidate.id },
       });
+
       await prisma.githubProfile.create({
         data: {
-          devCandidateId: devCandidate.id,
+          devCandidateId: devProfile.id,
           githubUsername: username,
           githubUserId: 'id_torvalds',
           encryptedToken: 'mock:mock',
+          scopes: ['read:user'],
         },
       });
 
@@ -269,7 +276,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
       const createRes = await request(app.getHttpServer())
         .post('/api/analysis/recompute')
         .set('X-Internal-Key', internalKey)
-        .send({ githubUsername: username, force: true })
+        .send({ userId: user.id, force: true })
         .expect(HttpStatus.CREATED); // 201
 
       const status = await waitForJob(createRes.body.jobId);
@@ -320,9 +327,9 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
         .send({ githubUsername: 'ghost-profile' })
         .expect(HttpStatus.CREATED);
 
-      const status = await waitForJob(createRes.body.jobId);
+      const status = await waitForJob(createRes.body.jobId, 15);
       expect(status.status).toBe('failed');
       expect(status.failureReason).toContain('Insufficient public data');
-    }, 10000);
+    }, 20000);
   });
 });

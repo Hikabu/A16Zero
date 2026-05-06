@@ -37,6 +37,8 @@ describe('AnalysisController (integration)', () => {
   });
 
   afterEach(async () => {
+    // Clean up all jobs to prevent cross-test contamination
+    await prisma.analysisJob.deleteMany({});
     // Cleanup users created in tests - cascading delete should handle profiles/candidates
     await prisma.user.deleteMany({
       where: {
@@ -96,7 +98,7 @@ describe('AnalysisController (integration)', () => {
       const response = await supertest(app.getHttpServer())
         .post('/api/analysis/recompute')
         .set('x-internal-key', internalKey)
-        .send({ githubUsername: username }); // Use dynamic username
+        .send({ userId: user.id }); // Use dynamic user.id
 
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('jobId', expect.any(String));
@@ -106,7 +108,6 @@ describe('AnalysisController (integration)', () => {
           jobId: expect.any(String),
           githubUsername: username,
         }),
-        expect.any(Object), // matches { attempts: 1 }
       );
     });
 
