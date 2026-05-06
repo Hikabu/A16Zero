@@ -8,6 +8,19 @@ import * as crypto from 'crypto';
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+export const getCookieValue = (
+  setCookie: string[] | string | undefined,
+  name: string,
+) => {
+  const cookies = Array.isArray(setCookie)
+    ? setCookie
+    : setCookie
+      ? [setCookie]
+      : [];
+  const cookie = cookies.find((value) => value.startsWith(`${name}=`));
+  return cookie?.split(';')[0].slice(name.length + 1);
+};
+
 export const resetBefore = async () => {
 
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -33,6 +46,8 @@ export const resetBefore = async () => {
 };
 
 export const resetAfter = async (app: INestApplication<App>) => {
+  if (!app) return;
+
   const prisma = app.get(PrismaService);
   try {
     await prisma.$disconnect();

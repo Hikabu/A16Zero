@@ -26,6 +26,7 @@ constructor(
   if (!storedJti) throw new UnauthorizedException();
 
   if (storedJti !== payload.jti) {
+    await this.redis.del(`refresh:${payload.sub}`);
     throw new UnauthorizedException('Refresh token revoked');
   }
 

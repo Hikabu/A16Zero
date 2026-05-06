@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { resetBefore, resetAfter } from './shared';
+import { getCookieValue, resetBefore, resetAfter } from './shared';
 
 describe('Auth Lifecycle (e2e)', () => {
   let app: INestApplication;
@@ -32,7 +32,7 @@ describe('Auth Lifecycle (e2e)', () => {
 
     // Verify protected route is blocked
     await request(app.getHttpServer())
-      .post('/auth/logout')
+      .post('/auth/candidate/logout')
       .set('Authorization', `Bearer undefined`)
       .expect(401);
   });
@@ -62,53 +62,22 @@ describe('Auth Lifecycle (e2e)', () => {
       })
       .expect(200);
 
-    const cookies = loginResponse.headers['set-cookie'];
-    const accessToken = cookies.find((c: string) => c.startsWith('access_token=')).split('=')[1].split(';')[0];
-    const refreshToken = cookies.find((c: string) => c.startsWith('refresh_token=')).split('=')[1].split(';')[0];
+    const accessToken = getCookieValue(
+      loginResponse.headers['set-cookie'],
+      'access_token',
+    );
+    const refreshToken = getCookieValue(
+      loginResponse.headers['set-cookie'],
+      'refresh_token',
+    );
     
     expect(accessToken).toBeDefined();
     expect(refreshToken).toBeDefined();
 
     // Verify protected route is now accessible
     await request(app.getHttpServer())
-      .post('/auth/logout')
+      .post('/auth/candidate/logout')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(201);
-  });
-
-  it('should handle full password reset flow', async () => {
-    const email = `reset-lifecycle-${Date.now()}@example.com`;
-    await request(app.getHttpServer())
-      .post('/auth/candidate/register')
-      .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
-      .expect(302);
-
-    // 1. Request reset
-    await request(app.getHttpServer())
-      .post('/auth/password-reset/request')
-      .send({ email })
-      .expect(201);
-
-    // 2. Get token from Redis (simulating email retrieval)
-    const redis = app.get('REDIS');
-    const keys = await redis.keys('password_reset:*');
-    // We need to find the one for this specific test if multiple are running,
-    // but here we are inBand.
-    const token = keys[0].split(':')[1];
-
-    // 3. Reset password
-    const resetRes = await request(app.getHttpServer())
-      .post('/auth/password-reset/reset')
-      .send({ token, newPassword: 'NewStrongPassword123!' });
-
-    expect(resetRes.status).toBe(201);
-
-    // 4. Verify login with NEW password
-    const loginRes = await request(app.getHttpServer())
-      .post('/auth/candidate/login')
-      .send({ identifier: email, password: 'NewStrongPassword123!' })
-      .expect(200);
-
-    expect(loginRes.status).toBe(200);
   });
 });

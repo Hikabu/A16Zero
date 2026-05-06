@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { resetBefore, resetAfter } from './shared';
+import { getCookieValue, resetAfter } from './shared';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -62,17 +62,19 @@ describe('Auth Hijacking Prevention (e2e)', () => {
         identifier: targetUser.email,
         password: targetUser.password,
       })
-      .expect(201);
+      .expect(200);
 
     // The account is verified by default in some test setups or we manually update it
     // Let's assume the user is logged in.
-    const jwt = loginResponse.body.accessToken;
+    const jwt = getCookieValue(loginResponse.headers['set-cookie'], 'access_token');
 
     // 2. Attacker attempts to link THEIR social account to TARGET'S user ID
     // using a predictable state if the system allowed it.
     // Our fix uses random state in Redis.
 
-    const maliciousCallbackUrl = `/auth/github/link/callback?state=${loginResponse.body.id || 'target_user_id'}`;
+    const maliciousCallbackUrl = `/auth/candidate/github/link/callback?state=${
+      loginResponse.body.id || 'target_user_id'
+    }`;
 
     await request(app.getHttpServer())
       .get(maliciousCallbackUrl)

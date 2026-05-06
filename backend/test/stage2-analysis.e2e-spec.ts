@@ -90,7 +90,7 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
   };
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockImplementation(async (username: string) => {
+    fetchRawData: jest.fn().mockImplementation(async (_octokit: any, username: string) => {
       if (!mockGithubProfiles[username])
         throw new Error('Not found user: ' + username);
       return mockGithubProfiles[username];
@@ -227,7 +227,7 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
       .send({ walletAddress: 'NOT_VALID!!!' })
       .expect(HttpStatus.BAD_REQUEST);
 
-    expect(JSON.stringify(res.body.message)).toContain('Validation failed');
+    expect(JSON.stringify(res.body.message)).toContain('Invalid Solana wallet');
   });
 
   it('4. Input validation: POST /analysis {} (no fields)', async () => {
@@ -236,7 +236,9 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
       .send({})
       .expect(HttpStatus.BAD_REQUEST);
 
-    expect(JSON.stringify(res.body.message)).toContain('Validation failed');
+    expect(JSON.stringify(res.body.message)).toContain(
+      'githubUsername or walletAddress is required',
+    );
   });
 
   it('5. Wallet-only mode', async () => {

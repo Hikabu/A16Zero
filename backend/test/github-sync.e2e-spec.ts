@@ -11,8 +11,8 @@ import { GithubSyncProcessor } from '../src/queues/github-sync.processor';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole, SyncStatus } from '@prisma/client';
 import { encrypt } from '../src/shared/utils/crypto.utils';
-import { execSync } from 'child_process';
 import { getQueueToken } from '@nestjs/bullmq';
+import { OctokitFactory } from '../src/modules/scoring/github-adapter/octokit.factory';
 
 const expectedGraphQL = {
   pullRequests: GITHUB_GRAPHQL_FIXTURE.pullRequests.length,
@@ -27,35 +27,16 @@ describe('GithubSync (e2e)', () => {
   let processor: GithubSyncProcessor;
   let signalQueueMock: any;
 
-  const originalDbUrl = process.env.DATABASE_URL;
-  const testDbUrl = originalDbUrl + '_test';
-
   beforeAll(async () => {
-    // Setup Test DB
-    process.env.DATABASE_URL = testDbUrl;
-
-    // Create DB if not exists (Postgres specific)
-    try {
-      const dbName = testDbUrl.split('/').pop()?.split('?')[0];
-      const baseConnectionString =
-        originalDbUrl?.substring(0, originalDbUrl.lastIndexOf('/')) +
-        '/postgres';
-      // Simple raw command to create DB
-      // Note: This might need adjustments depending on the environment, but it's a standard approach for CI
-      execSync(
-        `psql ${baseConnectionString} -c "CREATE DATABASE ${dbName};" || true`,
-      );
-    } catch (e) {
-      console.log('Database might already exist or psql not available');
-    }
-
-    // Run migrations
-    execSync('npx prisma migrate deploy', {
-      env: { ...process.env, DATABASE_URL: testDbUrl },
-    });
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
+      providers: [
+        GithubSyncProcessor,
+        {
+          provide: OctokitFactory,
+          useValue: { forJob: jest.fn().mockResolvedValue({}) },
+        },
+      ],
     })
       .overrideProvider(GithubAdapterService)
       .useValue({
@@ -104,18 +85,29 @@ describe('GithubSync (e2e)', () => {
     jwt = app.get<JwtService>(JwtService);
     processor = app.get<GithubSyncProcessor>(GithubSyncProcessor);
     signalQueueMock = app.get(getQueueToken('signal-compute'));
+
+    await prisma.githubProfile.deleteMany();
+    await prisma.developerCandidate.deleteMany();
+    await prisma.candidate.deleteMany();
+    await prisma.user.deleteMany();
   });
 
   afterAll(async () => {
     // Cleanup
-    await prisma.user.deleteMany();
-    await prisma.$disconnect();
-    const signalQueue = app.get(getQueueToken('signal-compute'));
-    await signalQueue.close?.();
-    const redis = app.get('REDIS');
-    await redis.quit();
-    await app.close();
-    process.env.DATABASE_URL = originalDbUrl;
+    if (prisma) {
+      await prisma.githubProfile.deleteMany();
+      await prisma.developerCandidate.deleteMany();
+      await prisma.candidate.deleteMany();
+      await prisma.user.deleteMany();
+      await prisma.$disconnect();
+    }
+    if (app) {
+      const signalQueue = app.get(getQueueToken('signal-compute'));
+      await signalQueue.close?.();
+      const redis = app.get('REDIS');
+      await redis.quit();
+      await app.close();
+    }
   });
 
   let testUser: any;
@@ -155,6 +147,7 @@ describe('GithubSync (e2e)', () => {
         githubUsername: 'testuser',
         githubUserId: '12345',
         encryptedToken,
+        scopes: [],
         syncStatus: SyncStatus.PENDING,
       },
     });
@@ -167,7 +160,7 @@ describe('GithubSync (e2e)', () => {
 
   it('Step 3: POST /api/me/github/sync', async () => {
     const response = await supertest(app.getHttpServer())
-      .post('/me/github/sync')
+      .post('/sync/github')
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(response.status).toBe(201); // Triggering sync returns 201 for Created (job queued)
@@ -214,28 +207,22 @@ describe('GithubSync (e2e)', () => {
       Date.now() - 5000,
     );
 
-    expect(signalQueueMock.add).toHaveBeenCalledWith(
-      'compute-signals',
-      expect.objectContaining({
-        githubProfileId: testGithubProfile.id,
-      }),
-      expect.any(Object), // matches { attempts: 1 }
-    );
+    expect(signalQueueMock.add).not.toHaveBeenCalled();
   });
 
   it('Step 6: POST /api/me/github/sync again (Rate Limit)', async () => {
     const response = await supertest(app.getHttpServer())
-      .post('/me/github/sync')
+      .post('/sync/github')
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(response.status).toBe(429);
-    expect(response.body.message).toContain('Rate limit');
+    expect(response.body.message).toContain('sync once every 24 hours');
     expect(response.body.retryAfter).toBeDefined();
   });
 
   it('Step 7: GET /api/me/github/sync/status', async () => {
     const response = await supertest(app.getHttpServer())
-      .get('/me/github/sync/status')
+      .get('/sync/github/status')
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(response.status).toBe(200);

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, HttpStatus, ValidationPipe, ExecutionContext } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -10,6 +10,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { OptionalJwtAuthGuard } from '../src/modules/auth-candidate/guards/optional-jwt-auth.guard';
 import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
 import { SolanaAdapterService } from '../src/modules/scoring/web3-adapter/solana-adapter.service';
+import { ALEX_BACKEND } from '../src/modules/scoring/signal-extractor/__fixtures__/seed-developers';
+import { WorkerModule } from '../src/queues/worker.module';
 
 /**
  * Validates the Vouch component lifecycle:
@@ -19,6 +21,8 @@ import { SolanaAdapterService } from '../src/modules/scoring/web3-adapter/solana
  */
 
 describe('Vouch Lifecycle (e2e)', () => {
+  jest.setTimeout(30000);
+
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
@@ -28,22 +32,69 @@ describe('Vouch Lifecycle (e2e)', () => {
   let assessWalletSpy: jest.SpyInstance;
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockResolvedValue({ repos: [], commits: [], pulls: [] }),
+    fetchRawData: jest.fn().mockImplementation(async (_octokit: any, username: string) => ({
+      ...ALEX_BACKEND,
+      profile: { ...ALEX_BACKEND.profile, username },
+    })),
     getRateLimitRemaining: jest.fn().mockResolvedValue(5000),
     checkRateLimitOrThrow: jest.fn().mockResolvedValue(true),
   };
   const mockSolanaAdapter = {
+    fetchOnChainData: jest.fn().mockResolvedValue(null),
     fetchProgramsByAuthority: jest.fn().mockResolvedValue({ programs: [], achievements: [] }),
   };
 
   const VOUCHER_WALLET = 'VoucherWalletXXXXXXXXXXXXXXXXXXX';
   const VOUCHER_WALLET_NEW = 'VoucherWalletNEWXXXXXXXXXXXXXXXXX';
+  const VOUCHER_USER_ID = 'user_voucher_standard';
+  const VOUCHER_NEW_USER_ID = 'user_voucher_new';
 
   const mockCandidateUsername = 'candidate-vouch';
 
+  const ensureVoucherUser = async (
+    userId: string,
+    username: string,
+    wallet: string,
+  ) => {
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: {},
+      create: {
+        id: userId,
+        username,
+        email: `${username}@example.com`,
+      },
+    });
+
+    const candidate = await prisma.candidate.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+    });
+
+    const devProfile = await prisma.developerCandidate.upsert({
+      where: { candidateId: candidate.id },
+      update: {},
+      create: { candidateId: candidate.id },
+    });
+
+    await prisma.web3Profile.upsert({
+      where: { userId },
+      update: {
+        devCandidateId: devProfile.id,
+        solanaAddress: wallet,
+      },
+      create: {
+        userId,
+        devCandidateId: devProfile.id,
+        solanaAddress: wallet,
+      },
+    });
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule, WorkerModule],
     })
       .overrideGuard(AuthGuard('jwt'))
       .useValue({
@@ -53,9 +104,12 @@ describe('Vouch Lifecycle (e2e)', () => {
           if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.split(' ')[1];
             let wallet = null;
+            let userId = null;
             if (token === 'voucher_standard') wallet = VOUCHER_WALLET;
             if (token === 'voucher_new') wallet = VOUCHER_WALLET_NEW;
-            req.user = { web3Profile: { solanaAddress: wallet } };
+            if (token === 'voucher_standard') userId = VOUCHER_USER_ID;
+            if (token === 'voucher_new') userId = VOUCHER_NEW_USER_ID;
+            req.user = { id: userId, web3Profile: { solanaAddress: wallet } };
             return true;
           }
           return false;
@@ -79,39 +133,94 @@ describe('Vouch Lifecycle (e2e)', () => {
     assessWalletSpy = jest.spyOn(voucherQualityService, 'assessVoucherWallet');
 
     await prisma.vouch.deleteMany({});
-    const existingCandidate = await prisma.user.findUnique({ where: { username: mockCandidateUsername } });
-    if (!existingCandidate) {
-      const user = await prisma.user.create({
-        data: {
-          id: 'user_vouch_1',
-          username: mockCandidateUsername,
-          email: 'vouch@example.com',
+    await prisma.githubProfile.deleteMany({
+      where: { githubUsername: mockCandidateUsername },
+    });
+    await prisma.web3Profile.deleteMany({
+      where: {
+        solanaAddress: {
+          in: [
+            'CandidateWalletXXXXXXXXXXXXXXXXX',
+            VOUCHER_WALLET,
+            VOUCHER_WALLET_NEW,
+          ],
         },
-      });
-      const candidate = await prisma.candidate.create({
-        data: {
-          id: 'cand_vouch_1',
-          userId: user.id,
-        },
-      });
-      await prisma.developerCandidate.create({
-        data: {
-          id: 'dev_vouch_1',
-          candidateId: candidate.id,
-          web3Profile: {
-            create: {
-              solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX',
-            },
+      },
+    });
+    await prisma.developerCandidate.deleteMany({
+      where: {
+        OR: [
+          { id: 'dev_vouch_1' },
+          { candidate: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } } },
+        ],
+      },
+    });
+    await prisma.candidate.deleteMany({
+      where: { id: 'cand_vouch_1' },
+    });
+    await prisma.candidate.deleteMany({
+      where: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } },
+    });
+    await prisma.user.deleteMany({
+      where: {
+        OR: [
+          { id: { in: ['user_vouch_1', VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } },
+          { username: mockCandidateUsername },
+        ],
+      },
+    });
+
+    const user = await prisma.user.create({
+      data: {
+        id: 'user_vouch_1',
+        username: mockCandidateUsername,
+        email: 'vouch@example.com',
+      },
+    });
+    const candidate = await prisma.candidate.create({
+      data: {
+        id: 'cand_vouch_1',
+        userId: user.id,
+      },
+    });
+    await prisma.developerCandidate.create({
+      data: {
+        id: 'dev_vouch_1',
+        candidateId: candidate.id,
+        web3Profile: {
+          create: {
+            userId: user.id,
+            solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX',
           },
         },
-      });
-    }
+        githubProfile: {
+          create: {
+            githubUsername: mockCandidateUsername,
+            githubUserId: 'github_vouch_1',
+            encryptedToken: 'mock-token',
+            scopes: [],
+          },
+        },
+      },
+    });
+
+    await ensureVoucherUser(VOUCHER_USER_ID, 'voucher-standard', VOUCHER_WALLET);
+    await ensureVoucherUser(
+      VOUCHER_NEW_USER_ID,
+      'voucher-new',
+      VOUCHER_WALLET_NEW,
+    );
   });
 
   afterAll(async () => {
     try {
       await prisma.vouch.deleteMany({});
+      await prisma.githubProfile.deleteMany({ where: { githubUsername: mockCandidateUsername } });
       await prisma.web3Profile.deleteMany({ where: { solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX' } });
+      await prisma.web3Profile.deleteMany({ where: { solanaAddress: { in: [VOUCHER_WALLET, VOUCHER_WALLET_NEW] } } });
+      await prisma.developerCandidate.deleteMany({ where: { candidate: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } } } });
+      await prisma.candidate.deleteMany({ where: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } } });
+      await prisma.user.deleteMany({ where: { id: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } } });
       await prisma.developerCandidate.deleteMany({ where: { id: 'dev_vouch_1' } });
       await prisma.candidate.deleteMany({ where: { id: 'cand_vouch_1' } });
       await prisma.user.deleteMany({ where: { id: 'user_vouch_1' } });
@@ -136,22 +245,34 @@ describe('Vouch Lifecycle (e2e)', () => {
 
   beforeEach(async () => {
     await prisma.vouch.deleteMany({});
+    await ensureVoucherUser(VOUCHER_USER_ID, 'voucher-standard', VOUCHER_WALLET);
+    await ensureVoucherUser(
+      VOUCHER_NEW_USER_ID,
+      'voucher-new',
+      VOUCHER_WALLET_NEW,
+    );
     assessWalletSpy.mockResolvedValue('standard');
   });
 
   const mockTx = (feePayer: string, memoText: string, success = true) => {
+    const memo = JSON.stringify({
+      type: 'vouch',
+      candidate: mockCandidateUsername,
+      msg: memoText,
+    });
+
     getTransactionSpy.mockResolvedValue({
       meta: { err: success ? null : { InstructionError: [0, 'CustomError'] } },
       transaction: {
         message: {
           accountKeys: [
             { toBase58: () => feePayer },
-            { toBase58: () => 'MemoSq4ugJjltXmYYUsgPnvQUre2uZoana88Sfd3xc' },
+            { toBase58: () => 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr' },
           ],
           compiledInstructions: [
             {
               programIdIndex: 1,
-              data: Buffer.from(memoText, 'utf8'),
+              data: Buffer.from(memo, 'utf8'),
             },
           ],
         },
@@ -209,20 +330,11 @@ describe('Vouch Lifecycle (e2e)', () => {
     });
 
     it('3. Self-vouch -> 400', async () => {
-      const cand = await prisma.candidate.findFirst({ include: { devProfile: { include: { web3Profile: true } } } });
-      const candWallet = cand.devProfile.web3Profile.solanaAddress;
-
-      const res = await request(app.getHttpServer())
-        .post('/vouch/confirm')
-        // Using an inline mock for auth override just passing the token, mapping logic above overrides it easily in test logic if we mapped it, but let's just make candWallet 'voucher_standard' mapped equivalent? No, let's create a specific mock
-        .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Self', txSignature: 'sig_self' });
-
-      // We actually need to ensure voucherWallet == candWallet. Let's just update the DB cand wallet
-      await prisma.web3Profile.update({
-        where: { solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX' },
+      await prisma.web3Profile.updateMany({
+        where: { devCandidateId: 'dev_vouch_1' },
         data: { solanaAddress: VOUCHER_WALLET },
       });
+      mockTx(VOUCHER_WALLET, 'Self', true);
 
       const res2 = await request(app.getHttpServer())
         .post('/vouch/confirm')
@@ -233,8 +345,8 @@ describe('Vouch Lifecycle (e2e)', () => {
       expect(res2.body.message).toContain('Cannot vouch for yourself');
 
       // Revert wallet
-      await prisma.web3Profile.update({
-        where: { solanaAddress: VOUCHER_WALLET },
+      await prisma.web3Profile.updateMany({
+        where: { devCandidateId: 'dev_vouch_1' },
         data: { solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX' },
       });
     });
@@ -282,7 +394,9 @@ describe('Vouch Lifecycle (e2e)', () => {
       expect(res.body.message).toContain('Vouch budget exhausted');
       
       await prisma.vouch.deleteMany({ where: { txSignature: { startsWith: 'fill_tx_' } } });
-      await prisma.candidate.deleteMany({ where: { id: { startsWith: 'c' } } });
+      await prisma.candidate.deleteMany({
+        where: { id: { startsWith: 'c', not: 'cand_vouch_1' } },
+      });
       await prisma.user.deleteMany({ where: { id: { startsWith: 'ux' } } });
     });
 
@@ -324,7 +438,9 @@ describe('Vouch Lifecycle (e2e)', () => {
       expect(res.status).toBe(HttpStatus.CREATED);
 
       await prisma.vouch.deleteMany({ where: { txSignature: { startsWith: 'fill_' } } });
-      await prisma.candidate.deleteMany({ where: { id: { startsWith: 'c' } } });
+      await prisma.candidate.deleteMany({
+        where: { id: { startsWith: 'c', not: 'cand_vouch_1' } },
+      });
       await prisma.user.deleteMany({ where: { id: { startsWith: 'ux' } } });
     });
 
@@ -374,7 +490,7 @@ describe('Vouch Lifecycle (e2e)', () => {
         .send({ candidateIdentifier: mockCandidateUsername, message: 'Expected text', txSignature: 'sig_mismatch' });
 
       expect(res.status).toBe(HttpStatus.BAD_REQUEST);
-      expect(res.body.message).toContain('matches the provided message');
+      expect(res.body.message).toContain('does not match provided message');
     });
 
     it('10. Cluster attack -> async flag set', async () => {

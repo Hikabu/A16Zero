@@ -17,13 +17,15 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import Redis from 'ioredis';
 import { WorkerModule } from '../src/queues/worker.module';
 describe('Colosseum Stage 2 Pipeline (E2E)', () => {
+  jest.setTimeout(30000);
+
   let app: INestApplication;
   let prisma: PrismaService;
   let redis: Redis;
   let githubAdapter: GithubAdapterService;
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockImplementation(async (username: string) => {
+    fetchRawData: jest.fn().mockImplementation(async (_octokit: any, username: string) => {
       switch (username) {
         case 'alex-backend':
           return ALEX_BACKEND;
@@ -88,7 +90,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     await redis.quit();
   });
 
-  const waitForJob = async (jobId: string, maxSeconds = 5): Promise<any> => {
+  const waitForJob = async (jobId: string, maxSeconds = 10): Promise<any> => {
     const start = Date.now();
     while (Date.now() - start < maxSeconds * 1000) {
       const res = await request(app.getHttpServer()).get(
@@ -319,11 +321,34 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
       mockGithubAdapter.fetchRawData.mockClear();
 
       const xKey = process.env.INTERNAL_API_KEY || 'default_timeout_for_tests';
-      // console.log("XKEY", xKey);
+      const user = await prisma.user.create({
+        data: {
+          email: 'recompute-alex@example.com',
+          username: 'recompute-alex',
+          isEmailVerified: true,
+          role: 'CANDIDATE',
+          candidate: {
+            create: {
+              devProfile: {
+                create: {
+                  githubProfile: {
+                    create: {
+                      githubUsername: 'alex-backend',
+                      githubUserId: 'recompute-alex',
+                      encryptedToken: 'mock-token',
+                      scopes: [],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
       const res = await request(app.getHttpServer())
         .post('/api/analysis/recompute')
         .set('X-Internal-Key', xKey)
-        .send({ githubUsername: 'alex-backend', force: true })
+        .send({ userId: user.id, force: true })
         .expect(HttpStatus.CREATED);
 
       expect(res.body.jobId).toBeDefined();

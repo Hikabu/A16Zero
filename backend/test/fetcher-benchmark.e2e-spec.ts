@@ -6,6 +6,8 @@ import { SummaryGeneratorService } from '../src/modules/scoring/summary-generato
 import { PrismaService } from '../src/prisma/prisma.service';
 import { performance } from 'perf_hooks';
 import { ALEX_BACKEND } from '../src/modules/scoring/signal-extractor/__fixtures__/seed-developers';
+import { EcosystemClassifierService } from '../src/modules/scoring/signal-extractor/ecosystem-clarifier.service';
+import { StackFingerprintService } from '../src/modules/scoring/signal-extractor/stack-fingerprint.service';
 
 // Mock Octokit to return instantly
 jest.mock('octokit', () => {
@@ -81,6 +83,8 @@ describe('Fetcher Performance Benchmark', () => {
         GithubAdapterService,
         SignalExtractorService,
         SummaryGeneratorService,
+        EcosystemClassifierService,
+        StackFingerprintService,
         ScoringService,
         {
           provide: PrismaService,
@@ -88,7 +92,10 @@ describe('Fetcher Performance Benchmark', () => {
         },
         {
           provide: 'REDIS',
-          useValue: { get: jest.fn().mockResolvedValue(null), set: jest.fn() },
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue('OK'),
+          },
         },
       ],
     }).compile();
@@ -102,9 +109,10 @@ describe('Fetcher Performance Benchmark', () => {
     const start = performance.now();
 
     // 1. Fetch
+    const { Octokit } = require('octokit');
     const rawData = await githubAdapter.fetchRawData(
+      new Octokit(),
       'alex-backend',
-      'mock-token',
     );
 
     // 2. Extract
