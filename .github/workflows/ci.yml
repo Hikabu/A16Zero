@@ -27,11 +27,24 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     env:
       DATABASE_URL: postgresql://postgres:strong@localhost:5432/16signals?schema=public&connection_limit=5&connect_timeout=10
       JWT_ACCESS_SECRET: test_secret
+      JWT_REFRESH_SECRET: test_refresh_secret
+      GITHUB_TOKEN: mock_token
       NODE_ENV: test
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
 
     steps:
       - uses: actions/checkout@v4
