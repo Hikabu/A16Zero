@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { resetBefore, resetAfter } from './shared';
-import { AuthService } from '../src/modules/auth-candidate/auth.candidate.service';
+import { getCookieValue, resetAfter } from './shared';
+import { AuthCandidateService } from '../src/modules/auth-candidate/auth.candidate.service';
 import { Test } from '@nestjs/testing';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -49,9 +49,9 @@ describe('Auth OAuth (e2e)', () => {
   describe('Claim-based Onboarding', () => {
     it('should issue an onboarding token for new social users', async () => {
       // Mocking the behavior of callback which calls oauthLogin
-      const authService: AuthService = app.get(AuthService);
+      const authService: AuthCandidateService = app.get(AuthCandidateService);
       const profile = {
-        id: 'external-id',
+        githubId: 'external-id',
         email: `social-${testShortId}@example.com`,
         firstName: 'Social',
         lastName: 'User',
@@ -59,19 +59,18 @@ describe('Auth OAuth (e2e)', () => {
 
       const res: any = await authService.oauthLogin(profile, 'GITHUB');
 
-      expect(res.needsOnboarding).toBe(true);
-      expect(res.tempToken).toBeDefined();
+      expect(res.type).toBe('NEEDS_ONBOARDING');
+      expect(res.data.tempToken).toBeDefined();
 
       // Complete onboarding via API
 
       const onboardingRes = await request(app.getHttpServer())
-        .post('/auth/onboarding')
-        .set('Authorization', `Bearer ${res.tempToken}`)
+        .post('/auth/candidate/onboarding')
+        .set('Authorization', `Bearer ${res.data.tempToken}`)
         .send({ username: `socialuser-${testShortId}` })
-        .expect(201);
+        .expect(200);
 
-      expect(onboardingRes.status).toBe(201);
-      expect(onboardingRes.body.accessToken).toBeDefined();
+      expect(getCookieValue(onboardingRes.headers['set-cookie'], 'access_token')).toBeDefined();
     });
   });
 
@@ -81,17 +80,17 @@ describe('Auth OAuth (e2e)', () => {
       // 1. Create a logged in user
       const email = `link-${testId}@example.com`;
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/auth/candidate/register')
         .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
-        .expect(201);
+        .expect(302);
 
       const loginRes = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/auth/candidate/login')
         .send({ identifier: email, password: 'StrongPassword123!' })
-        .expect(201);
+        .expect(302);
 
       // Verification stub
-      const authService = app.get(AuthService);
+      const authService = app.get(AuthCandidateService);
       const prisma = authService.prisma;
       await prisma.user.update({
         where: { email },
@@ -99,15 +98,18 @@ describe('Auth OAuth (e2e)', () => {
       });
 
       const verifiedLogin = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/auth/candidate/login')
         .send({ identifier: email, password: 'StrongPassword123!' })
-        .expect(201);
+        .expect(200);
 
-      const accessToken = verifiedLogin.body.accessToken;
+      const accessToken = getCookieValue(
+        verifiedLogin.headers['set-cookie'],
+        'access_token',
+      );
 
       // 2. Try to link with invalid state
       const linkRes = await request(app.getHttpServer())
-        .get('/auth/github/link/callback')
+        .get('/auth/candidate/github/link/callback')
         .set('Authorization', `Bearer ${accessToken}`)
         .query({ state: 'invalid-state', code: 'some-code' });
 
@@ -120,16 +122,16 @@ describe('Auth OAuth (e2e)', () => {
       // 1. Register but DON'T verify
       const email = `hijack-${testId}@example.com`;
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/auth/candidate/register')
         .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
-        .expect(201);
+        .expect(302);
 
       // 2. External provider returns same email
-      const authService = app.get(AuthService);
-      const profile = { id: 'ext-123', email, email_verified: true };
+      const authService = app.get(AuthCandidateService);
+      const profile = { githubId: 'ext-123', email, email_verified: true };
 
       await expect(authService.oauthLogin(profile, 'GITHUB')).rejects.toThrow(
-        'Email is already registered but not verified',
+        'Email registered but not verified',
       );
     });
   });

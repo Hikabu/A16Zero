@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { resetBefore, resetAfter } from './shared';
-import { AuthService } from '../src/modules/auth-candidate/auth.candidate.service';
+import { getCookieValue, resetBefore, resetAfter } from './shared';
+import { AuthCandidateService } from '../src/modules/auth-candidate/auth.candidate.service';
 
 describe('Auth MFA (e2e)', () => {
   let app: INestApplication;
@@ -17,9 +17,9 @@ describe('Auth MFA (e2e)', () => {
     // Register and verify a user for MFA tests
     const email = `mfa-e2e-${testId}@example.com`;
     const regRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/auth/candidate/register')
       .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
-      .expect(201);
+      .expect(302);
 
     userId = await setup.prisma.user
       .findUnique({ where: { email } })
@@ -30,11 +30,11 @@ describe('Auth MFA (e2e)', () => {
     });
 
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/auth/candidate/login')
       .send({ identifier: email, password: 'StrongPassword123!' })
-      .expect(201);
+      .expect(200);
 
-    accessToken = loginRes.body.accessToken;
+    accessToken = getCookieValue(loginRes.headers['set-cookie'], 'access_token')!;
   });
 
   afterEach(async () => {
@@ -44,7 +44,7 @@ describe('Auth MFA (e2e)', () => {
   it('should complete full MFA lifecycle', async () => {
     // 1. Setup MFA
     const setupRes = await request(app.getHttpServer())
-      .get('/auth/mfa/setup')
+      .get('/auth/candidate/mfa/setup')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
@@ -52,11 +52,11 @@ describe('Auth MFA (e2e)', () => {
     const secret = setupRes.body.secret;
 
     // 2. Activate MFA
-    const authenticator = app.get(AuthService).getAuthenticator();
+    const authenticator = (app.get(AuthCandidateService) as any).getAuthenticator();
     const code = authenticator.generate(secret);
 
     const activateRes = await request(app.getHttpServer())
-      .post('/auth/mfa/activate')
+      .post('/auth/candidate/mfa/activate')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ code })
       .expect(201);
@@ -66,36 +66,37 @@ describe('Auth MFA (e2e)', () => {
 
     // 3. Login with MFA
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/auth/candidate/login')
       .send({
         identifier: `mfa-e2e-${testId}@example.com`,
         password: 'StrongPassword123!',
       })
-      .expect(201);
+      .expect(302);
 
-    expect(loginRes.body.mfaRequired).toBe(true);
-    const mfaToken = loginRes.body.mfaToken;
+    expect(loginRes.headers.location).toContain('/mfa?token=');
+    const mfaToken = new URL(loginRes.headers.location).searchParams.get('token');
+    expect(mfaToken).toBeDefined();
 
     // 4. Verify MFA
     const verifyCode = authenticator.generate(secret);
     const verifyRes = await request(app.getHttpServer())
-      .post('/auth/mfa/verify')
+      .post('/auth/candidate/mfa/verify')
       .send({ code: verifyCode, mfaToken, userId })
-      .expect(201);
+      .expect(200);
 
-    expect(verifyRes.body.accessToken).toBeDefined();
+    expect(getCookieValue(verifyRes.headers['set-cookie'], 'access_token')).toBeDefined();
 
     // 5. Recovery with backup code
     const recoveryRes = await request(app.getHttpServer())
-      .post('/auth/mfa/verify-recovery')
+      .post('/auth/candidate/mfa/verify-recovery')
       .send({ backupCode, mfaToken, userId })
-      .expect(201);
+      .expect(200);
 
-    expect(recoveryRes.body.accessToken).toBeDefined();
+    expect(getCookieValue(recoveryRes.headers['set-cookie'], 'access_token')).toBeDefined();
 
     // 6. Backup code should be one-time use
     const reuseRes = await request(app.getHttpServer())
-      .post('/auth/mfa/verify-recovery')
+      .post('/auth/candidate/mfa/verify-recovery')
       .send({ backupCode, mfaToken, userId })
       .expect(401);
   });

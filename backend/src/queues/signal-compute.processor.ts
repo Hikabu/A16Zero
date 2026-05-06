@@ -11,8 +11,9 @@ import { GithubAdapterService } from '../modules/scoring/github-adapter/github-a
 import { CacheService } from '../modules/scoring/cache/cache.service';
 import { SolanaAdapterService } from '../modules/scoring/web3-adapter/solana-adapter.service';
 import { Web3MergeService } from '../modules/scoring/web3-merge/web3-merge.service';
+import { OctokitFactory } from '../modules/scoring/github-adapter/octokit.factory';
 
-@Processor('signal-compute', { concurrency: 10 })
+@Processor('signal-compute', { concurrency: process.env.NODE_ENV === 'test' ? 1 : 10 })
 export class SignalComputeProcessor extends WorkerHost {
   private readonly logger = new Logger(SignalComputeProcessor.name);
 
@@ -24,6 +25,7 @@ export class SignalComputeProcessor extends WorkerHost {
     private readonly cacheService: CacheService,
     private readonly solanaAdapter: SolanaAdapterService,
     private readonly web3MergeService: Web3MergeService,
+    private readonly octokitFactory: OctokitFactory,
   ) {
 	super();
   }
@@ -35,6 +37,7 @@ export class SignalComputeProcessor extends WorkerHost {
       walletAddress?: string;
       mode: 'github-only' | 'github+wallet' | 'wallet-only';
       useGithubCache?: boolean;
+      userId?: string | null;
     }>,
   ): Promise<AnalysisResult | void> {
     const pipelineStart = Date.now();
@@ -44,7 +47,9 @@ export class SignalComputeProcessor extends WorkerHost {
       walletAddress,
       useGithubCache,
       mode,
+      userId,
     } = job.data;
+    const bullmqJobId = job.id?.toString();
 
     this.logger.log(
       `Starting signal pipeline for profile ${
@@ -157,23 +162,34 @@ export class SignalComputeProcessor extends WorkerHost {
         await this.updateProgress(profile?.id, 'fetching_repos', 20);
 
         try {
-          const token = profile?.encryptedToken
-            ? this.githubAdapter.decryptToken(profile.encryptedToken)
-            : '';
+          const resolvedUserId = userId ?? profile?.userId ?? null;
+          const octokit = await this.octokitFactory.forJob(resolvedUserId);
+
+          const before = await this.githubAdapter.getRateLimitRemaining(octokit);
 
           if (mode === 'github+wallet') {
             const [gitResponse, w3Response] = await Promise.all([
-              this.githubAdapter.fetchRawData(githubUsername, token),
+              this.githubAdapter.fetchRawData(octokit, githubUsername, bullmqJobId),
               this.solanaAdapter.fetchOnChainData(walletAddress!),
             ]);
             rawData = gitResponse;
             web3Data = w3Response;
           } else {
             rawData = await this.githubAdapter.fetchRawData(
+              octokit,
               githubUsername,
-              token,
+              bullmqJobId,
             );
           }
+
+          const after = await this.githubAdapter.getRateLimitRemaining(octokit);
+
+          this.logger.log({
+            jobId: bullmqJobId,
+            analysisJobId: recordId,
+            apiCallsUsed: before - after,
+            remainingAfter: after
+          }, 'github_fetch_complete');
 
           if (profile) {
             await this.prisma.githubProfile.update({

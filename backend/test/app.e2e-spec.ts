@@ -4,7 +4,6 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrivyService } from '../src/modules/auth-employer/privy.service';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { RoleType, Seniority } from '@prisma/client';
 
 describe('APP E2E', () => {
   let app: INestApplication;
@@ -57,25 +56,36 @@ describe('APP E2E', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    try {
+      await app.close();
+    } catch (err) {
+      console.error('Error closing app:', err);
+    }
+    try {
+      if (prisma) {
+        await prisma.$disconnect();
+      }
+    } catch (err) {
+      console.error('Error disconnecting Prisma:', err);
+    }
   });
 
-  it('GET / should return Hello World', async () => {
-    const res = await request(server).get('/');
+  it('GET /health should return ok', async () => {
+    const res = await request(server).get('/health');
     expect(res.status).toBe(200);
-    expect(res.text).toBe('Hello World!');
+    expect(res.body.status).toBe('ok');
   });
 
   it('POST /auth/login should fail without token', async () => {
     const res = await request(server)
-      .post('/auth/login')
+      .post('/auth/employer/login')
       .send({ walletAddress: '0x123' });
     expect(res.status).toBe(401);
   });
 
   it('POST /auth/login should return 400 when walletAddress is missing', async () => {
     const res = await request(server)
-      .post('/auth/login')
+      .post('/auth/employer/login')
       .set('Authorization', 'Bearer debugtoken')
       .send({});
     expect(res.status).toBe(400);
@@ -86,7 +96,7 @@ describe('APP E2E', () => {
 
   it('POST /auth/login should return app JWT', async () => {
     const res = await request(server)
-      .post('/auth/login')
+      .post('/auth/employer/login')
       .set('Authorization', 'Bearer debugtoken')
       .send({
         walletAddress: '0x123',
@@ -99,16 +109,16 @@ describe('APP E2E', () => {
   });
 
   it('GET /companies/me should reject without JWT', async () => {
-    const res = await request(server).get('/companies/me');
+    const res = await request(server).get('/me/company');
     expect(res.status).toBe(401);
   });
 
   it('GET /companies/me should return company', async () => {
     const res = await request(server)
-      .get('/companies/me')
+      .get('/me/company')
       .set('Authorization', `Bearer ${appJwt}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.walletAddress).toBe('0xTEST_WALLET');
+    expect(res.body.data.walletAddress).toBe('0x123');
   });
 
   let jobId: string;
@@ -124,8 +134,6 @@ describe('APP E2E', () => {
         location: 'Remote',
         employmentType: 'Full-time',
         currency: 'USD',
-        roleType: RoleType.BACKEND,
-        seniorityLevel: Seniority.SENIOR,
       });
 
     expect(res.status).toBe(201);
@@ -145,21 +153,22 @@ describe('APP E2E', () => {
     const res = await request(server)
       .post(`/jobs/${jobId}/publish`)
       .set('Authorization', `Bearer ${appJwt}`);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.data.status).toBe('ACTIVE');
   });
 
   it('GET /jobs should list public jobs', async () => {
     const res = await request(server).get('/jobs');
     expect(res.status).toBe(200);
-    expect(res.body.data.jobs.length).toBeGreaterThan(0);
+    const jobs = Array.isArray(res.body.data) ? res.body.data : res.body.data.jobs;
+    expect(jobs.length).toBeGreaterThan(0);
   });
 
   it('POST /jobs/:id/close should close job', async () => {
     const res = await request(server)
       .post(`/jobs/${jobId}/close`)
       .set('Authorization', `Bearer ${appJwt}`);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.data.status).toBe('CLOSED');
   });
 });

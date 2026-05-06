@@ -1,24 +1,7 @@
-process.env.DATABASE_URL =
-  'postgresql://user:password@localhost:5432/a16zero_test';
+process.env.NODE_ENV = 'test';
 
-jest.mock(
-  'otplib',
-  () => {
-    return {
-      TOTP: jest.fn().mockImplementation(() => ({
-        generate: jest.fn().mockReturnValue('123456'),
-        verify: jest.fn().mockReturnValue(true),
-        generateSecret: jest.fn().mockReturnValue('mock_secret'),
-        keyuri: jest.fn().mockReturnValue('otp_uri'),
-      })),
-      NobleCryptoPlugin: jest.fn(),
-      ScureBase32Plugin: jest.fn(),
-    };
-  },
-  { virtual: true },
-);
-process.env.DATABASE_URL =
-  'postgresql://user:password@localhost:5432/a16zero_test';
+process.env.DATABASE_URL ??=
+  'postgresql://postgres:strong@localhost:5432/a16zero?schema=public&connection_limit=5&connect_timeout=10';
 
 jest.mock(
   'otplib',

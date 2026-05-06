@@ -4,13 +4,13 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { GithubAdapterService } from '../src/scoring/github-adapter/github-adapter.service';
-import { SolanaAdapterService } from '../src/scoring/web3-adapter/solana-adapter.service';
-import { AnalysisResult } from '../src/scoring/types/result.types';
+import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
+import { SolanaAdapterService } from '../src/modules/scoring/web3-adapter/solana-adapter.service';
+import { AnalysisResult } from '../src/modules/scoring/types/result.types';
 import { PrismaService } from '../src/prisma/prisma.service';
 import Redis from 'ioredis';
 import { WorkerModule } from '../src/queues/worker.module';
-import { GitHubRawData } from '../src/scoring/github-adapter/github-data.types';
+import { GitHubRawData } from '../src/modules/scoring/github-adapter/github-data.types';
 import { Logger } from 'nestjs-pino';
 
 describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
@@ -90,12 +90,14 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
   };
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockImplementation(async (username: string) => {
+    fetchRawData: jest.fn().mockImplementation(async (_octokit: any, username: string) => {
       if (!mockGithubProfiles[username])
         throw new Error('Not found user: ' + username);
       return mockGithubProfiles[username];
     }),
     decryptToken: jest.fn().mockReturnValue('mock-token'),
+    getRateLimitRemaining: jest.fn().mockResolvedValue(5000),
+    checkRateLimitOrThrow: jest.fn().mockResolvedValue(true),
   };
 
   const mockSolanaAdapter = {
@@ -225,7 +227,7 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
       .send({ walletAddress: 'NOT_VALID!!!' })
       .expect(HttpStatus.BAD_REQUEST);
 
-    expect(JSON.stringify(res.body.message)).toContain('Validation failed');
+    expect(JSON.stringify(res.body.message)).toContain('Invalid Solana wallet');
   });
 
   it('4. Input validation: POST /analysis {} (no fields)', async () => {
@@ -234,7 +236,9 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
       .send({})
       .expect(HttpStatus.BAD_REQUEST);
 
-    expect(JSON.stringify(res.body.message)).toContain('Validation failed');
+    expect(JSON.stringify(res.body.message)).toContain(
+      'githubUsername or walletAddress is required',
+    );
   });
 
   it('5. Wallet-only mode', async () => {

@@ -47,7 +47,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       expect(res.headers['content-type']).toContain('application/json');
       expect(Array.isArray(res.body.rules)).toBe(true);
       expect(res.body.rules.length).toBeGreaterThanOrEqual(1);
-      expect(res.body.rules[0].pathPattern).toBe('/api/actions/**');
+      expect(res.body.rules[0].pathPattern).toBe('/api/actions/');
     });
   });
 

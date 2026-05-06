@@ -1,0 +1,1 @@
+CREATE DATABASE 16signals_test;

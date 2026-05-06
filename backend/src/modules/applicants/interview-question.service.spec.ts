@@ -3,16 +3,18 @@ import { InterviewQuestionService } from './interview-question.service';
 import { PipelineStage } from '@prisma/client';
 import { InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma/prisma.service';
 
-// Mock Google AI
-jest.mock('@google/generative-ai', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      messages: {
-        create: jest.fn()
-      }
-    };
-  });
+jest.mock('@google/genai', () => {
+  return {
+    GoogleGenAI: jest.fn().mockImplementation(() => {
+      return {
+        models: {
+          generateContent: jest.fn()
+        }
+      };
+    })
+  };
 });
 
 describe('InterviewQuestionService', () => {
@@ -24,16 +26,21 @@ describe('InterviewQuestionService', () => {
       get: jest.fn().mockReturnValue('fake-key'),
     };
 
+    const mockPrismaService = {
+      jobPost: { findUnique: jest.fn() }
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InterviewQuestionService,
-        { provide: ConfigService, useValue: mockConfigService }
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: PrismaService, useValue: mockPrismaService }
       ],
     }).compile();
 
     service = module.get<InterviewQuestionService>(InterviewQuestionService);
     // Grab instance to mock return values
-    anthropicMock = (service as any).anthropic.messages;
+    anthropicMock = (service as any).ai.models;
   });
 
   afterEach(() => {
@@ -45,8 +52,8 @@ describe('InterviewQuestionService', () => {
   });
 
   it('case 40: Returns InterviewQuestionSet with correct audienceType for INTERVIEW_HR', async () => {
-    anthropicMock.create.mockResolvedValue({
-      content: [{ type: 'text', text: JSON.stringify([]) }]
+    anthropicMock.generateContent.mockResolvedValue({
+      text: JSON.stringify([])
     });
 
     const result = await service.generate({} as any, PipelineStage.INTERVIEW_HR);
@@ -55,16 +62,16 @@ describe('InterviewQuestionService', () => {
 
   it('case 41: Returns 5 questions for hr audience, 6 for technical audience (simulated by prompt config)', async () => {
     // Generate for HR
-    anthropicMock.create.mockResolvedValue({
-      content: [{ type: 'text', text: JSON.stringify(Array(5).fill({ question: 'Q', priority: 'SHOULD_ASK' })) }]
+    anthropicMock.generateContent.mockResolvedValue({
+      text: JSON.stringify(Array(5).fill({ question: 'Q', priority: 'SHOULD_ASK' }))
     });
     const resultHr = await service.generate({} as any, PipelineStage.INTERVIEW_HR);
     expect(resultHr.questions).toHaveLength(5);
     expect(resultHr.audienceType).toBe('hr');
 
     // Generate for Tech
-    anthropicMock.create.mockResolvedValue({
-      content: [{ type: 'text', text: JSON.stringify(Array(6).fill({ question: 'Q', priority: 'MUST_ASK' })) }]
+    anthropicMock.generateContent.mockResolvedValue({
+      text: JSON.stringify(Array(6).fill({ question: 'Q', priority: 'MUST_ASK' }))
     });
     const resultTech = await service.generate({} as any, PipelineStage.INTERVIEW_TECHNICAL);
     expect(resultTech.questions).toHaveLength(6);
@@ -72,15 +79,12 @@ describe('InterviewQuestionService', () => {
   });
 
   it('case 42: Each question has priority field: MUST_ASK | SHOULD_ASK | NICE_TO_HAVE', async () => {
-    anthropicMock.create.mockResolvedValue({
-      content: [{ 
-        type: 'text', 
-        text: JSON.stringify([
-            { question: 'A', priority: 'MUST_ASK' },
-            { question: 'B', priority: 'SHOULD_ASK' },
-            { question: 'C', priority: 'NICE_TO_HAVE' },
-        ]) 
-      }]
+    anthropicMock.generateContent.mockResolvedValue({
+      text: JSON.stringify([
+          { question: 'A', priority: 'MUST_ASK' },
+          { question: 'B', priority: 'SHOULD_ASK' },
+          { question: 'C', priority: 'NICE_TO_HAVE' },
+      ]) 
     });
 
     const result = await service.generate({} as any, PipelineStage.INTERVIEW_FINAL);
@@ -90,7 +94,7 @@ describe('InterviewQuestionService', () => {
   });
 
   it('case 43: API error → throws InternalServerErrorException (no silent fallback)', async () => {
-    anthropicMock.create.mockRejectedValue(new Error('Anthropic API Outage'));
+    anthropicMock.generateContent.mockRejectedValue(new Error('Anthropic API Outage'));
 
     await expect(service.generate({} as any, PipelineStage.INTERVIEW_HR))
       .rejects.toThrow(InternalServerErrorException);
