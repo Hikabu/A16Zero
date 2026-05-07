@@ -33,6 +33,12 @@ const requiredForGithubAuth = [
 ] as const;
 
 const deployedEnvironments = new Set<string>(['staging', 'production']);
+const encryptionKeySchema = z
+  .string()
+  .regex(
+    /^[0-9a-fA-F]{64}$/,
+    'must be a 64-character hex string (32 bytes)',
+  );
 
 const hasPrismaPooler = (databaseUrl: string) => {
   try {
@@ -88,8 +94,8 @@ export const envSchema = z
     PRIVY_JWKS_URL: z.string().url().optional(),
     PRIVY_BYPASS: z.enum(['true', 'false']).default('false'),
 
-    AUTH_ENCRYPTION_KEY: z.string().optional(),
-    ENCRYPTION_KEY: z.string().optional(),
+    AUTH_ENCRYPTION_KEY: encryptionKeySchema.optional(),
+    ENCRYPTION_KEY: encryptionKeySchema.optional(),
     INTERNAL_API_KEY: z.string().optional(),
 
     HELIUS_API_KEY: z.string().optional(),

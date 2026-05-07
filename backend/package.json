@@ -20,7 +20,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand --forceExit",
+    "test:e2e": "NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand",
     "test:e2e:stage2a": "NODE_ENV=test jest --config ./test/jest-e2e.json --testNamePattern=github-sync --runInBand",
     "test:e2e:stage2": "NODE_ENV=test jest --config test/jest-e2e.json stage2-pipeline --runInBand",
     "test:stage2:benchmark": "NODE_ENV=test jest --config test/jest-e2e.json test/fetcher-benchmark.e2e-spec.ts",
@@ -133,7 +133,6 @@
     "transformIgnorePatterns": [
       "node_modules/(?!(@scure|@noble|otplib|octokit|@octokit|universal-user-agent|before-after-hook)/)"
     ],
-    "forceExit": true,
     "bail": false,
     "verbose": false,
     "maxWorkers": "50%"

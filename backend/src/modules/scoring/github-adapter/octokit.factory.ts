@@ -13,15 +13,14 @@ export class OctokitFactory {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.githubAuthEnabled =
-      this.config.get<string>('GITHUB_AUTH_ENABLED') === 'true';
     const systemToken = this.config.get<string>('GITHUB_SYSTEM_TOKEN');
-    if (this.githubAuthEnabled && !systemToken) {
+    if (!systemToken) {
       throw new Error(
-        'GITHUB_SYSTEM_TOKEN is not set. ' +
-          'Set it in .env or disable GitHub auth with GITHUB_AUTH_ENABLED=false.',
+        'GITHUB_SYSTEM_TOKEN is not set. Set it in .env. Without it all GitHub requests are unauthenticated (60 req/hr).',
       );
     }
+    this.githubAuthEnabled =
+      this.config.get<string>('GITHUB_AUTH_ENABLED') === 'true';
 
     this.logger.log(
       {

@@ -71,9 +71,13 @@ export class AuthCandidateService {
   }
 
   private getEncryptionKey(): string {
-    const key = this.config.get<string>('AUTH_ENCRYPTION_KEY');
+    const key =
+      this.config.get<string>('AUTH_ENCRYPTION_KEY') ??
+      this.config.get<string>('ENCRYPTION_KEY');
     if (!key)
-      throw new Error('AUTH_ENCRYPTION_KEY is not defined in environment');
+      throw new Error(
+        'AUTH_ENCRYPTION_KEY or ENCRYPTION_KEY is not defined in environment',
+      );
     return key;
   }
 

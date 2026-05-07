@@ -46,7 +46,8 @@ import { EscrowModule } from './modules/escrow/escrow.module';
     LoggerModule.forRoot({
       pinoHttp: {
         transport:
-          process.env.NODE_ENV !== 'production'
+          process.env.NODE_ENV !== 'production' &&
+          process.env.NODE_ENV !== 'test'
             ? {
                 target: 'pino-pretty',
                 options: { singleLine: true },
