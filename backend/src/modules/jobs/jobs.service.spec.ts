@@ -51,9 +51,14 @@ describe('JobsService', () => {
         bonusAmount: 1000,
       };
 
-      mockPrismaService.jobPost.create.mockResolvedValue({ id: 'job-1', ...dto, companyId, status: JobStatus.DRAFT });
+      mockPrismaService.jobPost.create.mockResolvedValue({
+        id: 'job-1',
+        ...dto,
+        companyId,
+        status: JobStatus.DRAFT,
+      });
 
-      const result = await service.create(companyId, dto as any);
+      const result = await service.create(companyId, dto);
 
       expect(prisma.jobPost.create).toHaveBeenCalledWith({
         data: {
@@ -75,11 +80,13 @@ describe('JobsService', () => {
 
       const result = await service.getPublicJobs(query);
 
-      expect(prisma.jobPost.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: { status: JobStatus.ACTIVE },
-        skip: 0,
-        take: 10,
-      }));
+      expect(prisma.jobPost.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: JobStatus.ACTIVE },
+          skip: 0,
+          take: 10,
+        }),
+      );
       expect(result.jobs).toEqual(mockJobs);
       expect(result.total).toBe(1);
     });
@@ -97,18 +104,20 @@ describe('JobsService', () => {
 
       await service.getPublicJobs(query);
 
-      expect(prisma.jobPost.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: {
-          status: JobStatus.ACTIVE,
-          OR: [
-            { title: { contains: 'NestJS', mode: 'insensitive' } },
-            { description: { contains: 'NestJS', mode: 'insensitive' } },
-          ],
-          roleType: RoleType.BACKEND,
-          seniorityLevel: Seniority.SENIOR,
-          isWeb3Role: true,
-        },
-      }));
+      expect(prisma.jobPost.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            status: JobStatus.ACTIVE,
+            OR: [
+              { title: { contains: 'NestJS', mode: 'insensitive' } },
+              { description: { contains: 'NestJS', mode: 'insensitive' } },
+            ],
+            roleType: RoleType.BACKEND,
+            seniorityLevel: Seniority.SENIOR,
+            isWeb3Role: true,
+          },
+        }),
+      );
     });
   });
 

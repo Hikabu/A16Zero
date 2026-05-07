@@ -34,7 +34,10 @@ describe('Auth MFA (e2e)', () => {
       .send({ identifier: email, password: 'StrongPassword123!' })
       .expect(200);
 
-    accessToken = getCookieValue(loginRes.headers['set-cookie'], 'access_token')!;
+    accessToken = getCookieValue(
+      loginRes.headers['set-cookie'],
+      'access_token',
+    )!;
   });
 
   afterEach(async () => {
@@ -52,7 +55,7 @@ describe('Auth MFA (e2e)', () => {
     const secret = setupRes.body.secret;
 
     // 2. Activate MFA
-    const authenticator = (app.get(AuthCandidateService) as any).getAuthenticator();
+    const authenticator = app.get(AuthCandidateService).getAuthenticator();
     const code = authenticator.generate(secret);
 
     const activateRes = await request(app.getHttpServer())
@@ -74,7 +77,9 @@ describe('Auth MFA (e2e)', () => {
       .expect(302);
 
     expect(loginRes.headers.location).toContain('/mfa?token=');
-    const mfaToken = new URL(loginRes.headers.location).searchParams.get('token');
+    const mfaToken = new URL(loginRes.headers.location).searchParams.get(
+      'token',
+    );
     expect(mfaToken).toBeDefined();
 
     // 4. Verify MFA
@@ -84,7 +89,9 @@ describe('Auth MFA (e2e)', () => {
       .send({ code: verifyCode, mfaToken, userId })
       .expect(200);
 
-    expect(getCookieValue(verifyRes.headers['set-cookie'], 'access_token')).toBeDefined();
+    expect(
+      getCookieValue(verifyRes.headers['set-cookie'], 'access_token'),
+    ).toBeDefined();
 
     // 5. Recovery with backup code
     const recoveryRes = await request(app.getHttpServer())
@@ -92,7 +99,9 @@ describe('Auth MFA (e2e)', () => {
       .send({ backupCode, mfaToken, userId })
       .expect(200);
 
-    expect(getCookieValue(recoveryRes.headers['set-cookie'], 'access_token')).toBeDefined();
+    expect(
+      getCookieValue(recoveryRes.headers['set-cookie'], 'access_token'),
+    ).toBeDefined();
 
     // 6. Backup code should be one-time use
     const reuseRes = await request(app.getHttpServer())

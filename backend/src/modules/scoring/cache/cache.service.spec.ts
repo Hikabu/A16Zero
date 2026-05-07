@@ -83,10 +83,12 @@ describe('CacheService', () => {
       );
     });
 
-    it('15. buildCacheKey(\'Alice\', null) === buildCacheKey(\'alice\', null) (lowercase normalisation)', () => {
+    it("15. buildCacheKey('Alice', null) === buildCacheKey('alice', null) (lowercase normalisation)", () => {
       expect(service.buildCacheKey('Alice', undefined)).toBe('analysis:alice');
       expect(service.buildCacheKey('alice', undefined)).toBe('analysis:alice');
-      expect(service.buildCacheKey('Alice', undefined)).toBe(service.buildCacheKey('alice', undefined));
+      expect(service.buildCacheKey('Alice', undefined)).toBe(
+        service.buildCacheKey('alice', undefined),
+      );
     });
 
     it('16. buildCacheKey resolved from JWT profile and buildCacheKey from anonymous body param produce identical strings for same username', () => {

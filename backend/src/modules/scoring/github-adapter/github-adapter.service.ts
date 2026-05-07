@@ -83,7 +83,11 @@ export class GithubAdapterService {
   ): Promise<GitHubRawData> {
     return this.withCache(`github:v2:raw:${githubUsername}`, async () => {
       // 1. Fetch Profile
-      const profileData = await this.fetchProfile(octokit, githubUsername, jobId);
+      const profileData = await this.fetchProfile(
+        octokit,
+        githubUsername,
+        jobId,
+      );
 
       // 2. Fetch Repos (limited to MAX_REPOS)
       const repos = await this.fetchRepos(octokit, githubUsername, jobId);
@@ -102,10 +106,7 @@ export class GithubAdapterService {
       );
 
       // 4. Fetch External PRs (Search API with retry)
-      const externalPRs = await this.fetchExternalPRs(
-        octokit,
-        githubUsername,
-      );
+      const externalPRs = await this.fetchExternalPRs(octokit, githubUsername);
 
       return {
         profile: profileData,
@@ -229,7 +230,7 @@ export class GithubAdapterService {
 
   private async fetchExternalPRsFromApi(
     octokit: Octokit,
-    username: string
+    username: string,
   ): Promise<{ repo: string; merged: boolean }[]> {
     const MAX_RETRIES = 2;
     let attempt = 0;
@@ -240,33 +241,43 @@ export class GithubAdapterService {
           q: `type:pr author:${username} is:merged -user:${username}`,
           per_page: 50,
           sort: 'created',
-          order: 'desc'
+          order: 'desc',
         });
-        return result.data.items.map(pr => ({
+        return result.data.items.map((pr) => ({
           repo: pr.repository_url.replace('https://api.github.com/repos/', ''),
-          merged: true
+          merged: true,
         }));
       } catch (err: any) {
-        if (err.status === 403 && err.response?.headers?.['x-ratelimit-remaining'] === '0') {
+        if (
+          err.status === 403 &&
+          err.response?.headers?.['x-ratelimit-remaining'] === '0'
+        ) {
           // Search API rate limit specifically
-          const resetMs = Number(err.response.headers['x-ratelimit-reset']) * 1000;
-          const waitMs  = Math.min(resetMs - Date.now() + 1000, 65000); // max 65s wait
+          const resetMs =
+            Number(err.response.headers['x-ratelimit-reset']) * 1000;
+          const waitMs = Math.min(resetMs - Date.now() + 1000, 65000); // max 65s wait
 
-          this.logger.warn({
-            username,
-            waitMs,
-            attempt
-          }, 'github_search_rate_limited');
+          this.logger.warn(
+            {
+              username,
+              waitMs,
+              attempt,
+            },
+            'github_search_rate_limited',
+          );
 
           if (attempt < MAX_RETRIES) {
-            await new Promise(resolve => setTimeout(resolve, waitMs));
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
             attempt++;
             continue;
           }
         }
         // Non-rate-limit error OR retries exhausted:
         // Return empty array — external PRs are signal, not required
-        this.logger.warn({ username, err: err.status }, 'external_pr_fetch_failed');
+        this.logger.warn(
+          { username, err: err.status },
+          'external_pr_fetch_failed',
+        );
         return [];
       }
     }
@@ -279,7 +290,7 @@ export class GithubAdapterService {
   ): Promise<GitHubExternalPRData> {
     const prCacheKey = `github:prs:${username}`;
     let prs: { repo: string; merged: boolean }[] = [];
-    
+
     const cached = await this.redis.get(prCacheKey);
     if (cached) {
       prs = JSON.parse(cached);
@@ -427,10 +438,11 @@ export class GithubAdapterService {
           response.data.content,
           'base64',
         ).toString('utf8');
-        
-        const depKeys = filename === 'package.json'
-          ? this.parsePackageJsonKeys(contentStr)
-          : this.parseCargoTomlKeys(contentStr);
+
+        const depKeys =
+          filename === 'package.json'
+            ? this.parsePackageJsonKeys(contentStr)
+            : this.parseCargoTomlKeys(contentStr);
 
         await this.redis.set(cacheKey, JSON.stringify(depKeys), 'EX', 172800);
         return depKeys;
@@ -459,21 +471,45 @@ export class GithubAdapterService {
 
     for (const repo of reposToScan) {
       try {
-        const pkgKeys = await this.fetchManifest(octokit, username, repo.name, 'package.json', jobId);
-        const cargoKeys = await this.fetchManifest(octokit, username, repo.name, 'Cargo.toml', jobId);
-        
+        const pkgKeys = await this.fetchManifest(
+          octokit,
+          username,
+          repo.name,
+          'package.json',
+          jobId,
+        );
+        const cargoKeys = await this.fetchManifest(
+          octokit,
+          username,
+          repo.name,
+          'Cargo.toml',
+          jobId,
+        );
+
         if (pkgKeys) {
-          manifestKeys[repo.name] = [...(manifestKeys[repo.name] ?? []), ...pkgKeys];
+          manifestKeys[repo.name] = [
+            ...(manifestKeys[repo.name] ?? []),
+            ...pkgKeys,
+          ];
         }
         if (cargoKeys) {
-          manifestKeys[repo.name] = [...(manifestKeys[repo.name] ?? []), ...cargoKeys];
+          manifestKeys[repo.name] = [
+            ...(manifestKeys[repo.name] ?? []),
+            ...cargoKeys,
+          ];
         }
       } catch (err: any) {
         if (err.status === 403 || err.status === 429) {
-          this.logger.warn({ repo: repo.name }, 'manifest_fetch_rate_limited_stopping');
+          this.logger.warn(
+            { repo: repo.name },
+            'manifest_fetch_rate_limited_stopping',
+          );
           break;
         }
-        this.logger.debug({ repo: repo.name, err: err.status }, 'manifest_fetch_skipped');
+        this.logger.debug(
+          { repo: repo.name, err: err.status },
+          'manifest_fetch_skipped',
+        );
       }
     }
 
@@ -488,29 +524,35 @@ export class GithubAdapterService {
   private logRateLimit(response: any, endpoint: string, jobId?: string) {
     if (!response || !response.headers) return;
     const remaining = response.headers['x-ratelimit-remaining'];
-    const limit     = response.headers['x-ratelimit-limit'];
-    const reset     = response.headers['x-ratelimit-reset'];
+    const limit = response.headers['x-ratelimit-limit'];
+    const reset = response.headers['x-ratelimit-reset'];
     const tokenHint = response.headers['x-oauth-scopes']
       ? 'oauth-token'
       : response.headers['x-ratelimit-limit'] === '60'
         ? 'unauthenticated'
         : 'pat-or-system-token';
 
-    this.logger.debug({
-      endpoint,
-      remaining: Number(remaining),
-      limit:     Number(limit),
-      resetAt:   new Date(Number(reset) * 1000).toISOString(),
-      tokenType: tokenHint,
-      jobId
-    }, 'github_api_call');
+    this.logger.debug(
+      {
+        endpoint,
+        remaining: Number(remaining),
+        limit: Number(limit),
+        resetAt: new Date(Number(reset) * 1000).toISOString(),
+        tokenType: tokenHint,
+        jobId,
+      },
+      'github_api_call',
+    );
 
     if (Number(remaining) < 100) {
-      this.logger.warn({
-        remaining: Number(remaining),
-        resetAt:   new Date(Number(reset) * 1000).toISOString(),
-        jobId
-      }, 'github_rate_limit_low');
+      this.logger.warn(
+        {
+          remaining: Number(remaining),
+          resetAt: new Date(Number(reset) * 1000).toISOString(),
+          jobId,
+        },
+        'github_rate_limit_low',
+      );
     }
   }
 }

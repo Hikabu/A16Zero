@@ -13,7 +13,11 @@ export class JobResponseDto {
   })
   description: string;
 
-  @ApiProperty({ enum: JobStatus, example: JobStatus.ACTIVE, description: 'Job status' })
+  @ApiProperty({
+    enum: JobStatus,
+    example: JobStatus.ACTIVE,
+    description: 'Job status',
+  })
   status: JobStatus;
 
   @ApiProperty({ example: 'company_123' })

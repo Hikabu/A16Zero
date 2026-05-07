@@ -26,7 +26,7 @@ export class PrivyService {
         email: 'valeriia@test.com',
       };
     }
-	
+
     try {
       const verifiedClaims = await this.privyClient.verifyAuthToken(token);
       return {

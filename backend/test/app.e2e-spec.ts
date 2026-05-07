@@ -160,7 +160,9 @@ describe('APP E2E', () => {
   it('GET /jobs should list public jobs', async () => {
     const res = await request(server).get('/jobs');
     expect(res.status).toBe(200);
-    const jobs = Array.isArray(res.body.data) ? res.body.data : res.body.data.jobs;
+    const jobs = Array.isArray(res.body.data)
+      ? res.body.data
+      : res.body.data.jobs;
     expect(jobs.length).toBeGreaterThan(0);
   });
 

@@ -16,7 +16,7 @@ import { ProfileResolverService } from '../profile-candidate/profile-resolver.se
 export class WalletSyncService {
   constructor(
     private readonly prisma: PrismaService,
-	private readonly profileResolver: ProfileResolverService,
+    private readonly profileResolver: ProfileResolverService,
     @Inject('REDIS') private readonly redis: Redis,
   ) {}
 
@@ -64,24 +64,24 @@ export class WalletSyncService {
 
     // Step 4 — delete challenge
     await this.redis.del(`wallet-challenge:${userId}`);
-// console.log("userid: ", userId);
+    // console.log("userid: ", userId);
     // Step 5 — ensure Candidate + DeveloperCandidate exist
 
-	// Step 5 — ensure stack + upsert Web3Profile
-const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+    // Step 5 — ensure stack + upsert Web3Profile
+    const { devProfile } = await this.profileResolver.ensureDevStack(userId);
 
-await this.prisma.web3Profile.upsert({
-  where: { userId },
-  create: {
-    userId,
-    solanaAddress: walletAddress,
-    devCandidateId: devProfile.id,
-  },
-  update: {
-    solanaAddress: walletAddress,
-  },
-});
+    await this.prisma.web3Profile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        solanaAddress: walletAddress,
+        devCandidateId: devProfile.id,
+      },
+      update: {
+        solanaAddress: walletAddress,
+      },
+    });
 
-return { linked: true, solanaAddress: walletAddress };
+    return { linked: true, solanaAddress: walletAddress };
   }
 }

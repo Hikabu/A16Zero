@@ -18,11 +18,10 @@ export const CreateAnalysisSchema = z
 
 export class CreateAnalysisDto extends createZodDto(CreateAnalysisSchema) {}
 
-export const RecomputeAnalysisSchema = z
-  .object({
-    userId: z.string().optional(),
-    force: z.boolean().optional(),
-  })
+export const RecomputeAnalysisSchema = z.object({
+  userId: z.string().optional(),
+  force: z.boolean().optional(),
+});
 export class RecomputeAnalysisDto extends createZodDto(
   RecomputeAnalysisSchema,
 ) {}

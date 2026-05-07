@@ -35,26 +35,29 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
   const internalKey = process.env.INTERNAL_API_KEY || 'test-internal-key';
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockImplementation(async (octokit: any, username: string) => {
-      const user = typeof username === 'string' ? username : (octokit as string);
-      const userLower = user.toLowerCase();
-      if (userLower.startsWith('torvalds')) return ALEX_BACKEND;
-      
-      switch (userLower) {
-        case 'alex-backend':
-          return ALEX_BACKEND;
-        case 'sarah-fullstack':
-          return SARAH_FULLSTACK;
-        case 'maya-devops':
-          return MAYA_DEVOPS;
-        case 'new-dev':
-          return NEW_DEV;
-        case 'ghost-profile':
-          throw new Error('Insufficient public data for ghost-profile');
-        default:
-          throw new Error(`User ${user} not found`);
-      }
-    }),
+    fetchRawData: jest
+      .fn()
+      .mockImplementation(async (octokit: any, username: string) => {
+        const user =
+          typeof username === 'string' ? username : (octokit as string);
+        const userLower = user.toLowerCase();
+        if (userLower.startsWith('torvalds')) return ALEX_BACKEND;
+
+        switch (userLower) {
+          case 'alex-backend':
+            return ALEX_BACKEND;
+          case 'sarah-fullstack':
+            return SARAH_FULLSTACK;
+          case 'maya-devops':
+            return MAYA_DEVOPS;
+          case 'new-dev':
+            return NEW_DEV;
+          case 'ghost-profile':
+            throw new Error('Insufficient public data for ghost-profile');
+          default:
+            throw new Error(`User ${user} not found`);
+        }
+      }),
     decryptToken: jest.fn().mockReturnValue('mock-token'),
     getRateLimitRemaining: jest.fn().mockResolvedValue(5000),
   };

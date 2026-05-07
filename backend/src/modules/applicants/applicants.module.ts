@@ -9,9 +9,18 @@ import { InterviewQuestionService } from './interview-question.service';
 import { ScorecardModule } from '../scorecard/scorecard.module';
 
 @Module({
-  imports: [PrismaModule, GapAnalysisModule, DecisionCardModule, ScorecardModule],
+  imports: [
+    PrismaModule,
+    GapAnalysisModule,
+    DecisionCardModule,
+    ScorecardModule,
+  ],
   controllers: [ApplicantsController],
-  providers: [ApplicantsService, ScorecardRendererService, InterviewQuestionService],
+  providers: [
+    ApplicantsService,
+    ScorecardRendererService,
+    InterviewQuestionService,
+  ],
   exports: [ApplicantsService],
 })
 export class ApplicantsModule {}

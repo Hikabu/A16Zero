@@ -179,7 +179,7 @@ describe('SignalExtractorService', () => {
       const trend = service.getTrend({
         weeklyTotals,
         activeWeeksCount: 17,
-      } as any);
+      });
       expect(trend).toBe('ascending');
     });
 
@@ -192,7 +192,7 @@ describe('SignalExtractorService', () => {
       const trend = service.getTrend({
         weeklyTotals,
         activeWeeksCount: 52,
-      } as any);
+      });
       expect(trend).toBe('declining');
     });
 
@@ -205,7 +205,7 @@ describe('SignalExtractorService', () => {
       const trend = service.getTrend({
         weeklyTotals,
         activeWeeksCount: 52,
-      } as any);
+      });
       expect(trend).toBe('stable');
     });
 
@@ -216,7 +216,7 @@ describe('SignalExtractorService', () => {
       const trend = service.getTrend({
         weeklyTotals,
         activeWeeksCount: 17,
-      } as any);
+      });
       expect(trend).toBe('ascending');
     });
 
@@ -225,7 +225,7 @@ describe('SignalExtractorService', () => {
       const trend = service.getTrend({
         weeklyTotals,
         activeWeeksCount: 0,
-      } as any);
+      });
       expect(trend).toBe('stable');
     });
   });

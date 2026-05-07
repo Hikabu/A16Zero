@@ -22,7 +22,7 @@ export class GithubSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-	private readonly profileResolver: ProfileResolverService,
+    private readonly profileResolver: ProfileResolverService,
     @Inject('REDIS') private readonly redis: Redis,
     @InjectQueue('github-sync') private readonly githubSyncQueue: Queue,
   ) {}
@@ -61,7 +61,7 @@ export class GithubSyncService {
     await this.redis.del(`github_sync_state:${state}`);
 
     // const candidate = await this.ensureDevCandidate(userId);
-	const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+    const { devProfile } = await this.profileResolver.ensureDevStack(userId);
     if (!devProfile) {
       throw new InternalServerErrorException(
         'Failed to ensure developer profile.',
@@ -104,8 +104,8 @@ export class GithubSyncService {
 
   // ─── Trigger sync ─────────────────────────────────────────────────
   async triggerSync(userId: string) {
-	const { devProfile } = await this.profileResolver.ensureDevStack(userId);    
-	const githubProfile = devProfile?.githubProfile;
+    const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+    const githubProfile = devProfile?.githubProfile;
 
     if (!githubProfile) {
       // Frontend should redirect to /me/github/sync/connect on this code

@@ -4,7 +4,7 @@ import { GithubSyncController } from './github-sync.controller';
 import { ProfileResolverModule } from '../profile-candidate/profile-resolver.module';
 
 @Module({
-	imports: [ProfileResolverModule],
+  imports: [ProfileResolverModule],
   providers: [GithubSyncService],
   controllers: [GithubSyncController],
 })

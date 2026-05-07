@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, HttpStatus, ValidationPipe, ExecutionContext } from '@nestjs/common';
+import {
+  INestApplication,
+  HttpStatus,
+  ValidationPipe,
+  ExecutionContext,
+} from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -37,13 +42,30 @@ describe('Analysis Routing & Flows (E2E)', () => {
       .useValue({
         ensureDevStack: jest.fn().mockImplementation(async (userId: string) => {
           if (userId === 'test-user-both') {
-            return { devProfile: { githubProfile: { githubUsername: 'auth-dev-both' }, web3Profile: { solanaAddress: '22222222222222222222222222222222' } } };
+            return {
+              devProfile: {
+                githubProfile: { githubUsername: 'auth-dev-both' },
+                web3Profile: {
+                  solanaAddress: '22222222222222222222222222222222',
+                },
+              },
+            };
           }
           if (userId === 'test-user-github') {
-            return { devProfile: { githubProfile: { githubUsername: 'auth-dev-github' } } };
+            return {
+              devProfile: {
+                githubProfile: { githubUsername: 'auth-dev-github' },
+              },
+            };
           }
           if (userId === 'test-user-wallet') {
-            return { devProfile: { web3Profile: { solanaAddress: '33333333333333333333333333333333' } } };
+            return {
+              devProfile: {
+                web3Profile: {
+                  solanaAddress: '33333333333333333333333333333333',
+                },
+              },
+            };
           }
           return { devProfile: {} };
         }),
@@ -53,7 +75,7 @@ describe('Analysis Routing & Flows (E2E)', () => {
         canActivate: (context: ExecutionContext) => {
           const req = context.switchToHttp().getRequest();
           const authHeader = req.headers['authorization'];
-          
+
           if (authHeader) {
             const token = authHeader.split(' ')[1];
             let githubUsername = null;
@@ -96,20 +118,52 @@ describe('Analysis Routing & Flows (E2E)', () => {
       }),
     );
     await app.init();
-    
+
     prisma = app.get(PrismaService);
     // Depending on your setup REDIS may be bound to a specific string token
-    redis = app.get('REDIS') || app.get(Redis); 
+    redis = app.get('REDIS') || app.get(Redis);
 
     await prisma.analysisJob?.deleteMany();
-    await prisma.user?.deleteMany({ where: { id: { in: ['test-user-id', 'test-user-both', 'test-user-github', 'test-user-wallet', 'test-user-none'] } } });
+    await prisma.user?.deleteMany({
+      where: {
+        id: {
+          in: [
+            'test-user-id',
+            'test-user-both',
+            'test-user-github',
+            'test-user-wallet',
+            'test-user-none',
+          ],
+        },
+      },
+    });
     await prisma.user.createMany({
       data: [
-        { id: 'test-user-id', email: 'test-analysis@example.com', role: 'CANDIDATE' },
-        { id: 'test-user-both', email: 'test-both@example.com', role: 'CANDIDATE' },
-        { id: 'test-user-github', email: 'test-github@example.com', role: 'CANDIDATE' },
-        { id: 'test-user-wallet', email: 'test-wallet@example.com', role: 'CANDIDATE' },
-        { id: 'test-user-none', email: 'test-none@example.com', role: 'CANDIDATE' },
+        {
+          id: 'test-user-id',
+          email: 'test-analysis@example.com',
+          role: 'CANDIDATE',
+        },
+        {
+          id: 'test-user-both',
+          email: 'test-both@example.com',
+          role: 'CANDIDATE',
+        },
+        {
+          id: 'test-user-github',
+          email: 'test-github@example.com',
+          role: 'CANDIDATE',
+        },
+        {
+          id: 'test-user-wallet',
+          email: 'test-wallet@example.com',
+          role: 'CANDIDATE',
+        },
+        {
+          id: 'test-user-none',
+          email: 'test-none@example.com',
+          role: 'CANDIDATE',
+        },
       ],
     });
     await redis.flushall();
@@ -127,7 +181,10 @@ describe('Analysis Routing & Flows (E2E)', () => {
     mockGithubAdapter.fetchRawData.mockResolvedValue({
       fetchedAt: new Date().toISOString(),
       profile: { followers: 0, publicRepos: 0, accountAge: 0 },
-      contributions: { activeWeeksCount: 0, weeklyTotals: new Array(52).fill(0) },
+      contributions: {
+        activeWeeksCount: 0,
+        weeklyTotals: new Array(52).fill(0),
+      },
       repos: [],
       commits: [],
       pulls: [],
@@ -142,7 +199,9 @@ describe('Analysis Routing & Flows (E2E)', () => {
   const waitForJob = async (jobId: string, maxSeconds = 5) => {
     const start = Date.now();
     while (Date.now() - start < maxSeconds * 1000) {
-      const res = await request(app.getHttpServer()).get(`/api/analysis/${jobId}/status`);
+      const res = await request(app.getHttpServer()).get(
+        `/api/analysis/${jobId}/status`,
+      );
       if (res.body.status === 'complete' || res.body.status === 'failed') {
         return res.body;
       }
@@ -152,7 +211,9 @@ describe('Analysis Routing & Flows (E2E)', () => {
   };
 
   const getResult = async (jobId: string) => {
-    const res = await request(app.getHttpServer()).get(`/api/analysis/${jobId}/result`);
+    const res = await request(app.getHttpServer()).get(
+      `/api/analysis/${jobId}/result`,
+    );
     return res.body.result;
   };
 
@@ -161,12 +222,26 @@ describe('Analysis Routing & Flows (E2E)', () => {
       mockGithubAdapter.fetchRawData.mockResolvedValueOnce({
         fetchedAt: new Date().toISOString(),
         profile: { followers: 10, publicRepos: 5, accountAge: 12 },
-        contributions: { activeWeeksCount: 5, weeklyTotals: new Array(52).fill(0) },
-        repos: [{ name: 'repo-anchor', topics: ['anchor'], createdAt: new Date(Date.now() - 100 * 86400000).toISOString(), pushedAt: new Date().toISOString(), isFork: false }],
+        contributions: {
+          activeWeeksCount: 5,
+          weeklyTotals: new Array(52).fill(0),
+        },
+        repos: [
+          {
+            name: 'repo-anchor',
+            topics: ['anchor'],
+            createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
+            pushedAt: new Date().toISOString(),
+            isFork: false,
+          },
+        ],
         commits: [],
         pulls: [],
       });
-      mockSolanaAdapter.fetchProgramsByAuthority.mockResolvedValueOnce({ programs: [], achievements: [] });
+      mockSolanaAdapter.fetchProgramsByAuthority.mockResolvedValueOnce({
+        programs: [],
+        achievements: [],
+      });
 
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
@@ -174,7 +249,7 @@ describe('Analysis Routing & Flows (E2E)', () => {
         .expect(HttpStatus.CREATED);
 
       expect(res.body.jobId).toBeDefined();
-      
+
       const status = await waitForJob(res.body.jobId);
       if (status.status === 'complete') {
         const result = await getResult(res.body.jobId);
@@ -184,7 +259,10 @@ describe('Analysis Routing & Flows (E2E)', () => {
     });
 
     it('2. POST /analysis { walletAddress: "11111111111111111111111111111111" }', async () => {
-      mockSolanaAdapter.fetchProgramsByAuthority.mockResolvedValueOnce({ programs: [], achievements: [] });
+      mockSolanaAdapter.fetchProgramsByAuthority.mockResolvedValueOnce({
+        programs: [],
+        achievements: [],
+      });
 
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
@@ -193,7 +271,7 @@ describe('Analysis Routing & Flows (E2E)', () => {
 
       expect(res.body.jobId).toBeDefined();
       const status = await waitForJob(res.body.jobId);
-      
+
       if (status.status === 'complete') {
         const result = await getResult(res.body.jobId);
         expect(result.capabilities?.backend?.score).toBe(0);
@@ -207,27 +285,28 @@ describe('Analysis Routing & Flows (E2E)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({});
-      
+
       expect(res.status).toBe(HttpStatus.BAD_REQUEST);
-      expect(res.body.message).toContain('githubUsername or walletAddress is required');
+      expect(res.body.message).toContain(
+        'githubUsername or walletAddress is required',
+      );
     });
 
     it('4. POST /analysis { walletAddress: "NOT_VALID!!!" }', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({ walletAddress: 'NOT_VALID!!!' });
-      
+
       expect(res.status).toBe(HttpStatus.BAD_REQUEST);
       // Validate that Invalid Solana wallet or similar is thrown by class-validator or constraint
     });
 
     it('5. Cache hit', async () => {
-
       const firstCall = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({ githubUsername: 'cached-dev' })
         .expect(HttpStatus.CREATED);
-        
+
       await waitForJob(firstCall.body.jobId);
 
       // Second call, no force
@@ -254,18 +333,36 @@ describe('Analysis Routing & Flows (E2E)', () => {
 
   describe('Authenticated flow', () => {
     it('7. User has github + wallet linked', async () => {
-      mockGithubAdapter.fetchRawData.mockResolvedValueOnce({ 
+      mockGithubAdapter.fetchRawData.mockResolvedValueOnce({
         fetchedAt: new Date().toISOString(),
         profile: { followers: 10, publicRepos: 5, accountAge: 12 },
-        contributions: { activeWeeksCount: 5, weeklyTotals: new Array(52).fill(0) },
-        repos: [], 
-        commits: [], 
-        pulls: [] 
+        contributions: {
+          activeWeeksCount: 5,
+          weeklyTotals: new Array(52).fill(0),
+        },
+        repos: [],
+        commits: [],
+        pulls: [],
       });
       mockSolanaAdapter.fetchOnChainData.mockResolvedValueOnce({
         ecosystem: 'solana',
         ecosystemPRs: 0,
-        deployedPrograms: [{ programId: 'mock1', isActive: true, uniqueCallers: 5, upgradeCount: 1, deployedAt: null }, { programId: 'mock2', isActive: true, uniqueCallers: 3, upgradeCount: 0, deployedAt: null }],
+        deployedPrograms: [
+          {
+            programId: 'mock1',
+            isActive: true,
+            uniqueCallers: 5,
+            upgradeCount: 1,
+            deployedAt: null,
+          },
+          {
+            programId: 'mock2',
+            isActive: true,
+            uniqueCallers: 3,
+            upgradeCount: 0,
+            deployedAt: null,
+          },
+        ],
       });
 
       const res = await request(app.getHttpServer())
@@ -286,8 +383,19 @@ describe('Analysis Routing & Flows (E2E)', () => {
       mockGithubAdapter.fetchRawData.mockResolvedValueOnce({
         fetchedAt: new Date().toISOString(),
         profile: { followers: 10, publicRepos: 5, accountAge: 12 },
-        contributions: { activeWeeksCount: 5, weeklyTotals: new Array(52).fill(0) },
-        repos: [{ name: 'test-solana', topics: ['solana'], createdAt: new Date(Date.now() - 100 * 86400000).toISOString(), pushedAt: new Date().toISOString(), isFork: false }],
+        contributions: {
+          activeWeeksCount: 5,
+          weeklyTotals: new Array(52).fill(0),
+        },
+        repos: [
+          {
+            name: 'test-solana',
+            topics: ['solana'],
+            createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
+            pushedAt: new Date().toISOString(),
+            isFork: false,
+          },
+        ],
         commits: [],
         pulls: [],
       });
@@ -300,7 +408,7 @@ describe('Analysis Routing & Flows (E2E)', () => {
 
       expect(res.body.jobId).toBeDefined();
       const status = await waitForJob(res.body.jobId);
-      
+
       if (status.status === 'complete') {
         const result = await getResult(res.body.jobId);
         // Mode is github-only, shouldn't have programs from Solana wallet
@@ -311,7 +419,10 @@ describe('Analysis Routing & Flows (E2E)', () => {
     });
 
     it('9. User has ONLY wallet linked', async () => {
-      mockSolanaAdapter.fetchProgramsByAuthority.mockResolvedValueOnce({ programs: [], achievements: [] });
+      mockSolanaAdapter.fetchProgramsByAuthority.mockResolvedValueOnce({
+        programs: [],
+        achievements: [],
+      });
 
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
@@ -321,7 +432,7 @@ describe('Analysis Routing & Flows (E2E)', () => {
 
       expect(res.body.jobId).toBeDefined();
       const status = await waitForJob(res.body.jobId);
-      
+
       if (status.status === 'complete') {
         const result = await getResult(res.body.jobId);
         // Mode is wallet-only, github capability scores should be 0
@@ -345,10 +456,21 @@ describe('Analysis Routing & Flows (E2E)', () => {
       mockGithubAdapter.fetchRawData.mockResolvedValueOnce({
         fetchedAt: new Date().toISOString(),
         profile: { followers: 10, publicRepos: 5, accountAge: 12 },
-        contributions: { activeWeeksCount: 5, weeklyTotals: new Array(52).fill(0) },
-        repos: [{ name: 'r1', topics: ['anchor', 'solana'], createdAt: new Date(Date.now() - 100 * 86400000).toISOString(), pushedAt: new Date().toISOString(), isFork: false }],
+        contributions: {
+          activeWeeksCount: 5,
+          weeklyTotals: new Array(52).fill(0),
+        },
+        repos: [
+          {
+            name: 'r1',
+            topics: ['anchor', 'solana'],
+            createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
+            pushedAt: new Date().toISOString(),
+            isFork: false,
+          },
+        ],
         commits: [],
-        pulls: []
+        pulls: [],
       });
 
       const res = await request(app.getHttpServer())
@@ -365,11 +487,25 @@ describe('Analysis Routing & Flows (E2E)', () => {
       mockGithubAdapter.fetchRawData.mockResolvedValueOnce({
         fetchedAt: new Date().toISOString(),
         profile: { followers: 10, publicRepos: 5, accountAge: 12 },
-        contributions: { activeWeeksCount: 5, weeklyTotals: new Array(52).fill(0) },
-        repos: [{ name: 'anchor-repo', topics: ['anchor'], createdAt: new Date(Date.now() - 100 * 86400000).toISOString(), pushedAt: new Date().toISOString(), isFork: false }],
+        contributions: {
+          activeWeeksCount: 5,
+          weeklyTotals: new Array(52).fill(0),
+        },
+        repos: [
+          {
+            name: 'anchor-repo',
+            topics: ['anchor'],
+            createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
+            pushedAt: new Date().toISOString(),
+            isFork: false,
+          },
+        ],
         commits: [],
-        externalPRs: { mergedExternalPRCount: 1, externalRepoNames: ['coral-xyz/anchor'] },
-        pulls: []
+        externalPRs: {
+          mergedExternalPRCount: 1,
+          externalRepoNames: ['coral-xyz/anchor'],
+        },
+        pulls: [],
       });
 
       const res = await request(app.getHttpServer())
@@ -386,10 +522,21 @@ describe('Analysis Routing & Flows (E2E)', () => {
       mockGithubAdapter.fetchRawData.mockResolvedValueOnce({
         fetchedAt: new Date().toISOString(),
         profile: { followers: 10, publicRepos: 5, accountAge: 12 },
-        contributions: { activeWeeksCount: 5, weeklyTotals: new Array(52).fill(0) },
-        repos: [{ name: 'frontend', topics: ['react', 'nodejs'], createdAt: new Date(Date.now() - 100 * 86400000).toISOString(), pushedAt: new Date().toISOString(), isFork: false }],
+        contributions: {
+          activeWeeksCount: 5,
+          weeklyTotals: new Array(52).fill(0),
+        },
+        repos: [
+          {
+            name: 'frontend',
+            topics: ['react', 'nodejs'],
+            createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
+            pushedAt: new Date().toISOString(),
+            isFork: false,
+          },
+        ],
         commits: [],
-        pulls: []
+        pulls: [],
       });
 
       const res = await request(app.getHttpServer())
@@ -406,11 +553,23 @@ describe('Analysis Routing & Flows (E2E)', () => {
       mockGithubAdapter.fetchRawData.mockResolvedValueOnce({
         fetchedAt: new Date().toISOString(),
         profile: { followers: 10, publicRepos: 5, accountAge: 12 },
-        contributions: { activeWeeksCount: 5, weeklyTotals: new Array(52).fill(0) },
-        repos: [{ name: 'backend', topics: [], language: 'TypeScript', createdAt: new Date(Date.now() - 100 * 86400000).toISOString(), pushedAt: new Date().toISOString(), isFork: false }],
+        contributions: {
+          activeWeeksCount: 5,
+          weeklyTotals: new Array(52).fill(0),
+        },
+        repos: [
+          {
+            name: 'backend',
+            topics: [],
+            language: 'TypeScript',
+            createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
+            pushedAt: new Date().toISOString(),
+            isFork: false,
+          },
+        ],
         commits: [],
         pulls: [],
-        manifestKeys: { 'repo': ['bullmq', 'pg', 'ioredis'] }
+        manifestKeys: { repo: ['bullmq', 'pg', 'ioredis'] },
       });
 
       const res = await request(app.getHttpServer())
@@ -429,15 +588,35 @@ describe('Analysis Routing & Flows (E2E)', () => {
       mockGithubAdapter.fetchRawData.mockResolvedValueOnce({
         fetchedAt: new Date().toISOString(),
         profile: { followers: 10, publicRepos: 10, accountAge: 12 },
-        contributions: { activeWeeksCount: 5, weeklyTotals: new Array(52).fill(0) },
-        repos: [{ name: 'rust-protocol', topics: [], language: 'Rust', createdAt: new Date(Date.now() - 100 * 86400000).toISOString(), pushedAt: new Date().toISOString(), isFork: false }],
+        contributions: {
+          activeWeeksCount: 5,
+          weeklyTotals: new Array(52).fill(0),
+        },
+        repos: [
+          {
+            name: 'rust-protocol',
+            topics: [],
+            language: 'Rust',
+            createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
+            pushedAt: new Date().toISOString(),
+            isFork: false,
+          },
+        ],
         commits: [],
-        pulls: []
+        pulls: [],
       });
       mockSolanaAdapter.fetchOnChainData.mockResolvedValueOnce({
         ecosystem: 'solana',
         ecosystemPRs: 0,
-        deployedPrograms: [{ programId: 'mock-program', isActive: true, uniqueCallers: 10, upgradeCount: 2, deployedAt: null }],
+        deployedPrograms: [
+          {
+            programId: 'mock-program',
+            isActive: true,
+            uniqueCallers: 10,
+            upgradeCount: 2,
+            deployedAt: null,
+          },
+        ],
       });
 
       const res = await request(app.getHttpServer())

@@ -92,7 +92,7 @@ export class ProfileService {
         careerPath: true,
         scorecard: true,
         createdAt: true,
-		vouches : true,
+        vouches: true,
         devProfile: {
           select: {
             id: true,
@@ -141,9 +141,8 @@ export class ProfileService {
   // ─── GitHub Connection ────────────────────────────────────────────────────
 
   async getConnectedGithub(userId: string) {
-     
     const candidate = await this.prisma.candidate.findUnique({
-		 where: { userId },
+      where: { userId },
       select: {
         devProfile: {
           select: {
@@ -161,7 +160,6 @@ export class ProfileService {
           },
         },
       },
-     
     });
 
     if (!candidate) throw new NotFoundException('Candidate profile not found');
@@ -174,7 +172,7 @@ export class ProfileService {
     };
   }
 
-   // ─── Wallet Connection ────────────────────────────────────────────────────
+  // ─── Wallet Connection ────────────────────────────────────────────────────
 
   async getConnectedWallet(userId: string) {
     const candidate = await this.prisma.candidate.findUnique({

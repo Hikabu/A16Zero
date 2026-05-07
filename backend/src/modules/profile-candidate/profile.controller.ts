@@ -115,7 +115,7 @@ export class ProfileController {
     return this.profileService.getConnectedGithub(req.user.id);
   }
 
-   // ───────────────── WEB3 ─────────────────
+  // ───────────────── WEB3 ─────────────────
 
   @Get('wallet')
   @ApiOperation({
@@ -128,5 +128,4 @@ export class ProfileController {
   getConnectedWallet(@Req() req: any) {
     return this.profileService.getConnectedWallet(req.user.id);
   }
-
 }

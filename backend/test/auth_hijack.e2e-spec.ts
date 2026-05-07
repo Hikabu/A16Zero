@@ -66,7 +66,10 @@ describe('Auth Hijacking Prevention (e2e)', () => {
 
     // The account is verified by default in some test setups or we manually update it
     // Let's assume the user is logged in.
-    const jwt = getCookieValue(loginResponse.headers['set-cookie'], 'access_token');
+    const jwt = getCookieValue(
+      loginResponse.headers['set-cookie'],
+      'access_token',
+    );
 
     // 2. Attacker attempts to link THEIR social account to TARGET'S user ID
     // using a predictable state if the system allowed it.

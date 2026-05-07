@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, HttpStatus, ValidationPipe, ExecutionContext } from '@nestjs/common';
+import {
+  INestApplication,
+  HttpStatus,
+  ValidationPipe,
+  ExecutionContext,
+} from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -32,16 +37,20 @@ describe('Vouch Lifecycle (e2e)', () => {
   let assessWalletSpy: jest.SpyInstance;
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockImplementation(async (_octokit: any, username: string) => ({
-      ...ALEX_BACKEND,
-      profile: { ...ALEX_BACKEND.profile, username },
-    })),
+    fetchRawData: jest
+      .fn()
+      .mockImplementation(async (_octokit: any, username: string) => ({
+        ...ALEX_BACKEND,
+        profile: { ...ALEX_BACKEND.profile, username },
+      })),
     getRateLimitRemaining: jest.fn().mockResolvedValue(5000),
     checkRateLimitOrThrow: jest.fn().mockResolvedValue(true),
   };
   const mockSolanaAdapter = {
     fetchOnChainData: jest.fn().mockResolvedValue(null),
-    fetchProgramsByAuthority: jest.fn().mockResolvedValue({ programs: [], achievements: [] }),
+    fetchProgramsByAuthority: jest
+      .fn()
+      .mockResolvedValue({ programs: [], achievements: [] }),
   };
 
   const VOUCHER_WALLET = 'VoucherWalletXXXXXXXXXXXXXXXXXXX';
@@ -151,7 +160,11 @@ describe('Vouch Lifecycle (e2e)', () => {
       where: {
         OR: [
           { id: 'dev_vouch_1' },
-          { candidate: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } } },
+          {
+            candidate: {
+              userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] },
+            },
+          },
         ],
       },
     });
@@ -164,7 +177,9 @@ describe('Vouch Lifecycle (e2e)', () => {
     await prisma.user.deleteMany({
       where: {
         OR: [
-          { id: { in: ['user_vouch_1', VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } },
+          {
+            id: { in: ['user_vouch_1', VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] },
+          },
           { username: mockCandidateUsername },
         ],
       },
@@ -204,7 +219,11 @@ describe('Vouch Lifecycle (e2e)', () => {
       },
     });
 
-    await ensureVoucherUser(VOUCHER_USER_ID, 'voucher-standard', VOUCHER_WALLET);
+    await ensureVoucherUser(
+      VOUCHER_USER_ID,
+      'voucher-standard',
+      VOUCHER_WALLET,
+    );
     await ensureVoucherUser(
       VOUCHER_NEW_USER_ID,
       'voucher-new',
@@ -215,19 +234,35 @@ describe('Vouch Lifecycle (e2e)', () => {
   afterAll(async () => {
     try {
       await prisma.vouch.deleteMany({});
-      await prisma.githubProfile.deleteMany({ where: { githubUsername: mockCandidateUsername } });
-      await prisma.web3Profile.deleteMany({ where: { solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX' } });
-      await prisma.web3Profile.deleteMany({ where: { solanaAddress: { in: [VOUCHER_WALLET, VOUCHER_WALLET_NEW] } } });
-      await prisma.developerCandidate.deleteMany({ where: { candidate: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } } } });
-      await prisma.candidate.deleteMany({ where: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } } });
-      await prisma.user.deleteMany({ where: { id: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } } });
-      await prisma.developerCandidate.deleteMany({ where: { id: 'dev_vouch_1' } });
+      await prisma.githubProfile.deleteMany({
+        where: { githubUsername: mockCandidateUsername },
+      });
+      await prisma.web3Profile.deleteMany({
+        where: { solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX' },
+      });
+      await prisma.web3Profile.deleteMany({
+        where: { solanaAddress: { in: [VOUCHER_WALLET, VOUCHER_WALLET_NEW] } },
+      });
+      await prisma.developerCandidate.deleteMany({
+        where: {
+          candidate: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } },
+        },
+      });
+      await prisma.candidate.deleteMany({
+        where: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } },
+      });
+      await prisma.user.deleteMany({
+        where: { id: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } },
+      });
+      await prisma.developerCandidate.deleteMany({
+        where: { id: 'dev_vouch_1' },
+      });
       await prisma.candidate.deleteMany({ where: { id: 'cand_vouch_1' } });
       await prisma.user.deleteMany({ where: { id: 'user_vouch_1' } });
     } catch (err) {
       console.error('Error cleaning up data:', err);
     }
-    
+
     jest.restoreAllMocks();
     try {
       await app.close();
@@ -245,7 +280,11 @@ describe('Vouch Lifecycle (e2e)', () => {
 
   beforeEach(async () => {
     await prisma.vouch.deleteMany({});
-    await ensureVoucherUser(VOUCHER_USER_ID, 'voucher-standard', VOUCHER_WALLET);
+    await ensureVoucherUser(
+      VOUCHER_USER_ID,
+      'voucher-standard',
+      VOUCHER_WALLET,
+    );
     await ensureVoucherUser(
       VOUCHER_NEW_USER_ID,
       'voucher-new',
@@ -283,7 +322,9 @@ describe('Vouch Lifecycle (e2e)', () => {
   const waitForJob = async (jobId: string) => {
     const start = Date.now();
     while (Date.now() - start < 5000) {
-      const res = await request(app.getHttpServer()).get(`/api/analysis/${jobId}/status`);
+      const res = await request(app.getHttpServer()).get(
+        `/api/analysis/${jobId}/status`,
+      );
       if (res.body.status === 'complete' || res.body.status === 'failed') {
         return res.body;
       }
@@ -305,8 +346,10 @@ describe('Vouch Lifecycle (e2e)', () => {
         });
 
       expect(res.status).toBe(HttpStatus.CREATED);
-      
-      const vouches = await prisma.vouch.findMany({ where: { candidate: { user: { username: mockCandidateUsername } } } });
+
+      const vouches = await prisma.vouch.findMany({
+        where: { candidate: { user: { username: mockCandidateUsername } } },
+      });
       expect(vouches.length).toBe(1);
       expect(vouches[0].weight).toBe('standard');
       expect(vouches[0].isActive).toBe(true);
@@ -317,15 +360,25 @@ describe('Vouch Lifecycle (e2e)', () => {
       await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Idempotent', txSignature: 'sig2' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'Idempotent',
+          txSignature: 'sig2',
+        });
 
       const res = await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Idempotent', txSignature: 'sig2' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'Idempotent',
+          txSignature: 'sig2',
+        });
 
       expect(res.status).toBe(HttpStatus.CREATED); // nest default post maps to 201 even if idempotent unless specified 200
-      const vouches = await prisma.vouch.findMany({ where: { txSignature: 'sig2' } });
+      const vouches = await prisma.vouch.findMany({
+        where: { txSignature: 'sig2' },
+      });
       expect(vouches.length).toBe(1);
     });
 
@@ -339,7 +392,11 @@ describe('Vouch Lifecycle (e2e)', () => {
       const res2 = await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Self', txSignature: 'sig_self' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'Self',
+          txSignature: 'sig_self',
+        });
 
       expect(res2.status).toBe(HttpStatus.BAD_REQUEST);
       expect(res2.body.message).toContain('Cannot vouch for yourself');
@@ -356,13 +413,21 @@ describe('Vouch Lifecycle (e2e)', () => {
       await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'First', txSignature: 'sig_dup1' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'First',
+          txSignature: 'sig_dup1',
+        });
 
       mockTx(VOUCHER_WALLET, 'Second', true);
       const res = await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Second', txSignature: 'sig_dup2' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'Second',
+          txSignature: 'sig_dup2',
+        });
 
       expect(res.status).toBe(HttpStatus.BAD_REQUEST);
       expect(res.body.message).toContain('Already vouched');
@@ -371,8 +436,12 @@ describe('Vouch Lifecycle (e2e)', () => {
     it('5. Budget (mock 5 active) -> 400', async () => {
       // Create 5 fake candidates and vouch for them
       for (let i = 0; i < 5; i++) {
-        const u = await prisma.user.create({ data: { username: `u${i}`, id: `ux${i}` } });
-        const c = await prisma.candidate.create({ data: { id: `c${i}`, userId: u.id } });
+        const u = await prisma.user.create({
+          data: { username: `u${i}`, id: `ux${i}` },
+        });
+        const c = await prisma.candidate.create({
+          data: { id: `c${i}`, userId: u.id },
+        });
         await prisma.vouch.create({
           data: {
             candidateId: c.id,
@@ -380,7 +449,7 @@ describe('Vouch Lifecycle (e2e)', () => {
             message: 'Fill budget',
             txSignature: `fill_tx_${i}`,
             expiresAt: new Date(Date.now() + 100000000),
-          }
+          },
         });
       }
 
@@ -388,12 +457,18 @@ describe('Vouch Lifecycle (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Over budget', txSignature: 'sig_over' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'Over budget',
+          txSignature: 'sig_over',
+        });
 
       expect(res.status).toBe(HttpStatus.BAD_REQUEST);
       expect(res.body.message).toContain('Vouch budget exhausted');
-      
-      await prisma.vouch.deleteMany({ where: { txSignature: { startsWith: 'fill_tx_' } } });
+
+      await prisma.vouch.deleteMany({
+        where: { txSignature: { startsWith: 'fill_tx_' } },
+      });
       await prisma.candidate.deleteMany({
         where: { id: { startsWith: 'c', not: 'cand_vouch_1' } },
       });
@@ -403,8 +478,12 @@ describe('Vouch Lifecycle (e2e)', () => {
     it('6. Budget with 1 expired (4 active, 1 expired) -> 201', async () => {
       // Generate 4 active
       for (let i = 0; i < 4; i++) {
-        const u = await prisma.user.create({ data: { username: `ua${i}`, id: `uxa${i}` } });
-        const c = await prisma.candidate.create({ data: { id: `ca${i}`, userId: u.id } });
+        const u = await prisma.user.create({
+          data: { username: `ua${i}`, id: `uxa${i}` },
+        });
+        const c = await prisma.candidate.create({
+          data: { id: `ca${i}`, userId: u.id },
+        });
         await prisma.vouch.create({
           data: {
             candidateId: c.id,
@@ -412,13 +491,17 @@ describe('Vouch Lifecycle (e2e)', () => {
             message: 'Fill budget',
             txSignature: `fill_active_${i}`,
             expiresAt: new Date(Date.now() + 100000000),
-          }
+          },
         });
       }
-      
+
       // Generate 1 expired
-      const ue = await prisma.user.create({ data: { username: `uex`, id: `uxe` } });
-      const ce = await prisma.candidate.create({ data: { id: `cex`, userId: ue.id } });
+      const ue = await prisma.user.create({
+        data: { username: `uex`, id: `uxe` },
+      });
+      const ce = await prisma.candidate.create({
+        data: { id: `cex`, userId: ue.id },
+      });
       await prisma.vouch.create({
         data: {
           candidateId: ce.id,
@@ -426,18 +509,24 @@ describe('Vouch Lifecycle (e2e)', () => {
           message: 'Expired',
           txSignature: `fill_exp`,
           expiresAt: new Date(Date.now() - 10000),
-        }
+        },
       });
 
       mockTx(VOUCHER_WALLET, 'Not budget exhausted', true);
       const res = await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Not budget exhausted', txSignature: 'sig_budget_pass' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'Not budget exhausted',
+          txSignature: 'sig_budget_pass',
+        });
 
       expect(res.status).toBe(HttpStatus.CREATED);
 
-      await prisma.vouch.deleteMany({ where: { txSignature: { startsWith: 'fill_' } } });
+      await prisma.vouch.deleteMany({
+        where: { txSignature: { startsWith: 'fill_' } },
+      });
       await prisma.candidate.deleteMany({
         where: { id: { startsWith: 'c', not: 'cand_vouch_1' } },
       });
@@ -451,20 +540,30 @@ describe('Vouch Lifecycle (e2e)', () => {
       await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_new')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'New guy', txSignature: 'sig_new' })
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'New guy',
+          txSignature: 'sig_new',
+        })
         .expect(HttpStatus.CREATED);
 
-      const vouches = await prisma.vouch.findMany({ where: { txSignature: 'sig_new' } });
+      const vouches = await prisma.vouch.findMany({
+        where: { txSignature: 'sig_new' },
+      });
       expect(vouches[0].weight).toBe('new');
 
       // POST /analysis
       const resAnalysis = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({ githubUsername: mockCandidateUsername });
-        
+
       const status = await waitForJob(resAnalysis.body.jobId);
-      const result = (await request(app.getHttpServer()).get(`/api/analysis/${resAnalysis.body.jobId}/result`)).body.result;
-      
+      const result = (
+        await request(app.getHttpServer()).get(
+          `/api/analysis/${resAnalysis.body.jobId}/result`,
+        )
+      ).body.result;
+
       // If none of vouches are verified/standard, but wait new count is tracked? Or maybe new is ignored
       // Based on prompt: "GET /api/vouches/testuser -> vouch visible but vouchCount still 0. POST /analysis -> result.reputation === null"
       // Since no GET /api/vouches, let's just assert the analysis one
@@ -476,7 +575,11 @@ describe('Vouch Lifecycle (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Failed', txSignature: 'sig_fail' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'Failed',
+          txSignature: 'sig_fail',
+        });
 
       expect(res.status).toBe(HttpStatus.BAD_REQUEST);
       expect(res.body.message).toContain('failed on chain');
@@ -487,7 +590,11 @@ describe('Vouch Lifecycle (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/vouch/confirm')
         .set('Authorization', 'Bearer voucher_standard')
-        .send({ candidateIdentifier: mockCandidateUsername, message: 'Expected text', txSignature: 'sig_mismatch' });
+        .send({
+          candidateIdentifier: mockCandidateUsername,
+          message: 'Expected text',
+          txSignature: 'sig_mismatch',
+        });
 
       expect(res.status).toBe(HttpStatus.BAD_REQUEST);
       expect(res.body.message).toContain('does not match provided message');
@@ -495,16 +602,20 @@ describe('Vouch Lifecycle (e2e)', () => {
 
     it('10. Cluster attack -> async flag set', async () => {
       assessWalletSpy.mockResolvedValue('new');
-      
+
       // Post 3 from "new" wallets
       for (let i = 0; i < 3; i++) {
         mockTx(`VoucherNew${i}`, `Cluster message ${i}`, true);
-        
+
         await request(app.getHttpServer())
           .post('/vouch/confirm')
           .set('Authorization', 'Bearer voucher_standard') // we bypass auth strict check for wallet but wait we override the web3Profile via AuthGuard... so we mapped voucher_standard to VOUCHER_WALLET.
           // In the mock, we can just insert them in DB natively then post 1 more to trigger check, OR we can mock the request properly
-          .send({ candidateIdentifier: mockCandidateUsername, message: `Cluster message ${i}`, txSignature: `sig_cluster_${i}` });
+          .send({
+            candidateIdentifier: mockCandidateUsername,
+            message: `Cluster message ${i}`,
+            txSignature: `sig_cluster_${i}`,
+          });
       }
 
       // We actually need to execute them properly with correct wallet.
@@ -526,7 +637,7 @@ describe('Vouch Lifecycle (e2e)', () => {
           txSignature: 'revokeme',
           expiresAt: new Date(Date.now() + 10000),
           isActive: true,
-        }
+        },
       });
       vouchId = v.id;
     });
@@ -554,9 +665,9 @@ describe('Vouch Lifecycle (e2e)', () => {
     it('14. Already revoked -> 400', async () => {
       await prisma.vouch.update({
         where: { id: vouchId },
-        data: { isActive: false }
+        data: { isActive: false },
       });
-      
+
       const res = await request(app.getHttpServer())
         .delete(`/vouch/${vouchId}`)
         .set('Authorization', 'Bearer voucher_standard')
@@ -572,10 +683,14 @@ describe('Vouch Lifecycle (e2e)', () => {
       const resAnalysis = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({ githubUsername: mockCandidateUsername, force: true });
-        
+
       const status = await waitForJob(resAnalysis.body.jobId);
-      const result = (await request(app.getHttpServer()).get(`/api/analysis/${resAnalysis.body.jobId}/result`)).body.result;
-      
+      const result = (
+        await request(app.getHttpServer()).get(
+          `/api/analysis/${resAnalysis.body.jobId}/result`,
+        )
+      ).body.result;
+
       expect(result.reputation).toBeNull();
     });
 
@@ -590,19 +705,27 @@ describe('Vouch Lifecycle (e2e)', () => {
           weight: 'verified',
           expiresAt: new Date(Date.now() + 100000),
           isActive: true,
-        }
+        },
       });
-      
+
       const resAnalysis = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({ githubUsername: mockCandidateUsername, force: true });
-        
+
       const status = await waitForJob(resAnalysis.body.jobId);
-      const result = (await request(app.getHttpServer()).get(`/api/analysis/${resAnalysis.body.jobId}/result`)).body.result;
+      const result = (
+        await request(app.getHttpServer()).get(
+          `/api/analysis/${resAnalysis.body.jobId}/result`,
+        )
+      ).body.result;
 
       expect(result.reputation.vouchCount).toBe(1);
       expect(result.reputation.verifiedVouchCount).toBe(1);
-      expect(result.reputation.confidence === 'medium' || result.reputation.confidence === 'low' || result.reputation.confidence === 'high').toBeTruthy();
+      expect(
+        result.reputation.confidence === 'medium' ||
+          result.reputation.confidence === 'low' ||
+          result.reputation.confidence === 'high',
+      ).toBeTruthy();
       expect(result.reputation.vouches[0].weight).toBe('verified');
       expect(result.reputation.vouches[0].voucherWallet).toContain('...'); // Matches "XXXX...XXXX" due to masking
     });
@@ -610,18 +733,38 @@ describe('Vouch Lifecycle (e2e)', () => {
     it('17. 2 verified vouches -> confidence upgraded, capabilities.backend unchanged', async () => {
       const c = await prisma.candidate.findFirst({ include: { user: true } });
       await prisma.vouch.create({
-        data: { candidateId: c.id, voucherWallet: 'W111', message: 'M1', txSignature: 'sig__1', weight: 'verified', expiresAt: new Date(Date.now() + 100000), isActive: true }
+        data: {
+          candidateId: c.id,
+          voucherWallet: 'W111',
+          message: 'M1',
+          txSignature: 'sig__1',
+          weight: 'verified',
+          expiresAt: new Date(Date.now() + 100000),
+          isActive: true,
+        },
       });
       await prisma.vouch.create({
-        data: { candidateId: c.id, voucherWallet: 'W222', message: 'M2', txSignature: 'sig__2', weight: 'verified', expiresAt: new Date(Date.now() + 100000), isActive: true }
+        data: {
+          candidateId: c.id,
+          voucherWallet: 'W222',
+          message: 'M2',
+          txSignature: 'sig__2',
+          weight: 'verified',
+          expiresAt: new Date(Date.now() + 100000),
+          isActive: true,
+        },
       });
 
       const resAnalysis = await request(app.getHttpServer())
         .post('/api/analysis')
         .send({ githubUsername: mockCandidateUsername, force: true });
-        
+
       await waitForJob(resAnalysis.body.jobId);
-      const result = (await request(app.getHttpServer()).get(`/api/analysis/${resAnalysis.body.jobId}/result`)).body.result;
+      const result = (
+        await request(app.getHttpServer()).get(
+          `/api/analysis/${resAnalysis.body.jobId}/result`,
+        )
+      ).body.result;
 
       expect(result.reputation.verifiedVouchCount).toBe(2);
       expect(result.impact.confidence).toBeDefined(); // Evaluates confidence uplift

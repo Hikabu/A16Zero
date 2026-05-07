@@ -102,7 +102,7 @@ export class ScorecardService {
           username: 'candidate',
           avatarUrl: undefined,
           primaryCohort: 'unknown',
-          seniority: 'MID' as any,
+          seniority: 'MID',
           summary: 'Reviewing developer history...',
         },
         score: {
@@ -111,8 +111,8 @@ export class ScorecardService {
           isWithheld: { value: false },
         },
         trust: {
-          level: 'PARTIAL' as any,
-          risk: 'LOW_RISK' as any,
+          level: 'PARTIAL',
+          risk: 'LOW_RISK',
           label: 'NEUTRAL',
           guidance: 'Awaiting updated scoring analysis.',
         },
@@ -149,7 +149,7 @@ export class ScorecardService {
         username: 'unknown',
         avatarUrl: undefined,
         primaryCohort: 'unknown',
-        seniority: 'MID' as any,
+        seniority: 'MID',
         summary: real.summary,
       },
       score: {
@@ -159,7 +159,7 @@ export class ScorecardService {
       },
       trust: {
         level: this.mapConfidenceLevel(real),
-        risk: 'LOW_RISK' as any,
+        risk: 'LOW_RISK',
         label: this.mapTrustLabel(real),
         guidance: this.mapGuidance(real),
       },
@@ -278,22 +278,22 @@ export class ScorecardService {
   private buildPlaceholderResult(): ScorecardResult {
     return {
       snapshot: {
-        seniority: 'MID' as any,
+        seniority: 'MID',
         summary: 'Placeholder summary.',
-        riskLevel: 'LOW_RISK' as any,
+        riskLevel: 'LOW_RISK',
         generatedAt: new Date(),
-      } as any,
+      },
       timeline: {
         phases: [],
         trajectory: 'STABLE',
         generatedAt: new Date(),
-      } as any,
+      },
       signals: {} as any,
       claims: [],
       confidenceEnvelope: {
         overallConfidence: 0,
-        confidenceTier: 'LOW' as any,
-        riskLevel: 'LOW_RISK' as any,
+        confidenceTier: 'LOW',
+        riskLevel: 'LOW_RISK',
         caveats: [],
         scoreWithheld: false,
       },
@@ -304,10 +304,10 @@ export class ScorecardService {
         cohortSize: 0,
       },
       behaviorClassification: {
-        primaryPattern: 'BALANCED_CONTRIBUTOR' as any,
+        primaryPattern: 'BALANCED_CONTRIBUTOR',
         primaryConfidence: 0,
         secondaryPattern: null,
-      } as any,
+      },
     };
   }
 }

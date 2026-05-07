@@ -97,9 +97,7 @@ export class ScorecardController {
       request.githubUsername,
     );
 
-    return this.scorecardService.mapToUiModel(
-      result as unknown as RawScorecard,
-    );
+    return this.scorecardService.mapToUiModel(result);
   }
 
   /**
@@ -202,7 +200,7 @@ export class ScorecardController {
       );
     }
 
-    return this.scorecardService.mapToUiModel(scorecard as any);
+    return this.scorecardService.mapToUiModel(scorecard);
   }
 
   /**

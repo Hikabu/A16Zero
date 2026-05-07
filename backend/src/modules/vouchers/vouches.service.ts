@@ -6,7 +6,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+} from '@solana/web3.js';
 import bs58 from 'bs58';
 import nacl from 'tweetnacl';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -54,7 +59,9 @@ export class VouchesService {
       where: { userId },
     });
     if (!web3user || !web3user.solanaAddress)
-      throw new UnauthorizedException('No linked wallet found for this account');
+      throw new UnauthorizedException(
+        'No linked wallet found for this account',
+      );
 
     const voucherWallet: string = web3user.solanaAddress;
 
@@ -63,7 +70,10 @@ export class VouchesService {
       where: { txSignature },
     });
     if (existing) {
-      this.logger.log({ txSignature }, 'vouch_already_confirmed — idempotent return');
+      this.logger.log(
+        { txSignature },
+        'vouch_already_confirmed — idempotent return',
+      );
       return existing;
     }
 
@@ -71,7 +81,11 @@ export class VouchesService {
     const candidateUser = await this.prisma.candidate.findFirst({
       where: {
         OR: [
-          { devProfile: { githubProfile: { githubUsername: candidateIdentifier } } },
+          {
+            devProfile: {
+              githubProfile: { githubUsername: candidateIdentifier },
+            },
+          },
           { user: { username: candidateIdentifier } },
           { user: { email: candidateIdentifier } },
         ],
@@ -83,10 +97,20 @@ export class VouchesService {
     }
 
     // ── Step 1: On-chain verification (Web UI must verify — tx from frontend) ──
-    await this.verifyOnChainTx(txSignature, voucherWallet, message, candidateIdentifier);
+    await this.verifyOnChainTx(
+      txSignature,
+      voucherWallet,
+      message,
+      candidateIdentifier,
+    );
 
     // ── Step 2: Shared anti-Sybil + DB logic ──────────────────────────────
-    return this.persistVouch({ txSignature, candidateUsername: candidateIdentifier, voucherWallet, message });
+    return this.persistVouch({
+      txSignature,
+      candidateUsername: candidateIdentifier,
+      voucherWallet,
+      message,
+    });
   }
 
   // ─── Helius webhook path ─────────────────────────────────────────────────
@@ -174,7 +198,10 @@ export class VouchesService {
       where: { txSignature },
     });
     if (existing) {
-      this.logger.log({ txSignature }, 'vouch_already_confirmed — idempotent return');
+      this.logger.log(
+        { txSignature },
+        'vouch_already_confirmed — idempotent return',
+      );
       return existing;
     }
 
@@ -182,7 +209,11 @@ export class VouchesService {
     const candidate = await this.prisma.candidate.findFirst({
       where: {
         OR: [
-          { devProfile: { githubProfile: { githubUsername: candidateUsername } } },
+          {
+            devProfile: {
+              githubProfile: { githubUsername: candidateUsername },
+            },
+          },
           { user: { username: candidateUsername } },
           { user: { email: candidateUsername } },
         ],
@@ -193,7 +224,9 @@ export class VouchesService {
     });
 
     if (!candidate) {
-      throw new NotFoundException(`Candidate not found for identifier: ${candidateUsername}`);
+      throw new NotFoundException(
+        `Candidate not found for identifier: ${candidateUsername}`,
+      );
     }
 
     // ── b. Self-vouch block (wallet level) ───────────────────────────────
@@ -204,7 +237,9 @@ export class VouchesService {
 
     // ── c. Duplicate vouch block ──────────────────────────────────────────
     const duplicateVouch = await this.prisma.vouch.findUnique({
-      where: { candidateId_voucherWallet: { candidateId: candidate.id, voucherWallet } },
+      where: {
+        candidateId_voucherWallet: { candidateId: candidate.id, voucherWallet },
+      },
     });
     if (duplicateVouch) {
       throw new BadRequestException('Already vouched for this candidate');
@@ -215,21 +250,35 @@ export class VouchesService {
       where: { voucherWallet, isActive: true, expiresAt: { gt: new Date() } },
     });
     if (activeCount >= VOUCH_BUDGET) {
-      throw new BadRequestException('Vouch budget exhausted. Revoke an existing vouch to proceed.');
+      throw new BadRequestException(
+        'Vouch budget exhausted. Revoke an existing vouch to proceed.',
+      );
     }
 
     // ── e. Weight assessment ──────────────────────────────────────────────
-    const weight = await this.voucherQualityService.assessVoucherWallet(voucherWallet);
+    const weight =
+      await this.voucherQualityService.assessVoucherWallet(voucherWallet);
 
     // ── f. TTL ────────────────────────────────────────────────────────────
     const expiresAt = new Date(Date.now() + VOUCH_TTL_DAYS * 86_400 * 1000);
 
     // ── g. Create vouch record ────────────────────────────────────────────
     const vouch = await this.prisma.vouch.create({
-      data: { candidateId: candidate.id, voucherWallet, message, txSignature, weight, expiresAt, confirmedAt: new Date() },
+      data: {
+        candidateId: candidate.id,
+        voucherWallet,
+        message,
+        txSignature,
+        weight,
+        expiresAt,
+        confirmedAt: new Date(),
+      },
     });
 
-    this.logger.log({ vouchId: vouch.id, candidateId: candidate.id, weight }, 'vouch_confirmed');
+    this.logger.log(
+      { vouchId: vouch.id, candidateId: candidate.id, weight },
+      'vouch_confirmed',
+    );
 
     // ── h. Cluster detection (async, non-blocking) ────────────────────────
     setImmediate(() =>
@@ -254,19 +303,17 @@ export class VouchesService {
     txSignature: string,
     voucherWallet: string,
     message: string,
-	  candidateIdentifier: string, 
+    candidateIdentifier: string,
   ): Promise<void> {
     if (!message || !message.trim()) {
       throw new BadRequestException('Message must not be empty');
     }
 
-    
-      const usingDevnet = this.config.get<string>('USING_DEVNET') === 'true';
+    const usingDevnet = this.config.get<string>('USING_DEVNET') === 'true';
 
-const rpcUrl = usingDevnet
-  ? this.config.get<string>('SOLANA_DEVNET_RPC_URL')
-  : this.config.get<string>('SOLANA_RPC_URL');
-
+    const rpcUrl = usingDevnet
+      ? this.config.get<string>('SOLANA_DEVNET_RPC_URL')
+      : this.config.get<string>('SOLANA_RPC_URL');
 
     if (!rpcUrl) {
       throw new BadRequestException(
@@ -322,52 +369,52 @@ const rpcUrl = usingDevnet
     }> = msg.compiledInstructions ?? msg.instructions ?? [];
 
     // ── 2. Memo instruction check ────────────────────────────────────────
-let memoFound = false;
+    let memoFound = false;
 
-for (const ix of instructions) {
-  const programId = accountKeys[ix.programIdIndex]?.toBase58();
-  if (programId !== MEMO_V1 && programId !== MEMO_V2) continue;
+    for (const ix of instructions) {
+      const programId = accountKeys[ix.programIdIndex]?.toBase58();
+      if (programId !== MEMO_V1 && programId !== MEMO_V2) continue;
 
-  const raw =
-    ix.data instanceof Uint8Array || Buffer.isBuffer(ix.data)
-      ? Buffer.from(ix.data).toString('utf8')
-      : Buffer.from(bs58.decode(ix.data as string)).toString('utf8');
+      const raw =
+        ix.data instanceof Uint8Array || Buffer.isBuffer(ix.data)
+          ? Buffer.from(ix.data).toString('utf8')
+          : Buffer.from(bs58.decode(ix.data)).toString('utf8');
 
-  let memo: { type?: string; candidate?: string; msg?: string } = {};
+      let memo: { type?: string; candidate?: string; msg?: string } = {};
 
-  try {
-    memo = JSON.parse(raw);
-  } catch {
-    // Not our format → skip
-    continue;
-  }
+      try {
+        memo = JSON.parse(raw);
+      } catch {
+        // Not our format → skip
+        continue;
+      }
 
-  //  must be vouch type
-  if (memo.type !== 'vouch') continue;
+      //  must be vouch type
+      if (memo.type !== 'vouch') continue;
 
-  // must match candidate (prevents replay attacks)
-  if (memo.candidate !== candidateIdentifier) {
-    throw new BadRequestException(
-      `Transaction targets candidate "${memo.candidate}" not "${candidateIdentifier}"`,
-    );
-  }
+      // must match candidate (prevents replay attacks)
+      if (memo.candidate !== candidateIdentifier) {
+        throw new BadRequestException(
+          `Transaction targets candidate "${memo.candidate}" not "${candidateIdentifier}"`,
+        );
+      }
 
-  //  must match message
-  if (memo.msg !== message) {
-    throw new BadRequestException(
-      'Transaction message does not match provided message',
-    );
-  }
+      //  must match message
+      if (memo.msg !== message) {
+        throw new BadRequestException(
+          'Transaction message does not match provided message',
+        );
+      }
 
-  memoFound = true;
-  break;
-}
+      memoFound = true;
+      break;
+    }
 
-if (!memoFound) {
-  throw new BadRequestException(
-    'No valid vouch Memo instruction found in this transaction',
-  );
-}
+    if (!memoFound) {
+      throw new BadRequestException(
+        'No valid vouch Memo instruction found in this transaction',
+      );
+    }
 
     this.logger.debug({ txSignature, voucherWallet }, 'on_chain_verify_ok');
   }
@@ -475,8 +522,6 @@ if (!memoFound) {
     tx.recentBlockhash = blockhash;
 
     // Serialize without requiring all signatures (wallet will sign next)
-    return tx
-      .serialize({ requireAllSignatures: false })
-      .toString('base64');
+    return tx.serialize({ requireAllSignatures: false }).toString('base64');
   }
 }

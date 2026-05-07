@@ -94,20 +94,27 @@ export class HeliusWebhookService {
       if (!memo.msg || typeof memo.msg !== 'string') continue;
 
       this.logger.debug(
-        { txSignature: tx.signature, candidate: memo.candidate, feePayer: tx.feePayer },
+        {
+          txSignature: tx.signature,
+          candidate: memo.candidate,
+          feePayer: tx.feePayer,
+        },
         'helius_vouch_tx_received',
       );
 
       // 4. Confirm via VouchesService — never throws natively, but errors are caught defensively
       try {
         await vouchesService.confirmVouchFromWebhook({
-          txSignature:       tx.signature,
+          txSignature: tx.signature,
           candidateUsername: memo.candidate,
-          voucherWallet:     tx.feePayer,
-          message:           memo.msg.slice(0, 200),
+          voucherWallet: tx.feePayer,
+          message: memo.msg.slice(0, 200),
         });
       } catch (err) {
-        this.logger.error({ txSignature: tx.signature, err: (err as Error).message }, 'Unhandled error in confirmVouchFromWebhook');
+        this.logger.error(
+          { txSignature: tx.signature, err: (err as Error).message },
+          'Unhandled error in confirmVouchFromWebhook',
+        );
       }
     }
   }

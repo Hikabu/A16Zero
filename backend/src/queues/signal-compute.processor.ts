@@ -13,7 +13,9 @@ import { SolanaAdapterService } from '../modules/scoring/web3-adapter/solana-ada
 import { Web3MergeService } from '../modules/scoring/web3-merge/web3-merge.service';
 import { OctokitFactory } from '../modules/scoring/github-adapter/octokit.factory';
 
-@Processor('signal-compute', { concurrency: process.env.NODE_ENV === 'test' ? 1 : 10 })
+@Processor('signal-compute', {
+  concurrency: process.env.NODE_ENV === 'test' ? 1 : 10,
+})
 export class SignalComputeProcessor extends WorkerHost {
   private readonly logger = new Logger(SignalComputeProcessor.name);
 
@@ -27,7 +29,7 @@ export class SignalComputeProcessor extends WorkerHost {
     private readonly web3MergeService: Web3MergeService,
     private readonly octokitFactory: OctokitFactory,
   ) {
-	super();
+    super();
   }
 
   async process(
@@ -61,7 +63,7 @@ export class SignalComputeProcessor extends WorkerHost {
     let rawData: any;
     let hasSnapshot = false;
 
-	// console.log("mode: ", mode);
+    // console.log("mode: ", mode);
 
     try {
       // Update DB job record to processing
@@ -79,7 +81,7 @@ export class SignalComputeProcessor extends WorkerHost {
 
         // If we want to use cache, check if snapshot exists
         if (useGithubCache && profile?.rawDataSnapshot) {
-          rawData = profile.rawDataSnapshot as unknown as GithubRawDataSnapshot;
+          rawData = profile.rawDataSnapshot;
           hasSnapshot = true;
           this.logger.log(`Using cached GitHub snapshot for ${githubUsername}`);
         }
@@ -89,7 +91,7 @@ export class SignalComputeProcessor extends WorkerHost {
 
       if (mode === 'wallet-only') {
         web3Data = await this.solanaAdapter.fetchOnChainData(walletAddress!);
-		// console.log("web3 data", web3Data);
+        // console.log("web3 data", web3Data);
         let result: AnalysisResult = {
           capabilities: {
             backend: { score: 0, confidence: 'low' },
@@ -133,7 +135,10 @@ export class SignalComputeProcessor extends WorkerHost {
         }
 
         // S15 — Vouch signal (Live)
-        result = await this.applyVouchSignal(result, { githubUsername, walletAddress });
+        result = await this.applyVouchSignal(result, {
+          githubUsername,
+          walletAddress,
+        });
 
         // Update AnalysisJob status to completed
         await this.prisma.analysisJob.update({
@@ -144,7 +149,7 @@ export class SignalComputeProcessor extends WorkerHost {
           },
         });
 
-		// console.log("result: ", result);
+        // console.log("result: ", result);
 
         this.logger.log(
           {
@@ -165,11 +170,16 @@ export class SignalComputeProcessor extends WorkerHost {
           const resolvedUserId = userId ?? profile?.userId ?? null;
           const octokit = await this.octokitFactory.forJob(resolvedUserId);
 
-          const before = await this.githubAdapter.getRateLimitRemaining(octokit);
+          const before =
+            await this.githubAdapter.getRateLimitRemaining(octokit);
 
           if (mode === 'github+wallet') {
             const [gitResponse, w3Response] = await Promise.all([
-              this.githubAdapter.fetchRawData(octokit, githubUsername, bullmqJobId),
+              this.githubAdapter.fetchRawData(
+                octokit,
+                githubUsername,
+                bullmqJobId,
+              ),
               this.solanaAdapter.fetchOnChainData(walletAddress!),
             ]);
             rawData = gitResponse;
@@ -184,12 +194,15 @@ export class SignalComputeProcessor extends WorkerHost {
 
           const after = await this.githubAdapter.getRateLimitRemaining(octokit);
 
-          this.logger.log({
-            jobId: bullmqJobId,
-            analysisJobId: recordId,
-            apiCallsUsed: before - after,
-            remainingAfter: after
-          }, 'github_fetch_complete');
+          this.logger.log(
+            {
+              jobId: bullmqJobId,
+              analysisJobId: recordId,
+              apiCallsUsed: before - after,
+              remainingAfter: after,
+            },
+            'github_fetch_complete',
+          );
 
           if (profile) {
             await this.prisma.githubProfile.update({
@@ -244,7 +257,10 @@ export class SignalComputeProcessor extends WorkerHost {
       }
 
       // S15 — Vouch signal (Live)
-        result = await this.applyVouchSignal(result, { githubUsername, walletAddress });
+      result = await this.applyVouchSignal(result, {
+        githubUsername,
+        walletAddress,
+      });
 
       // Update progress: complete (100%)
       await this.updateProgress(profile?.id, 'complete', 100);
@@ -342,53 +358,53 @@ export class SignalComputeProcessor extends WorkerHost {
 
   private async applyVouchSignal(
     result: AnalysisResult,
-    jobData: { 
-		githubUsername?: string; 
-		candidateUsername?: string;
-		walletAddress?: string
-	},
+    jobData: {
+      githubUsername?: string;
+      candidateUsername?: string;
+      walletAddress?: string;
+    },
   ): Promise<AnalysisResult> {
     const now = new Date();
 
     // Resolve candidateId from job data — vouches are candidate-scoped, not github-scoped
-   let candidate;
+    let candidate;
 
-// 1. GitHub path
-if (jobData.githubUsername) {
-  candidate = await this.prisma.candidate.findFirst({
-    where: {
-      devProfile: {
-        githubProfile: {
-          githubUsername: jobData.githubUsername,
+    // 1. GitHub path
+    if (jobData.githubUsername) {
+      candidate = await this.prisma.candidate.findFirst({
+        where: {
+          devProfile: {
+            githubProfile: {
+              githubUsername: jobData.githubUsername,
+            },
+          },
         },
-      },
-    },
-  });
-}
+      });
+    }
 
-// 2. Wallet path 
-if (!candidate && jobData.walletAddress) {
-  candidate = await this.prisma.candidate.findFirst({
-    where: {
-      devProfile: {
-        web3Profile: {
-          solanaAddress: jobData.walletAddress,
+    // 2. Wallet path
+    if (!candidate && jobData.walletAddress) {
+      candidate = await this.prisma.candidate.findFirst({
+        where: {
+          devProfile: {
+            web3Profile: {
+              solanaAddress: jobData.walletAddress,
+            },
+          },
         },
-      },
-    },
-  });
-}
+      });
+    }
 
-// 3. Optional user fallback (you said not needed)
-if (!candidate && jobData.candidateUsername) {
-  candidate = await this.prisma.candidate.findFirst({
-    where: {
-      user: {
-        username: jobData.candidateUsername,
-      },
-    },
-  });
-}
+    // 3. Optional user fallback (you said not needed)
+    if (!candidate && jobData.candidateUsername) {
+      candidate = await this.prisma.candidate.findFirst({
+        where: {
+          user: {
+            username: jobData.candidateUsername,
+          },
+        },
+      });
+    }
     const activeVouches = candidate
       ? await this.prisma.vouch.findMany({
           where: {

@@ -70,7 +70,7 @@ describe('Auth Lifecycle (e2e)', () => {
       loginResponse.headers['set-cookie'],
       'refresh_token',
     );
-    
+
     expect(accessToken).toBeDefined();
     expect(refreshToken).toBeDefined();
 

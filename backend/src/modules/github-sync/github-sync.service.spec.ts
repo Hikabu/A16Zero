@@ -14,13 +14,16 @@ const mockPrisma = {
 
 const mockConfig = {
   get: jest.fn((key: string) => {
-    if (key === 'AUTH_ENCRYPTION_KEY') return 'mock-key-32-chars-long-123456789012';
+    if (key === 'AUTH_ENCRYPTION_KEY')
+      return 'mock-key-32-chars-long-123456789012';
     return 'mock-value';
   }),
 };
 
 const mockProfileResolver = {
-  ensureDevStack: jest.fn().mockResolvedValue({ devProfile: { id: 'dev_1', candidateId: 'cand_1' } }),
+  ensureDevStack: jest
+    .fn()
+    .mockResolvedValue({ devProfile: { id: 'dev_1', candidateId: 'cand_1' } }),
 };
 
 const mockQueue = {

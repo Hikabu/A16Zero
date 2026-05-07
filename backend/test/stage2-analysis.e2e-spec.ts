@@ -90,11 +90,13 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
   };
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockImplementation(async (_octokit: any, username: string) => {
-      if (!mockGithubProfiles[username])
-        throw new Error('Not found user: ' + username);
-      return mockGithubProfiles[username];
-    }),
+    fetchRawData: jest
+      .fn()
+      .mockImplementation(async (_octokit: any, username: string) => {
+        if (!mockGithubProfiles[username])
+          throw new Error('Not found user: ' + username);
+        return mockGithubProfiles[username];
+      }),
     decryptToken: jest.fn().mockReturnValue('mock-token'),
     getRateLimitRemaining: jest.fn().mockResolvedValue(5000),
     checkRateLimitOrThrow: jest.fn().mockResolvedValue(true),
@@ -128,7 +130,6 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
         return null;
       }),
     fetchProgramsByAuthority: jest.fn().mockResolvedValue([]),
-
   };
 
   beforeAll(async () => {

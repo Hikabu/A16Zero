@@ -6,7 +6,8 @@ import { IsString, Matches } from 'class-validator';
  */
 export class ChallengeResponseDto {
   @ApiProperty({
-    description: 'Cryptographic challenge string used to verify wallet ownership',
+    description:
+      'Cryptographic challenge string used to verify wallet ownership',
     example: 'link-wallet:user123:1713940000000:a1b2c3',
   })
   challenge: string;

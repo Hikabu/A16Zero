@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { ParsedJobRequirements } from './parsed-job-requirements.inteface';
@@ -42,23 +46,22 @@ ${jdText}
 `;
 
       const result = await this.ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: 'gemini-2.5-flash',
         contents: prompt,
       });
 
-const raw = result.text ?? '';
+      const raw = result.text ?? '';
       // 🔥 CLEAN RESPONSE (Gemini sometimes wraps JSON)
-     const cleaned = raw
-  .replace(/```json/g, '')
-  .replace(/```/g, '')
-  .trim();
+      const cleaned = raw
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
 
-if (!cleaned) {
-  throw new Error('Empty response from Gemini');
-}
+      if (!cleaned) {
+        throw new Error('Empty response from Gemini');
+      }
 
-const parsed = JSON.parse(cleaned);
-
+      const parsed = JSON.parse(cleaned);
 
       // ✅ Normalize (prevents DB crashes later)
       parsed.requiredRoleType = this.normalizeRole(parsed.requiredRoleType);
@@ -69,7 +72,6 @@ const parsed = JSON.parse(cleaned);
       }
 
       return parsed;
-
     } catch (error) {
       this.logger.error(`Gemini Parsing Error: ${error.message}`);
       throw new InternalServerErrorException('Failed to parse JD');

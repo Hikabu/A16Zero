@@ -70,7 +70,9 @@ describe('Auth OAuth (e2e)', () => {
         .send({ username: `socialuser-${testShortId}` })
         .expect(200);
 
-      expect(getCookieValue(onboardingRes.headers['set-cookie'], 'access_token')).toBeDefined();
+      expect(
+        getCookieValue(onboardingRes.headers['set-cookie'], 'access_token'),
+      ).toBeDefined();
     });
   });
 

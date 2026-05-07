@@ -102,7 +102,9 @@ describe('VouchesService', () => {
       },
       // confirmVouch resolves the caller's wallet from web3Profile
       web3Profile: {
-        findUnique: jest.fn().mockResolvedValue({ solanaAddress: VOUCHER_WALLET }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ solanaAddress: VOUCHER_WALLET }),
       },
     };
 
@@ -129,7 +131,9 @@ describe('VouchesService', () => {
     // 7. voucherWallet === candidate.devProfile.web3Profile.walletAddress → 400 self-vouch
     it('throws BadRequestException for self-vouching', async () => {
       // Override web3Profile to return the candidate's own wallet
-      mockPrisma.web3Profile.findUnique.mockResolvedValue({ solanaAddress: CANDIDATE_WALLET });
+      mockPrisma.web3Profile.findUnique.mockResolvedValue({
+        solanaAddress: CANDIDATE_WALLET,
+      });
       await expect(
         service.confirmVouch(BASE_INPUT, 'user-abc'),
       ).rejects.toThrow(BadRequestException);
@@ -138,20 +142,20 @@ describe('VouchesService', () => {
     // 8. Same wallet already vouched for candidate (same candidateId) → 400 duplicate
     it('throws BadRequestException for duplicate vouch', async () => {
       mockPrisma.vouch.findUnique
-        .mockResolvedValueOnce(null)  // idempotency check in confirmVouch
-        .mockResolvedValueOnce(null)  // idempotency check in persistVouch
+        .mockResolvedValueOnce(null) // idempotency check in confirmVouch
+        .mockResolvedValueOnce(null) // idempotency check in persistVouch
         .mockResolvedValueOnce({ id: 'existing' }); // duplicate check
-      await expect(service.confirmVouch(BASE_INPUT, 'user-abc')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.confirmVouch(BASE_INPUT, 'user-abc'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     // 9. voucherWallet has 5 active non-expired vouches → 400 budget exhausted
     it('throws BadRequestException when budget (5) is exhausted', async () => {
       mockPrisma.vouch.count.mockResolvedValue(5);
-      await expect(service.confirmVouch(BASE_INPUT, 'user-abc')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.confirmVouch(BASE_INPUT, 'user-abc'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     // 10. voucherWallet has 4 active + 1 expired → budget check passes (5 slots, 1 free)
@@ -301,7 +305,7 @@ describe('VouchesService', () => {
       mockPrisma.vouch.findUnique.mockResolvedValue({ id: 'existing' }); // triggers idempotency → but actually let's use duplicate
       // Force duplicate: first findUnique (idempotency) → null, second (duplicate) → existing
       mockPrisma.vouch.findUnique
-        .mockResolvedValueOnce(null)    // idempotency in persistVouch
+        .mockResolvedValueOnce(null) // idempotency in persistVouch
         .mockResolvedValueOnce({ id: 'existing' }); // duplicate check
 
       const result = await service.confirmVouchFromWebhook(PERSIST_PARAMS);
@@ -310,7 +314,9 @@ describe('VouchesService', () => {
 
     // 16. confirmVouchFromWebhook: any error → returns null, no throw
     it('16. confirmVouchFromWebhook swallows all errors and returns null', async () => {
-      mockPrisma.candidate.findFirst.mockRejectedValue(new Error('DB connection lost'));
+      mockPrisma.candidate.findFirst.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       await expect(
         service.confirmVouchFromWebhook(PERSIST_PARAMS),

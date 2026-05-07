@@ -35,7 +35,9 @@ export class StackFingerprintService {
    * Detects tools from flattened manifest keys across all repositories.
    * deduplicates and sorts alphabetically.
    */
-  detectTools(manifestKeys: Record<string, string[]> | undefined | null): string[] {
+  detectTools(
+    manifestKeys: Record<string, string[]> | undefined | null,
+  ): string[] {
     const tools = new Set<string>();
 
     if (!manifestKeys) {

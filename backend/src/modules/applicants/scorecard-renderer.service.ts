@@ -2,32 +2,47 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ScorecardRendererService {
-
   render(application: any): string {
-    const dc  = application.decisionCard   ?? {};
-    const sc  = application.frozenScorecard ?? {};  // source of truth — never pull live data
-    const gap = application.gapReport      ?? {};
-    const job = application.jobPost            ?? application.job ?? {};
+    const dc = application.decisionCard ?? {};
+    const sc = application.frozenScorecard ?? {}; // source of truth — never pull live data
+    const gap = application.gapReport ?? {};
+    const job = application.jobPost ?? application.job ?? {};
     const candidate = application.candidate ?? {};
-    const name = candidate?.user?.name ?? ((`${candidate?.user?.firstName || ''} ${candidate?.user?.lastName || ''}`).trim() || 'Candidate');
+    const name =
+      candidate?.user?.name ??
+      (`${candidate?.user?.firstName || ''} ${candidate?.user?.lastName || ''}`.trim() ||
+        'Candidate');
     const username = candidate?.user?.username ?? '';
 
-    const verdictColor = dc.verdict === 'PROCEED' ? '#16a34a'
-                       : dc.verdict === 'REJECT'  ? '#dc2626'
-                       :                            '#d97706';
+    const verdictColor =
+      dc.verdict === 'PROCEED'
+        ? '#16a34a'
+        : dc.verdict === 'REJECT'
+          ? '#dc2626'
+          : '#d97706';
 
-    const fitColor = sc.fitTier === 'STRONG' ? '#16a34a'
-                   : sc.fitTier === 'PROBE'  ? '#d97706'
-                   :                           '#6b7280';
+    const fitColor =
+      sc.fitTier === 'STRONG'
+        ? '#16a34a'
+        : sc.fitTier === 'PROBE'
+          ? '#d97706'
+          : '#6b7280';
 
-    const fraudColor = sc.fraudTier === 'CLEAN'  ? '#16a34a'
-                     : sc.fraudTier === 'REVIEW' ? '#d97706'
-                     :                             '#dc2626';
+    const fraudColor =
+      sc.fraudTier === 'CLEAN'
+        ? '#16a34a'
+        : sc.fraudTier === 'REVIEW'
+          ? '#d97706'
+          : '#dc2626';
 
     const pct = (n: number) => `${Math.round(n)}%`;
     const score = (n: number) => `${Math.round(n ?? 0)}`;
 
-    const languageBar = (langs: any[]) => langs.slice(0, 6).map(l => `
+    const languageBar = (langs: any[]) =>
+      langs
+        .slice(0, 6)
+        .map(
+          (l) => `
       <div style="margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
           <span>${l.name}</span><span style="color:#6b7280">${pct(l.percent)}</span>
@@ -35,9 +50,15 @@ export class ScorecardRendererService {
         <div style="background:#e5e7eb;border-radius:4px;height:6px">
           <div style="background:#2563eb;border-radius:4px;height:6px;width:${pct(l.percent)}"></div>
         </div>
-      </div>`).join('');
+      </div>`,
+        )
+        .join('');
 
-    const repoList = (repos: any[]) => repos.slice(0, 5).map(r => `
+    const repoList = (repos: any[]) =>
+      repos
+        .slice(0, 5)
+        .map(
+          (r) => `
       <div class="repo-card">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
           <strong style="font-size:13px">${r.name}</strong>
@@ -46,26 +67,40 @@ export class ScorecardRendererService {
           ${r.stars > 0 ? `<span style="font-size:11px;color:#6b7280">★ ${r.stars}</span>` : ''}
         </div>
         ${r.description ? `<div style="font-size:12px;color:#6b7280">${r.description}</div>` : ''}
-      </div>`).join('');
+      </div>`,
+        )
+        .join('');
 
-    const dimensionRows = (dims: any[]) => dims.map(d => `
+    const dimensionRows = (dims: any[]) =>
+      dims
+        .map(
+          (d) => `
       <tr>
         <td>${d.name}</td>
         <td style="text-align:center;font-family:monospace;font-weight:700">${score(d.score)}</td>
         <td style="text-align:center;color:#6b7280">${pct(d.weight * 100)}</td>
         <td style="font-size:11px;color:#6b7280">${(d.signals ?? []).slice(0, 3).join(' · ')}</td>
-      </tr>`).join('');
+      </tr>`,
+        )
+        .join('');
 
-    const gapRows = (gaps: any[]) => gaps.map(g => {
-      const sCol = g.severity === 'DEALBREAKER' ? '#dc2626'
-                 : g.severity === 'SIGNIFICANT' ? '#d97706' : '#6b7280';
-      return `<tr>
+    const gapRows = (gaps: any[]) =>
+      gaps
+        .map((g) => {
+          const sCol =
+            g.severity === 'DEALBREAKER'
+              ? '#dc2626'
+              : g.severity === 'SIGNIFICANT'
+                ? '#d97706'
+                : '#6b7280';
+          return `<tr>
         <td>${g.dimension}</td>
         <td style="color:${sCol};font-weight:600;font-size:11px">${g.severity}</td>
         <td style="font-size:12px">${g.description}</td>
         ${g.probeQuestion ? `<td style="font-size:11px;color:#92400e;font-style:italic">${g.probeQuestion}</td>` : '<td style="color:#9ca3af">—</td>'}
       </tr>`;
-    }).join('');
+        })
+        .join('');
 
     const stats = sc.contributionStats ?? {};
 
@@ -168,32 +203,48 @@ ${dc.technicalSummary ? `<div class="box" style="margin-bottom:20px"><p style="f
   <div class="stat-box"><div class="stat-n">${stats.accountAgeDays ? Math.round(stats.accountAgeDays / 365) + 'y' : '—'}</div><div class="stat-l">Account Age</div></div>
 </div>
 
-${(sc.languagesUsed ?? []).length > 0 ? `
+${
+  (sc.languagesUsed ?? []).length > 0
+    ? `
 <h3>Language Profile</h3>
 <div class="box">${languageBar(sc.languagesUsed)}</div>
-` : ''}
+`
+    : ''
+}
 
-${(sc.dimensions ?? []).length > 0 ? `
+${
+  (sc.dimensions ?? []).length > 0
+    ? `
 <h3>Dimension Scores</h3>
 <table>
   <thead><tr><th>Dimension</th><th style="text-align:center">Score</th><th style="text-align:center">Weight</th><th>Signals</th></tr></thead>
   <tbody>${dimensionRows(sc.dimensions)}</tbody>
 </table>
-` : ''}
+`
+    : ''
+}
 
-${(sc.topRepositories ?? []).length > 0 ? `
+${
+  (sc.topRepositories ?? []).length > 0
+    ? `
 <h3>Top Repositories</h3>
 ${repoList(sc.topRepositories)}
-` : ''}
+`
+    : ''
+}
 
-${sc.web3 ? `
+${
+  sc.web3
+    ? `
 <h3>Web3 Profile</h3>
 <div class="box" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
   <div><div style="font-size:20px;font-weight:800;font-family:monospace">${score(sc.web3.walletScore)}</div><div style="font-size:11px;color:#6b7280;text-transform:uppercase">Wallet Score</div></div>
   <div><div style="font-size:20px;font-weight:800;font-family:monospace">${sc.web3.transactionCount ?? '—'}</div><div style="font-size:11px;color:#6b7280;text-transform:uppercase">Transactions</div></div>
   <div style="grid-column:1/-1"><div style="font-size:11px;color:#6b7280;margin-bottom:6px;text-transform:uppercase">Protocols</div>${(sc.web3.protocolsUsed ?? []).map((p: string) => `<span class="tech-chip" style="background:#eff6ff;color:#1d4ed8">${p}</span>`).join('') || '—'}</div>
 </div>
-` : ''}
+`
+    : ''
+}
 
 <hr class="divider">
 
@@ -212,13 +263,17 @@ ${sc.web3 ? `
   </div>
 </div>
 
-${(gap.gaps ?? []).length > 0 ? `
+${
+  (gap.gaps ?? []).length > 0
+    ? `
 <h3>Gap Breakdown + Probe Questions</h3>
 <table>
   <thead><tr><th>Dimension</th><th>Severity</th><th>Description</th><th>Probe Question</th></tr></thead>
   <tbody>${gapRows(gap.gaps)}</tbody>
 </table>
-` : ''}
+`
+    : ''
+}
 
 <h3>Not Observable via GitHub</h3>
 <div class="not-obs">The following cannot be assessed from code signals alone and require interview assessment: Communication quality · System design thinking · Management capability · Cultural fit · Attitude under pressure · Interview performance.</div>

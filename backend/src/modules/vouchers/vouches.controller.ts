@@ -149,12 +149,9 @@ export class VouchesController {
     },
   })
   async confirmVouch(@Req() req: any, @Body() body: ConfirmVouchDto) {
-	  // console.log('RAW BODY:', body);
+    // console.log('RAW BODY:', body);
 
-    return this.vouchesService.confirmVouch(
-    body,
-    req.user.id,
-    );
+    return this.vouchesService.confirmVouch(body, req.user.id);
   }
 
   @Delete(':id')
@@ -270,7 +267,8 @@ export class VouchesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Helius transaction webhook (internal)',
-    description: 'Receives Enhanced Transaction events from Helius for on-chain vouch processing.',
+    description:
+      'Receives Enhanced Transaction events from Helius for on-chain vouch processing.',
   })
   async heliusWebhook(
     @Headers('x-helius-webhook-secret') secret: string,

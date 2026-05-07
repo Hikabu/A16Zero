@@ -25,22 +25,24 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
   let githubAdapter: GithubAdapterService;
 
   const mockGithubAdapter = {
-    fetchRawData: jest.fn().mockImplementation(async (_octokit: any, username: string) => {
-      switch (username) {
-        case 'alex-backend':
-          return ALEX_BACKEND;
-        case 'sarah-fullstack':
-          return SARAH_FULLSTACK;
-        case 'maya-devops':
-          return MAYA_DEVOPS;
-        case 'new-dev':
-          return NEW_DEV;
-        case 'ghost-profile':
-          throw new Error('Insufficient public data for ghost-profile');
-        default:
-          throw new Error(`User ${username} not found`);
-      }
-    }),
+    fetchRawData: jest
+      .fn()
+      .mockImplementation(async (_octokit: any, username: string) => {
+        switch (username) {
+          case 'alex-backend':
+            return ALEX_BACKEND;
+          case 'sarah-fullstack':
+            return SARAH_FULLSTACK;
+          case 'maya-devops':
+            return MAYA_DEVOPS;
+          case 'new-dev':
+            return NEW_DEV;
+          case 'ghost-profile':
+            throw new Error('Insufficient public data for ghost-profile');
+          default:
+            throw new Error(`User ${username} not found`);
+        }
+      }),
     decryptToken: jest.fn().mockReturnValue('mock-token'),
     getRateLimitRemaining: jest.fn().mockResolvedValue(5000),
     checkRateLimitOrThrow: jest.fn().mockResolvedValue(true),

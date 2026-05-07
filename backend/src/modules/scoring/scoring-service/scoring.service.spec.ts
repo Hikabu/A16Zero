@@ -1,4 +1,3 @@
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { ScoringService } from './scoring.service';
 import { SignalExtractorService } from '../signal-extractor/signal-extractor.service';

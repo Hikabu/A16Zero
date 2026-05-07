@@ -1,4 +1,9 @@
-import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { Connection, PublicKey } from '@solana/web3.js';
@@ -45,11 +50,11 @@ export class SolanaAdapterService {
     try {
       const usingDevnet = this.config.get<string>('USING_DEVNET') === 'true';
 
-const solanaRpcUrl = usingDevnet
-  ? this.config.get<string>('SOLANA_DEVNET_RPC_URL')
-  : this.config.get<string>('SOLANA_RPC_URL');
+      const solanaRpcUrl = usingDevnet
+        ? this.config.get<string>('SOLANA_DEVNET_RPC_URL')
+        : this.config.get<string>('SOLANA_RPC_URL');
 
-this.logger.log(`Using RPC: ${solanaRpcUrl}`);
+      this.logger.log(`Using RPC: ${solanaRpcUrl}`);
       if (!solanaRpcUrl) {
         this.logger.warn('SOLANA_RPC_URL is not configured');
         return [];
@@ -143,9 +148,8 @@ this.logger.log(`Using RPC: ${solanaRpcUrl}`);
     }
   }
 
-
   async fetchOnChainData(walletAddress: string) {
-	// console.log("fetching on chain data ");
+    // console.log("fetching on chain data ");
     const deployedPrograms = await this.fetchProgramsByAuthority(walletAddress);
     return {
       ecosystem: 'solana' as const,

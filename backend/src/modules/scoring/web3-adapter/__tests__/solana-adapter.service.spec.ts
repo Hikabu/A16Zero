@@ -49,7 +49,6 @@ describe('SolanaAdapterService', () => {
         SolanaAdapterService,
         { provide: ConfigService, useValue: mockConfigService },
         { provide: 'REDIS', useValue: mockRedis },
-
       ],
     }).compile();
 

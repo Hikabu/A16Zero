@@ -24,9 +24,26 @@ describe('DecisionCardService', () => {
       technologyFitScore: 80,
       missingTechnologies: [],
       matchedTechnologies: ['Typescript'],
-      gaps: [{ dimension: 'Test', severity: 'SIGNIFICANT', expected: 'A', actual: 'B', mitigatingContext: null, probeQuestion: 'Q?' }]
+      gaps: [
+        {
+          dimension: 'Test',
+          severity: 'SIGNIFICANT',
+          expected: 'A',
+          actual: 'B',
+          mitigatingContext: null,
+          probeQuestion: 'Q?',
+        },
+      ],
     };
-    const mockAnalysisResult = { impact: { confidence: 'high' }, ownership: { confidence: 'high' }, capabilities: { backend: { score: 80 }, frontend: { score: 80 }, devops: { score: 80 } } } as any;
+    const mockAnalysisResult = {
+      impact: { confidence: 'high' },
+      ownership: { confidence: 'high' },
+      capabilities: {
+        backend: { score: 80 },
+        frontend: { score: 80 },
+        devops: { score: 80 },
+      },
+    } as any;
     const card = service.generate(gapReport, mockAnalysisResult);
     expect(card.verdict).toBeDefined();
     expect(card.strengths).toBeInstanceOf(Array);
@@ -38,9 +55,18 @@ describe('DecisionCardService', () => {
       technologyFitScore: 90,
       missingTechnologies: [],
       matchedTechnologies: ['Typescript', 'React'],
-      gaps: []
+      gaps: [],
     };
-    const mockAnalysisResult = { impact: { confidence: 'high' }, ownership: { confidence: 'high' }, overallFitScore: 90, capabilities: { backend: { score: 80 }, frontend: { score: 80 }, devops: { score: 80 } } } as any;
+    const mockAnalysisResult = {
+      impact: { confidence: 'high' },
+      ownership: { confidence: 'high' },
+      overallFitScore: 90,
+      capabilities: {
+        backend: { score: 80 },
+        frontend: { score: 80 },
+        devops: { score: 80 },
+      },
+    } as any;
     const card = service.generate(gapReport, mockAnalysisResult);
     expect(card.hrSummary).toBeTruthy();
     expect(typeof card.hrSummary).toBe('string');
@@ -54,15 +80,24 @@ describe('DecisionCardService', () => {
       technologyFitScore: 95,
       missingTechnologies: ['Docker'],
       matchedTechnologies: ['Typescript', 'React', 'NodeJS'],
-      gaps: []
+      gaps: [],
     };
-    const mockAnalysisResult = { impact: { confidence: 'high' }, ownership: { confidence: 'high' }, overallFitScore: 85, capabilities: { backend: { score: 80 }, frontend: { score: 80 }, devops: { score: 80 } } } as any;
+    const mockAnalysisResult = {
+      impact: { confidence: 'high' },
+      ownership: { confidence: 'high' },
+      overallFitScore: 85,
+      capabilities: {
+        backend: { score: 80 },
+        frontend: { score: 80 },
+        devops: { score: 80 },
+      },
+    } as any;
     const card = service.generate(gapReport, mockAnalysisResult);
     expect(card.technicalSummary).toBeTruthy();
     expect(typeof card.technicalSummary).toBe('string');
     // It should mention 3/4 technologies matched (or something representing ratio)
     // and overall role fit score
-    expect(card.technicalSummary).toMatch(/\b(80)\b/); 
+    expect(card.technicalSummary).toMatch(/\b(80)\b/);
     expect(card.technicalSummary).toMatch(/techs matched/i); // technology fit score often mentioned
   });
 });

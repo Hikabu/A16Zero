@@ -13,8 +13,9 @@ export const ParsedJobRequirementsSchema = z.object({
   parserConfidence: z.number().min(0).max(1),
 });
 
-export type ParsedJobRequirementsDto = z.infer<typeof ParsedJobRequirementsSchema>;
-
+export type ParsedJobRequirementsDto = z.infer<
+  typeof ParsedJobRequirementsSchema
+>;
 
 export class ParsedJobRequirementsSwaggerDto {
   @ApiProperty({

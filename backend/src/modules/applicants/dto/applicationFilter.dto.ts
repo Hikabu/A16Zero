@@ -1,8 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PipelineStage, FitTier } from '@prisma/client';
 
-
-
 export class ApplicationFiltersDto {
   @ApiPropertyOptional({
     enum: FitTier,

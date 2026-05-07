@@ -19,8 +19,15 @@ export class DecisionCardService {
     const risks = this.extractRisks(gapReport, analysisResult);
     const reputationNote = this.generateReputationNote(analysisResult);
 
-    const hrSummary = this.generateHrSummary(verdict, strengths, gapsToRisksNames(gapReport.gaps));
-    const technicalSummary = this.generateTechnicalSummary(gapReport, analysisResult);
+    const hrSummary = this.generateHrSummary(
+      verdict,
+      strengths,
+      gapsToRisksNames(gapReport.gaps),
+    );
+    const technicalSummary = this.generateTechnicalSummary(
+      gapReport,
+      analysisResult,
+    );
 
     return {
       verdict,
@@ -32,18 +39,34 @@ export class DecisionCardService {
     };
   }
 
-  private computeVerdict(gapReport: GapReport, analysisResult: AnalysisResult): DecisionCard['verdict'] {
-    const hasLowConfidence = Object.values(analysisResult.capabilities).some((c) => c.confidence === 'low');
-    const hasDealbreaker = gapReport.gaps.some((g) => g.severity === 'DEALBREAKER');
+  private computeVerdict(
+    gapReport: GapReport,
+    analysisResult: AnalysisResult,
+  ): DecisionCard['verdict'] {
+    const hasLowConfidence = Object.values(analysisResult.capabilities).some(
+      (c) => c.confidence === 'low',
+    );
+    const hasDealbreaker = gapReport.gaps.some(
+      (g) => g.severity === 'DEALBREAKER',
+    );
     // dataCompleteness is not explicitly in AnalysisResult but in ExtractedSignals. Based on instructions, we assume it's available or inferred.
     // If not in result, we check if there's any low confidence impact/ownership.
-    const isDataCompletenessLow = analysisResult.impact.confidence === 'low' || analysisResult.ownership.confidence === 'low';
+    const isDataCompletenessLow =
+      analysisResult.impact.confidence === 'low' ||
+      analysisResult.ownership.confidence === 'low';
 
-    if (gapReport.overallVerdict === 'UNLIKELY_FIT' || (hasLowConfidence && hasDealbreaker)) {
+    if (
+      gapReport.overallVerdict === 'UNLIKELY_FIT' ||
+      (hasLowConfidence && hasDealbreaker)
+    ) {
       return 'REJECT';
     }
 
-    if (gapReport.overallVerdict === 'POSSIBLE_FIT' || isDataCompletenessLow || hasLowConfidence) {
+    if (
+      gapReport.overallVerdict === 'POSSIBLE_FIT' ||
+      isDataCompletenessLow ||
+      hasLowConfidence
+    ) {
       return 'REVIEW';
     }
 
@@ -68,20 +91,27 @@ export class DecisionCardService {
 
     // 3. Impact
     if (analysisResult.impact.externalContributions > 5) {
-      strengths.push(`Strong external contribution record (${analysisResult.impact.externalContributions} PRs)`);
+      strengths.push(
+        `Strong external contribution record (${analysisResult.impact.externalContributions} PRs)`,
+      );
     }
 
     return strengths.slice(0, 3);
   }
 
-  private extractRisks(gapReport: GapReport, analysisResult: AnalysisResult): string[] {
+  private extractRisks(
+    gapReport: GapReport,
+    analysisResult: AnalysisResult,
+  ): string[] {
     const risks: string[] = [];
 
     // 1. DEALBREAKER first
     gapReport.gaps
       .filter((g) => g.severity === 'DEALBREAKER')
       .forEach((g) => {
-        risks.push(`Missing ${g.dimension}: ${g.actual} vs required ${g.expected}`);
+        risks.push(
+          `Missing ${g.dimension}: ${g.actual} vs required ${g.expected}`,
+        );
       });
 
     // 2. SIGNIFICANT
@@ -101,12 +131,18 @@ export class DecisionCardService {
     return risks.slice(0, 3);
   }
 
-  private generateReputationNote(analysisResult: AnalysisResult): string | null {
+  private generateReputationNote(
+    analysisResult: AnalysisResult,
+  ): string | null {
     const count = analysisResult.reputation?.verifiedVouchCount || 0;
     return count >= 2 ? `Vouched for by ${count} verified developers.` : null;
   }
 
-  private generateHrSummary(verdict: string, strengths: string[], riskDimensions: string[]): string {
+  private generateHrSummary(
+    verdict: string,
+    strengths: string[],
+    riskDimensions: string[],
+  ): string {
     const verdictReasonMap: Record<string, string> = {
       PROCEED: 'Strong',
       REVIEW: 'Review-recommended',
@@ -115,24 +151,33 @@ export class DecisionCardService {
 
     const rawTopStrength = strengths[0] || 'consistent open-source presence';
     const topStrength = rawTopStrength.replace(/\s*\(\d+[^)]*\)/g, '');
-    const topRisk = riskDimensions[0] ? `Missing ${riskDimensions[0]} experience` : 'No major gaps detected';
+    const topRisk = riskDimensions[0]
+      ? `Missing ${riskDimensions[0]} experience`
+      : 'No major gaps detected';
 
     return `${verdictReasonMap[verdict]} candidate. ${topStrength}. ${topRisk}.`;
   }
 
-  private generateTechnicalSummary(gapReport: GapReport, analysisResult: AnalysisResult): string {
+  private generateTechnicalSummary(
+    gapReport: GapReport,
+    analysisResult: AnalysisResult,
+  ): string {
     const caps = analysisResult.capabilities;
     const b = caps.backend.score || 'N/A';
     const f = caps.frontend.score || 'N/A';
     const d = caps.devops.score || 'N/A';
-    
+
     const matched = gapReport.matchedTechnologies.length;
     const total = matched + gapReport.missingTechnologies.length;
     const deploys = analysisResult.web3?.deployedPrograms.length || 0;
-    
+
     // Aggregate confidence
-    const confLevels = Object.values(caps).map(c => c.confidence);
-    const overallConf = confLevels.includes('low') ? 'low' : confLevels.includes('medium') ? 'medium' : 'high';
+    const confLevels = Object.values(caps).map((c) => c.confidence);
+    const overallConf = confLevels.includes('low')
+      ? 'low'
+      : confLevels.includes('medium')
+        ? 'medium'
+        : 'high';
 
     return `backend:${b} frontend:${f} devops:${d} | ${matched}/${total} techs matched | ${deploys} deploys | confidence:${overallConf}`;
   }
@@ -140,6 +185,6 @@ export class DecisionCardService {
 
 function gapsToRisksNames(gaps: any[]): string[] {
   return gaps
-    .filter(g => g.severity === 'DEALBREAKER' || g.severity === 'SIGNIFICANT')
-    .map(g => g.dimension.replace('Technology: ', ''));
+    .filter((g) => g.severity === 'DEALBREAKER' || g.severity === 'SIGNIFICANT')
+    .map((g) => g.dimension.replace('Technology: ', ''));
 }

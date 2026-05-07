@@ -17,7 +17,9 @@ function encodeBase58(text: string): string {
   return bs58.encode(Buffer.from(text, 'utf8'));
 }
 
-function makeValidTxWithMemoField(memo: string | null = validVouchMemo): HeliusTx {
+function makeValidTxWithMemoField(
+  memo: string | null = validVouchMemo,
+): HeliusTx {
   return {
     signature: 'sig_abc123',
     feePayer: 'VoucherWallet111',
@@ -44,7 +46,9 @@ function makeValidTxWithInstruction(memoText: string): HeliusTx {
 // ── Suite ────────────────────────────────────────────────────────────────────
 describe('HeliusWebhookService', () => {
   let service: HeliusWebhookService;
-  let mockVouchesService: jest.Mocked<Pick<VouchesService, 'confirmVouchFromWebhook'>>;
+  let mockVouchesService: jest.Mocked<
+    Pick<VouchesService, 'confirmVouchFromWebhook'>
+  >;
 
   beforeEach(() => {
     service = new HeliusWebhookService();
@@ -124,7 +128,9 @@ describe('HeliusWebhookService', () => {
         mockVouchesService as unknown as VouchesService,
       );
 
-      expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledTimes(1);
+      expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledTimes(
+        1,
+      );
       expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledWith({
         txSignature: tx.signature,
         candidateUsername: 'alice',
@@ -135,7 +141,12 @@ describe('HeliusWebhookService', () => {
 
     // 7. 2 txs: 1 valid vouch + 1 non-vouch type → only 1 call
     it('7. skips txs where memo.type !== "vouch"', async () => {
-      const nonVouchMemo = JSON.stringify({ type: 'transfer', v: 1, candidate: 'alice', msg: 'hi' });
+      const nonVouchMemo = JSON.stringify({
+        type: 'transfer',
+        v: 1,
+        candidate: 'alice',
+        msg: 'hi',
+      });
       const txValid = makeValidTxWithMemoField(validVouchMemo);
       const txOther = makeValidTxWithMemoField(nonVouchMemo);
 
@@ -144,7 +155,9 @@ describe('HeliusWebhookService', () => {
         mockVouchesService as unknown as VouchesService,
       );
 
-      expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledTimes(1);
+      expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledTimes(
+        1,
+      );
     });
 
     // 8. Memo is not JSON → no call, no throw
@@ -152,7 +165,10 @@ describe('HeliusWebhookService', () => {
       const tx = makeValidTxWithMemoField('not-json-at-all!!!');
 
       await expect(
-        service.processWebhookPayload([tx], mockVouchesService as unknown as VouchesService),
+        service.processWebhookPayload(
+          [tx],
+          mockVouchesService as unknown as VouchesService,
+        ),
       ).resolves.not.toThrow();
 
       expect(mockVouchesService.confirmVouchFromWebhook).not.toHaveBeenCalled();
@@ -163,7 +179,10 @@ describe('HeliusWebhookService', () => {
       const memo = JSON.stringify({ type: 'vouch', v: 1, msg: 'hi' }); // no candidate
       const tx = makeValidTxWithMemoField(memo);
 
-      await service.processWebhookPayload([tx], mockVouchesService as unknown as VouchesService);
+      await service.processWebhookPayload(
+        [tx],
+        mockVouchesService as unknown as VouchesService,
+      );
 
       expect(mockVouchesService.confirmVouchFromWebhook).not.toHaveBeenCalled();
     });
@@ -171,10 +190,18 @@ describe('HeliusWebhookService', () => {
     // 10. msg is 250 chars → message passed to service is truncated to 200
     it('10. truncates msg to 200 characters', async () => {
       const longMsg = 'x'.repeat(250);
-      const memo = JSON.stringify({ type: 'vouch', v: 1, candidate: 'alice', msg: longMsg });
+      const memo = JSON.stringify({
+        type: 'vouch',
+        v: 1,
+        candidate: 'alice',
+        msg: longMsg,
+      });
       const tx = makeValidTxWithMemoField(memo);
 
-      await service.processWebhookPayload([tx], mockVouchesService as unknown as VouchesService);
+      await service.processWebhookPayload(
+        [tx],
+        mockVouchesService as unknown as VouchesService,
+      );
 
       expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'x'.repeat(200) }),
@@ -184,7 +211,10 @@ describe('HeliusWebhookService', () => {
     // 11. Empty array → no call, no throw
     it('11. handles empty payload array gracefully', async () => {
       await expect(
-        service.processWebhookPayload([], mockVouchesService as unknown as VouchesService),
+        service.processWebhookPayload(
+          [],
+          mockVouchesService as unknown as VouchesService,
+        ),
       ).resolves.not.toThrow();
 
       expect(mockVouchesService.confirmVouchFromWebhook).not.toHaveBeenCalled();
@@ -196,24 +226,45 @@ describe('HeliusWebhookService', () => {
         .mockRejectedValueOnce(new Error('DB error'))
         .mockResolvedValueOnce({ id: 'vouch-2' } as any);
 
-      const memo2 = JSON.stringify({ type: 'vouch', v: 1, candidate: 'bob', msg: 'nice' });
-      const tx1 = { ...makeValidTxWithMemoField(validVouchMemo), signature: 'sig1' };
+      const memo2 = JSON.stringify({
+        type: 'vouch',
+        v: 1,
+        candidate: 'bob',
+        msg: 'nice',
+      });
+      const tx1 = {
+        ...makeValidTxWithMemoField(validVouchMemo),
+        signature: 'sig1',
+      };
       const tx2 = { ...makeValidTxWithMemoField(memo2), signature: 'sig2' };
 
       await expect(
-        service.processWebhookPayload([tx1, tx2], mockVouchesService as unknown as VouchesService),
+        service.processWebhookPayload(
+          [tx1, tx2],
+          mockVouchesService as unknown as VouchesService,
+        ),
       ).resolves.not.toThrow();
 
       // Both txs attempted — second one succeeds even though first threw
-      expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledTimes(2);
+      expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledTimes(
+        2,
+      );
     });
 
     // version guard: memo.v !== 1 → skipped
     it('skips txs where memo.v !== 1', async () => {
-      const memo = JSON.stringify({ type: 'vouch', v: 2, candidate: 'alice', msg: 'hi' });
+      const memo = JSON.stringify({
+        type: 'vouch',
+        v: 2,
+        candidate: 'alice',
+        msg: 'hi',
+      });
       const tx = makeValidTxWithMemoField(memo);
 
-      await service.processWebhookPayload([tx], mockVouchesService as unknown as VouchesService);
+      await service.processWebhookPayload(
+        [tx],
+        mockVouchesService as unknown as VouchesService,
+      );
 
       expect(mockVouchesService.confirmVouchFromWebhook).not.toHaveBeenCalled();
     });
@@ -223,7 +274,10 @@ describe('HeliusWebhookService', () => {
       const memo = JSON.stringify({ type: 'vouch', v: 1, candidate: 'alice' }); // no msg
       const tx = makeValidTxWithMemoField(memo);
 
-      await service.processWebhookPayload([tx], mockVouchesService as unknown as VouchesService);
+      await service.processWebhookPayload(
+        [tx],
+        mockVouchesService as unknown as VouchesService,
+      );
 
       expect(mockVouchesService.confirmVouchFromWebhook).not.toHaveBeenCalled();
     });

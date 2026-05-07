@@ -23,7 +23,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const body = isHttpException ? exception.getResponse() : null;
     const message =
       typeof body === 'object' && body && 'message' in body
-        ? (body as { message: unknown }).message
+        ? body.message
         : isHttpException
           ? exception.message
           : 'Internal server error';
@@ -40,7 +40,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message,
       error:
         typeof body === 'object' && body && 'error' in body
-          ? (body as { error: unknown }).error
+          ? body.error
           : HttpStatus[status],
       path: request.url,
       timestamp: new Date().toISOString(),

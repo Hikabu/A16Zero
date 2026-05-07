@@ -17,7 +17,9 @@ describe('ScorecardRendererService', () => {
   });
 
   const generateMockApp = () => ({
-    candidate: { user: { firstName: 'John', lastName: 'Doe', username: 'johndoe' } },
+    candidate: {
+      user: { firstName: 'John', lastName: 'Doe', username: 'johndoe' },
+    },
     jobPost: { title: 'Backend' },
     decisionCard: {
       verdict: 'REVIEW',
@@ -30,9 +32,13 @@ describe('ScorecardRendererService', () => {
       missingTechnologies: ['Docker'],
       matchedTechnologies: ['Typescript'],
       gaps: [
-        { dimension: 'Docker', severity: 'SIGNIFICANT', probeQuestion: 'How would you containerize Node?' }
-      ]
-    }
+        {
+          dimension: 'Docker',
+          severity: 'SIGNIFICANT',
+          probeQuestion: 'How would you containerize Node?',
+        },
+      ],
+    },
   });
 
   it('case 44: render() returns a string containing text/html doctype markers', () => {

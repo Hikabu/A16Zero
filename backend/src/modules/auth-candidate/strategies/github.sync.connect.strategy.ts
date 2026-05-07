@@ -18,17 +18,17 @@ export class GithubSyncConnectStrategy extends PassportStrategy(
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
       callbackURL:
         config.get('app.url') + config.get('auth.githubSyncConnectCallback'),
-      scope: ['read:user']
+      scope: ['read:user'],
     });
   }
 
   async validate(accessToken: string, refreshToken: string, profile: any) {
-  return {
-    githubId: profile.id,
-    username: profile.username,
-    email: profile.emails?.[0]?.value ?? null, // 👈 optional
-    email_verified: profile.emails?.[0]?.verified ?? false,
-    accessToken,
-  };
-}
+    return {
+      githubId: profile.id,
+      username: profile.username,
+      email: profile.emails?.[0]?.value ?? null, // 👈 optional
+      email_verified: profile.emails?.[0]?.verified ?? false,
+      accessToken,
+    };
+  }
 }

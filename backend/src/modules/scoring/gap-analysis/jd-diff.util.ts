@@ -1,26 +1,27 @@
 import { ParsedJobRequirements } from './parsed-job-requirements.inteface';
 
 const JD_DEFAULTS: Partial<ParsedJobRequirements> = {
-  seniorityLevel: 'MID' as any,
+  seniorityLevel: 'MID',
   collaborationWeight: 'MEDIUM',
   ownershipWeight: 'MEDIUM',
   innovationWeight: 'MEDIUM',
   isWeb3Role: false,
-  requiredSkills: []
+  requiredSkills: [],
 };
 
 export function diffParsedRequirements(parsed: ParsedJobRequirements): {
-  changed: Array<{ field: string, parsedValue: any, defaultValue: any }>,
-  unchanged: string[]
+  changed: Array<{ field: string; parsedValue: any; defaultValue: any }>;
+  unchanged: string[];
 } {
-  const changed: Array<{ field: string, parsedValue: any, defaultValue: any }> = [];
+  const changed: Array<{ field: string; parsedValue: any; defaultValue: any }> =
+    [];
   const unchanged: string[] = [];
 
   // requiredRoleType: always meaningful, always changed relative to no default
   changed.push({
     field: 'requiredRoleType',
     parsedValue: parsed.requiredRoleType,
-    defaultValue: null
+    defaultValue: null,
   });
 
   const checkFields: Array<keyof ParsedJobRequirements> = [
@@ -29,7 +30,7 @@ export function diffParsedRequirements(parsed: ParsedJobRequirements): {
     'ownershipWeight',
     'innovationWeight',
     'isWeb3Role',
-    'requiredSkills'
+    'requiredSkills',
   ];
 
   for (const field of checkFields) {
@@ -39,7 +40,11 @@ export function diffParsedRequirements(parsed: ParsedJobRequirements): {
     if (field === 'requiredSkills') {
       const techList = parsedVal as string[];
       if (Array.isArray(techList) && techList.length > 0) {
-        changed.push({ field, parsedValue: techList, defaultValue: defaultVal });
+        changed.push({
+          field,
+          parsedValue: techList,
+          defaultValue: defaultVal,
+        });
       } else {
         unchanged.push(field);
       }

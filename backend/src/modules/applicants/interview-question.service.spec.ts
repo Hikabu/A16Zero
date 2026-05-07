@@ -10,10 +10,10 @@ jest.mock('@google/genai', () => {
     GoogleGenAI: jest.fn().mockImplementation(() => {
       return {
         models: {
-          generateContent: jest.fn()
-        }
+          generateContent: jest.fn(),
+        },
       };
-    })
+    }),
   };
 });
 
@@ -27,14 +27,14 @@ describe('InterviewQuestionService', () => {
     };
 
     const mockPrismaService = {
-      jobPost: { findUnique: jest.fn() }
+      jobPost: { findUnique: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InterviewQuestionService,
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: PrismaService, useValue: mockPrismaService }
+        { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();
 
@@ -53,27 +53,40 @@ describe('InterviewQuestionService', () => {
 
   it('case 40: Returns InterviewQuestionSet with correct audienceType for INTERVIEW_HR', async () => {
     anthropicMock.generateContent.mockResolvedValue({
-      text: JSON.stringify([])
+      text: JSON.stringify([]),
     });
 
-    const result = await service.generate({} as any, PipelineStage.INTERVIEW_HR);
+    const result = await service.generate(
+      {} as any,
+      PipelineStage.INTERVIEW_HR,
+    );
     expect(result.audienceType).toBe('hr');
   });
 
   it('case 41: Returns 5 questions for hr audience, 6 for technical audience (simulated by prompt config)', async () => {
     // Generate for HR
     anthropicMock.generateContent.mockResolvedValue({
-      text: JSON.stringify(Array(5).fill({ question: 'Q', priority: 'SHOULD_ASK' }))
+      text: JSON.stringify(
+        Array(5).fill({ question: 'Q', priority: 'SHOULD_ASK' }),
+      ),
     });
-    const resultHr = await service.generate({} as any, PipelineStage.INTERVIEW_HR);
+    const resultHr = await service.generate(
+      {} as any,
+      PipelineStage.INTERVIEW_HR,
+    );
     expect(resultHr.questions).toHaveLength(5);
     expect(resultHr.audienceType).toBe('hr');
 
     // Generate for Tech
     anthropicMock.generateContent.mockResolvedValue({
-      text: JSON.stringify(Array(6).fill({ question: 'Q', priority: 'MUST_ASK' }))
+      text: JSON.stringify(
+        Array(6).fill({ question: 'Q', priority: 'MUST_ASK' }),
+      ),
     });
-    const resultTech = await service.generate({} as any, PipelineStage.INTERVIEW_TECHNICAL);
+    const resultTech = await service.generate(
+      {} as any,
+      PipelineStage.INTERVIEW_TECHNICAL,
+    );
     expect(resultTech.questions).toHaveLength(6);
     expect(resultTech.audienceType).toBe('technical');
   });
@@ -81,22 +94,28 @@ describe('InterviewQuestionService', () => {
   it('case 42: Each question has priority field: MUST_ASK | SHOULD_ASK | NICE_TO_HAVE', async () => {
     anthropicMock.generateContent.mockResolvedValue({
       text: JSON.stringify([
-          { question: 'A', priority: 'MUST_ASK' },
-          { question: 'B', priority: 'SHOULD_ASK' },
-          { question: 'C', priority: 'NICE_TO_HAVE' },
-      ]) 
+        { question: 'A', priority: 'MUST_ASK' },
+        { question: 'B', priority: 'SHOULD_ASK' },
+        { question: 'C', priority: 'NICE_TO_HAVE' },
+      ]),
     });
 
-    const result = await service.generate({} as any, PipelineStage.INTERVIEW_FINAL);
+    const result = await service.generate(
+      {} as any,
+      PipelineStage.INTERVIEW_FINAL,
+    );
     for (const q of result.questions) {
       expect(['MUST_ASK', 'SHOULD_ASK', 'NICE_TO_HAVE']).toContain(q.priority);
     }
   });
 
   it('case 43: API error → throws InternalServerErrorException (no silent fallback)', async () => {
-    anthropicMock.generateContent.mockRejectedValue(new Error('Anthropic API Outage'));
+    anthropicMock.generateContent.mockRejectedValue(
+      new Error('Anthropic API Outage'),
+    );
 
-    await expect(service.generate({} as any, PipelineStage.INTERVIEW_HR))
-      .rejects.toThrow(InternalServerErrorException);
+    await expect(
+      service.generate({} as any, PipelineStage.INTERVIEW_HR),
+    ).rejects.toThrow(InternalServerErrorException);
   });
 });

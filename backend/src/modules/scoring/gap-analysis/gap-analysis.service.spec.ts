@@ -27,7 +27,11 @@ describe('GapAnalysisService', () => {
       stack: { languages: ['Typescript'], tools: ['React', 'NestJS'] },
       signals: [],
       careerPath: { primary: 'FULLSTACK' as any, experienceYears: 4 },
-      capabilities: { backend: { score: 80, confidence: 'high' }, frontend: { score: 80, confidence: 'high' }, devops: { score: 80, confidence: 'high' } } as any
+      capabilities: {
+        backend: { score: 80, confidence: 'high' },
+        frontend: { score: 80, confidence: 'high' },
+        devops: { score: 80, confidence: 'high' },
+      } as any,
     };
     const job = {
       parsedRequirements: {
@@ -37,8 +41,8 @@ describe('GapAnalysisService', () => {
         innovationWeight: 'MEDIUM',
         isWeb3Role: false,
         requiredSkills: ['Typescript', 'NodeJS'],
-        requiredRoleType: 'FULLSTACK'
-      }
+        requiredRoleType: 'FULLSTACK',
+      },
     };
     const report = service.compute(analysisResult, job);
     expect(report.missingTechnologies).toContain('NodeJS');
@@ -54,17 +58,23 @@ describe('GapAnalysisService', () => {
       stack: { languages: ['Typescript'], tools: ['React', 'NestJS'] },
       signals: [],
       careerPath: { primary: 'FULLSTACK' as any, experienceYears: 4 },
-      capabilities: { backend: { score: 80, confidence: 'high' }, frontend: { score: 80, confidence: 'high' }, devops: { score: 80, confidence: 'high' } } as any
+      capabilities: {
+        backend: { score: 80, confidence: 'high' },
+        frontend: { score: 80, confidence: 'high' },
+        devops: { score: 80, confidence: 'high' },
+      } as any,
     };
-    
+
     // Simulate a job where parser hasn't populated requirements
     const job = { parsedRequirements: null };
-    
+
     const report = service.compute(analysisResult, job);
-    
+
     expect(report.technologyFitScore).toBe(100);
     expect(report.missingTechnologies).toHaveLength(0);
     // Since required techs was effectively empty, matched is also empty logically depending on implementation
-    expect(report.gaps.find(g => g.dimension === 'Technology Stack')).toBeUndefined();
+    expect(
+      report.gaps.find((g) => g.dimension === 'Technology Stack'),
+    ).toBeUndefined();
   });
 });

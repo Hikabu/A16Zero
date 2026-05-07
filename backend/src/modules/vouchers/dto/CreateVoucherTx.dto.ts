@@ -1,8 +1,14 @@
 // src/modules/vouches/dto/vouch-request.dto.ts
 // Replace the existing DTO entirely.
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsString, IsNotEmpty, MaxLength, IsOptional, Matches } from 'class-validator'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  MaxLength,
+  IsOptional,
+  Matches,
+} from 'class-validator';
 
 export class VouchDataDto {
   @ApiPropertyOptional({
@@ -13,7 +19,7 @@ export class VouchDataDto {
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  message?: string
+  message?: string;
 }
 
 export class VouchRequestDto {
@@ -29,7 +35,7 @@ export class VouchRequestDto {
   @Matches(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, {
     message: 'account must be a valid base58 Solana wallet address',
   })
-  account: string
+  account: string;
 
   @ApiPropertyOptional({
     description:
@@ -39,5 +45,5 @@ export class VouchRequestDto {
     type: VouchDataDto,
   })
   @IsOptional()
-  data?: VouchDataDto
+  data?: VouchDataDto;
 }

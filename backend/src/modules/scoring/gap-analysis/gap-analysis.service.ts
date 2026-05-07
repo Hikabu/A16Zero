@@ -23,7 +23,7 @@ export interface GapReport {
 @Injectable()
 export class GapAnalysisService {
   compute(analysisResult: AnalysisResult, job: any): GapReport {
-    const parsedReqs: ParsedJobRequirements = job.parsedRequirements as any;
+    const parsedReqs: ParsedJobRequirements = job.parsedRequirements;
     const gaps: Gap[] = [];
 
     // Step 1 — Technology matching
@@ -52,9 +52,15 @@ export class GapAnalysisService {
       }
     });
 
-    const technologyFitScore = requiredTechs.length > 0
-      ? Math.min(100, Math.round((matchedTechnologies.length / requiredTechs.length) * 100))
-      : 100;
+    const technologyFitScore =
+      requiredTechs.length > 0
+        ? Math.min(
+            100,
+            Math.round(
+              (matchedTechnologies.length / requiredTechs.length) * 100,
+            ),
+          )
+        : 100;
 
     // Step 2 — Capability threshold gaps
     const seniority = parsedReqs?.seniorityLevel || Seniority.MID;
@@ -66,7 +72,11 @@ export class GapAnalysisService {
     };
     const threshold = thresholds[seniority];
 
-    const dimensions: (keyof typeof analysisResult.capabilities)[] = ['backend', 'frontend', 'devops'];
+    const dimensions: (keyof typeof analysisResult.capabilities)[] = [
+      'backend',
+      'frontend',
+      'devops',
+    ];
 
     dimensions.forEach((dim) => {
       const score = analysisResult.capabilities[dim].score * 100;
@@ -77,9 +87,11 @@ export class GapAnalysisService {
         if (delta > 20) severity = 'DEALBREAKER';
         else if (delta > 10) severity = 'SIGNIFICANT';
 
-        const mitigatingContext = (analysisResult as any).privateWorkIndicator || analysisResult.privateWorkNote
-          ? 'Private work indicator detected.'
-          : null;
+        const mitigatingContext =
+          (analysisResult as any).privateWorkIndicator ||
+          analysisResult.privateWorkNote
+            ? 'Private work indicator detected.'
+            : null;
 
         let probeQuestion: string | null = null;
         if (severity === 'DEALBREAKER' || severity === 'SIGNIFICANT') {

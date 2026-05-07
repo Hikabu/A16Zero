@@ -17,7 +17,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    
+
     // Serve static files to enable testing of /actions.json
     app.use('/', express.static(path.join(__dirname, '..', 'src', 'static')));
 
@@ -29,7 +29,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       }),
     );
     await app.init();
-    
+
     prisma = app.get(PrismaService);
   });
 
@@ -61,7 +61,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       expect(res.body.label).toBe('Vouch');
       expect(Array.isArray(res.body.links?.actions)).toBe(true);
       expect(res.body.links.actions.length).toBeGreaterThanOrEqual(1);
-      
+
       const action = res.body.links.actions[0];
       expect(action.href).toContain('{message}');
       expect(action.parameters[0].name).toBe('message');
@@ -89,15 +89,16 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       const res = await request(app.getHttpServer())
         .get(`/api/actions/vouch/${nonExistentUsername}`)
         .expect(200); // Must be 200 so wallets don't fail parsing metadata silently
-        
+
       expect(res.body.title).toContain(nonExistentUsername);
     });
   });
 
   describe('CORS Preflight', () => {
     it('6. OPTIONS /api/actions/vouch/testuser -> 200 with appropriate Headers', async () => {
-      const res = await request(app.getHttpServer())
-        .options('/api/actions/vouch/testuser');
+      const res = await request(app.getHttpServer()).options(
+        '/api/actions/vouch/testuser',
+      );
 
       // Not 404 or 405
       expect(res.status).toBe(200);
@@ -123,13 +124,15 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       // Validate transaction structure
       const txBuffer = Buffer.from(res.body.transaction, 'base64');
       const tx = Transaction.from(txBuffer);
-      
+
       expect(tx.instructions.length).toBe(1);
-      
+
       const instruction = tx.instructions[0];
       // Memory program id check
-      expect(instruction.programId.toBase58()).toBe('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
-      
+      expect(instruction.programId.toBase58()).toBe(
+        'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+      );
+
       const memoData = JSON.parse(instruction.data.toString('utf8'));
       expect(memoData.type).toBe('vouch');
       expect(memoData.candidate).toBe('testuser');
@@ -141,7 +144,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
         .post('/api/actions/vouch/testuser')
         .send({ account: validSolanaAddress })
         .expect(400);
-        
+
       expect(res.body.message).toBeDefined(); // Expect specific message rejection
     });
 
@@ -174,7 +177,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       const txBuffer = Buffer.from(res.body.transaction, 'base64');
       const tx = Transaction.from(txBuffer);
       const memoData = JSON.parse(tx.instructions[0].data.toString('utf8'));
-      
+
       expect(memoData.msg.length).toBe(200);
       expect(memoData.msg).toBe('A'.repeat(200));
     });
@@ -182,7 +185,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
     it('12. Message with HTML tags strips formatting for safety', async () => {
       const htmlMessage = '<b>great</b> <script>alert("xss")</script>';
       const encodedMsg = encodeURIComponent(htmlMessage);
-      
+
       const res = await request(app.getHttpServer())
         .post(`/api/actions/vouch/testuser?message=${encodedMsg}`)
         .send({ account: validSolanaAddress })
@@ -191,7 +194,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       const txBuffer = Buffer.from(res.body.transaction, 'base64');
       const tx = Transaction.from(txBuffer);
       const memoData = JSON.parse(tx.instructions[0].data.toString('utf8'));
-      
+
       // Should not contain HTML angle brackets
       expect(memoData.msg).not.toContain('<');
       expect(memoData.msg).not.toContain('>');

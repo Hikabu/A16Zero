@@ -607,11 +607,11 @@ Use this for admin/system reprocessing.
           githubUsername: input.githubUsername,
           walletAddress: input.walletAddress,
         } as any,
-        result: result as any,
+        result: result,
       },
       update: {
         status: 'completed',
-        result: result as any,
+        result: result,
       },
     });
   }

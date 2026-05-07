@@ -15,17 +15,17 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
       callbackURL: config.get('app.url') + config.get('auth.githubCallback'),
       scope: ['read:user'],
-	//   allowSignup: true,
+      //   allowSignup: true,
     });
   }
 
   async validate(accessToken: string, refreshToken: string, profile: any) {
-  return {
-    githubId: profile.id,
-    username: profile.username,
-    email: profile.emails?.[0]?.value ?? null, // 👈 optional
-    email_verified: profile.emails?.[0]?.verified ?? false,
-    accessToken,
-  };
-}
+    return {
+      githubId: profile.id,
+      username: profile.username,
+      email: profile.emails?.[0]?.value ?? null, // 👈 optional
+      email_verified: profile.emails?.[0]?.verified ?? false,
+      accessToken,
+    };
+  }
 }
