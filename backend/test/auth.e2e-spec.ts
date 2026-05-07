@@ -37,6 +37,7 @@ describe('Auth (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -61,6 +62,7 @@ describe('Auth (e2e)', () => {
     try {
       if (app) {
         await app.close();
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     } catch (err) {
       console.error('Error closing app:', err);

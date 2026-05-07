@@ -65,6 +65,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -88,6 +89,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
   afterAll(async () => {
     // console.log('quitiitng');
     await app.close();
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await prisma.$disconnect();
     await redis.quit();
   });

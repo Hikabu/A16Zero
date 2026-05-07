@@ -262,6 +262,7 @@ describe('EscrowController (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -274,6 +275,7 @@ describe('EscrowController (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+    await new Promise((resolve) => setTimeout(resolve, 500));
   });
 
   it('confirm funded', async () => {

@@ -37,6 +37,7 @@ describe('Wallet Sync (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
@@ -87,6 +88,7 @@ describe('Wallet Sync (e2e)', () => {
   afterAll(async () => {
     try {
       await app.close();
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (err) {
       console.error('Error closing app:', err);
     }

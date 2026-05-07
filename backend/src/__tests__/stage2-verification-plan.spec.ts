@@ -78,6 +78,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     app.useGlobalPipes(new ValidationPipe());
     const { Logger } = await import('nestjs-pino');
     app.useLogger(app.get(Logger));
@@ -102,6 +103,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     const redis = app.get('REDIS');
     await redis.quit();
     await app.close();
+    await new Promise((resolve) => setTimeout(resolve, 500));
   });
 
   const waitForJob = async (jobId: string, maxSeconds = 10): Promise<any> => {

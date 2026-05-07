@@ -151,6 +151,7 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     app.useLogger(app.get(Logger));
     await app.init();
 
@@ -170,6 +171,7 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
 
   afterAll(async () => {
     await app.close();
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await prisma.$disconnect();
     await redis.quit();
   });

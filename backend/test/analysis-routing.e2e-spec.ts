@@ -110,6 +110,7 @@ describe('Analysis Routing & Flows (E2E)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -171,6 +172,7 @@ describe('Analysis Routing & Flows (E2E)', () => {
 
   afterAll(async () => {
     await app.close();
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await prisma.$disconnect();
     await redis.quit();
   });

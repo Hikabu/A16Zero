@@ -29,6 +29,7 @@ describe('AnalysisController (integration)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
@@ -54,6 +55,7 @@ describe('AnalysisController (integration)', () => {
   afterAll(async () => {
     await prisma.$disconnect();
     await app.close();
+    await new Promise((resolve) => setTimeout(resolve, 500));
   });
 
   describe('POST /api/analysis/recompute', () => {

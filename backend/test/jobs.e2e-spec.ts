@@ -32,6 +32,7 @@ describe('Jobs Filtering E2E', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
     );
@@ -101,6 +102,7 @@ describe('Jobs Filtering E2E', () => {
   afterAll(async () => {
     try {
       await app.close();
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (err) {
       console.error('Error closing app:', err);
     }

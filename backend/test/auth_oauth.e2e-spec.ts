@@ -29,6 +29,7 @@ describe('Auth OAuth (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
     await app.init();
 
     const prisma = app.get(PrismaService);

@@ -28,6 +28,7 @@ export const resetBefore = async () => {
   }).compile();
 
   const app: INestApplication<App> = moduleFixture.createNestApplication();
+  app.enableShutdownHooks();
 
   try {
     await app.init();
@@ -108,6 +109,7 @@ export const resetAfter = async (app: INestApplication<App>) => {
 
   try {
     await app.close();
+    await new Promise((resolve) => setTimeout(resolve, 500));
   } catch (err) {
     console.error('Error closing app:', err);
   }
@@ -188,6 +190,7 @@ export const resetBeforeNoThrottle = async () => {
   //   .compile();
 
   const app = moduleFixture.createNestApplication();
+  app.enableShutdownHooks();
   await app.init();
 
   return { app };

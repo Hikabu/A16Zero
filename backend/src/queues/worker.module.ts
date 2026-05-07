@@ -11,17 +11,21 @@ import { QueuesModule } from './queues.module';
 import { EmailModule } from '../modules/email/email.module';
 import { ConfigModule } from '../shared/config/config.module';
 
+const isTest = process.env.NODE_ENV === 'test';
+
 @Module({
   imports: [
     ConfigModule,
-    QueuesModule,
     PrismaModule,
     ScoringModule,
     SignalExtractorModule,
     GithubAdapterModule,
     CacheModule,
     EmailModule,
+    ...(isTest ? [] : [QueuesModule]),
   ],
-  providers: [SignalComputeProcessor, EmailProcessor, GithubSyncProcessor],
+  providers: isTest
+    ? []
+    : [SignalComputeProcessor, EmailProcessor, GithubSyncProcessor],
 })
 export class WorkerModule {}

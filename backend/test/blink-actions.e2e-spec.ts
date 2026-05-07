@@ -17,6 +17,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableShutdownHooks();
 
     // Serve static files to enable testing of /actions.json
     app.use('/', express.static(path.join(__dirname, '..', 'src', 'static')));
@@ -35,6 +36,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
 
   afterAll(async () => {
     await app.close();
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await prisma.$disconnect();
   });
 

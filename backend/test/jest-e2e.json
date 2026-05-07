@@ -5,6 +5,7 @@
   "setupFiles": ["<rootDir>/setup.ts", "<rootDir>/setup-e2e.ts"],
   "setupFilesAfterEnv": ["<rootDir>/jest.setup.ts"],
   "testRegex": ".e2e-spec.ts$",
+  "globalTeardown": "<rootDir>/global-teardown.ts",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
