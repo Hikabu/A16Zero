@@ -157,7 +157,8 @@ export const envSchema = z
       }
     }
 
-    if (config.NODE_ENV === 'production' && config.CORS_ORIGINS?.includes('*')) {
+    if (config.NODE_ENV === 'production'
+          && config.CORS_ORIGINS?.includes('*')) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['CORS_ORIGINS'],
