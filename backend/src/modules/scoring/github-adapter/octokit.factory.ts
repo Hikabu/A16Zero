@@ -44,7 +44,7 @@ export class OctokitFactory {
 
           const token = decrypt(data, key);
           this.logger.debug({ userId }, 'octokit_using_user_token');
-          return new Octokit({
+          const octokit = new Octokit({
             request: {
               headers: {
                 authorization: `token ${token}`,
@@ -52,6 +52,8 @@ export class OctokitFactory {
               },
             },
           });
+          (octokit as any).__githubTokenSource = 'user';
+          return octokit;
         } catch (err: any) {
           // Token decrypt failed — fall through to system token
           this.logger.warn(
@@ -81,7 +83,7 @@ export class OctokitFactory {
       },
       'octokit_using_system_token',
     );
-    return new Octokit({
+    const octokit = new Octokit({
       request: {
         headers: {
           authorization: `token ${systemToken}`,
@@ -89,5 +91,7 @@ export class OctokitFactory {
         },
       },
     });
+    (octokit as any).__githubTokenSource = 'system';
+    return octokit;
   }
 }
