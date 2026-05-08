@@ -75,4 +75,6 @@ COPY package.json ./
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD node -e "require('http').get('http://127.0.0.1:' + (process.env.PORT || 8080) + '/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
-CMD ["sh", "-c", "npx prisma@6 migrate deploy && node dist/main"]
+#!!!TMP swtich to the second version after db deployment
+CMD ["node", "dist/main"] 
+# CMD ["sh", "-c", "npx prisma@6 migrate deploy && node dist/main"]
