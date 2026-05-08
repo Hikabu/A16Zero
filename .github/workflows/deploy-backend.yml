@@ -16,7 +16,7 @@ permissions:
 env:
   NODE_VERSION: "20"
   PROJECT_ID: "signals-495504"
-  REGION: asia-southeast3
+  REGION: "asia-southeast3"
   SERVICE: "free-trial-16-signals"
   ARTIFACT_REPOSITORY: "cloud-run-source-deploy"
   IMAGE_NAME: backend
@@ -125,8 +125,8 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/535228803373/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'github-deployer@signals-495504.iam.gserviceaccount.com'
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v3
       - name: Configure Docker
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
@@ -138,7 +138,6 @@ jobs:
           echo "image=${IMAGE}" >> "${GITHUB_OUTPUT}"
       - name: Push image
         run: docker push "${{ steps.image.outputs.image }}"
-
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
@@ -153,8 +152,8 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy "${SERVICE}" \
-            --project="${PROJECT_ID}" \
-            --region="${REGION}" \
+            --project="signals-495504" \
+            --region="asia-southeast3" \
             --image="${{ needs.build-and-push.outputs.image }}" \
             --platform=managed \
             --allow-unauthenticated \
@@ -165,6 +164,4 @@ jobs:
             --max-instances=10 \
             --concurrency=80 \
             --timeout=600 \
-            --add-cloudsql-instances="${CLOUD_SQL_CONNECTION_NAME}" \
-            --set-env-vars="NODE_ENV=production,PORT=8080,SERVER_URL=${{ vars.SERVER_URL }},FRONTEND_URL=${{ vars.FRONTEND_URL }},CORS_ORIGINS=${{ vars.CORS_ORIGINS }},JWT_EXPIRY=${{ vars.JWT_EXPIRY }},JWT_REFRESH_EXPIRY=${{ vars.JWT_REFRESH_EXPIRY }},JWT_ISSUER=${{ vars.JWT_ISSUER }},JWT_AUDIENCE=${{ vars.JWT_AUDIENCE }},PRIVY_JWKS_URL=${{ vars.PRIVY_JWKS_URL }},SOLANA_DEVNET_RPC_URL=${{ vars.SOLANA_DEVNET_RPC_URL }},USING_DEVNET=${{ vars.USING_DEVNET }},RESEND_FROM=${{ vars.RESEND_FROM }},APP_BASE_URL=${{ vars.APP_BASE_URL }},VOUCH_ICON_URL=${{ vars.VOUCH_ICON_URL }},CLOUD_SQL_CONNECTION_NAME=${CLOUD_SQL_CONNECTION_NAME}" \
-            --set-secrets="DATABASE_URL=DATABASE_URL:latest,REDIS_URL=REDIS_URL:latest,GITHUB_APP_ID=GITHUB_APP_ID:latest,GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,GITHUB_CLIENT_SECRET=GITHUB_CLIENT_SECRET:latest,GITHUB_PRIVATE_KEY=GITHUB_PRIVATE_KEY:latest,GITHUB_SYSTEM_TOKEN=GITHUB_SYSTEM_TOKEN:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,JWT_SECRET=JWT_SECRET:latest,JWT_ACCESS_SECRET=JWT_ACCESS_SECRET:latest,JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest,JWT_MFA_SECRET=JWT_MFA_SECRET:latest,JWT_ONBOARDING_SECRET=JWT_ONBOARDING_SECRET:latest,AUTH_ENCRYPTION_KEY=AUTH_ENCRYPTION_KEY:latest,PRIVY_APP_ID=PRIVY_APP_ID:latest,PRIVY_SECRET=PRIVY_SECRET:latest,INTERNAL_API_KEY=INTERNAL_API_KEY:latest,HELIUS_API_KEY=HELIUS_API_KEY:latest,HELIUS_WEBHOOK_SECRET=HELIUS_WEBHOOK_SECRET:latest,WALLET_CHALLENGE_SECRET=WALLET_CHALLENGE_SECRET:latest,SOLANA_RPC_URL=SOLANA_RPC_URL:latest,RESEND_API_KEY=RESEND_API_KEY:latest,SENTRY_DSN=SENTRY_DSN:latest,GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,RPC_URL=RPC_URL:latest,ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest"
+            --add-cloudsql-instances="signals-495504:asia-southeast1:free-trial-16-signals" \
