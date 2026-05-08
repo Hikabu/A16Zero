@@ -18,7 +18,7 @@ env:
   PROJECT_ID: "signals-495504"
   REGION: asia-southeast3
   SERVICE: "free-trial-16-signals"
-  ARTIFACT_REPOSITORY: "loud-run-source-deploy"
+  ARTIFACT_REPOSITORY: "cloud-run-source-deploy"
   IMAGE_NAME: backend
   CLOUD_SQL_CONNECTION_NAME: "signals-495504:asia-southeast1:free-trial-16-signals"
 
