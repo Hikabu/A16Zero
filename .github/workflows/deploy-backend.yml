@@ -15,12 +15,12 @@ permissions:
 
 env:
   NODE_VERSION: "20"
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  REGION: asia-southeast1
-  SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
-  ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY }}
+  PROJECT_ID: "signals-495504"
+  REGION: asia-southeast3
+  SERVICE: "free-trial-16-signals"
+  ARTIFACT_REPOSITORY: "loud-run-source-deploy"
   IMAGE_NAME: backend
-  CLOUD_SQL_CONNECTION_NAME: ${{ vars.CLOUD_SQL_CONNECTION_NAME }}
+  CLOUD_SQL_CONNECTION_NAME: "signals-495504:asia-southeast1:free-trial-16-signals"
 
 jobs:
   test:
@@ -125,8 +125,8 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: 'projects/535228803373/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@signals-495504.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v3
       - name: Configure Docker
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
