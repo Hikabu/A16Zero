@@ -1,146 +1,371 @@
-"use client";
-import Link from "next/link";
-import { AlertTriangle, Clock, TrendingUp, Users, Briefcase, Wallet, ArrowRight, Plus } from "lucide-react";
-import { getJobs } from "../../_lib/api/jobs";
-import { getCandidates } from "../../_lib/api/candidates";
-import { getWallet } from "../../_lib/api/finance";
-import { BondBadge } from "../../_components/BondBadge";
-import { LoadingCards } from "../../_components/PageState";
-import { useApi } from "../../_lib/useApi";
+import Link from "next/link"
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Briefcase,
+  Clock,
+  GitBranch,
+  TrendingUp,
+  Users,
+} from "lucide-react"
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import {
+  DashboardGrid,
+  DashboardHeader,
+  DashboardSection,
+  DashboardShell,
+} from "@/components/dashboard-shell"
 
 export default function DashboardPage() {
-  const { state: jobsState } = useApi(getJobs);
-  const { state: candidatesState } = useApi(getCandidates);
-  const { state: walletState } = useApi(getWallet);
+  return (
+    <DashboardShell>
+      <DashboardHeader
+        heading="Dashboard"
+        description="Overview of your hiring pipeline and candidate analytics."
+      >
+        <Button variant="outline" size="sm">
+          Export Report
+        </Button>
+        <Button size="sm">Add Candidate</Button>
+      </DashboardHeader>
 
-  if (
-    jobsState.status === "loading" ||
-    candidatesState.status === "loading" ||
-    walletState.status === "loading"
-  ) {
-    return <LoadingCards count={4} />;
-  }
+      {/* Stats Grid */}
+      <DashboardSection>
+        <DashboardGrid columns={4}>
+          <StatCard
+            title="Total Candidates"
+            value="2,847"
+            change={12.5}
+            changeLabel="from last month"
+            icon={Users}
+          />
+          <StatCard
+            title="Active Jobs"
+            value="24"
+            change={4.3}
+            changeLabel="from last month"
+            icon={Briefcase}
+          />
+          <StatCard
+            title="In Pipeline"
+            value="156"
+            change={-2.1}
+            changeLabel="from last week"
+            icon={GitBranch}
+          />
+          <StatCard
+            title="Avg. Time to Hire"
+            value="18 days"
+            change={-8.2}
+            changeLabel="from last quarter"
+            icon={Clock}
+            positive
+          />
+        </DashboardGrid>
+      </DashboardSection>
 
-  const jobs = jobsState.status === "success" ? jobsState.data : [];
-  const candidates = candidatesState.status === "success" ? candidatesState.data : [];
-  const wallet = walletState.status === "success" ? walletState.data : { balance: "0", wallet_address: "—", transactions: [], bonds: [] };
+      {/* Main Content Grid */}
+      <div className="grid gap-4 lg:grid-cols-7">
+        {/* Recent Activity */}
+        <Card className="lg:col-span-4">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-medium">
+              Recent Candidates
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-primary">
+              View all
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-0 p-0">
+            {recentCandidates.map((candidate) => (
+              <CandidateRow key={candidate.id} candidate={candidate} />
+            ))}
+          </CardContent>
+        </Card>
 
-  const activeJobs = jobs.filter((j) => j.status === "active");
-  const totalCandidates = candidates.filter((c) => c.current_stage !== "rejected").length;
-  const overdueTimers = candidates.filter(
-    (c) => c.review_deadline && new Date(c.review_deadline) < new Date(),
-  );
-  const unfundedJobs = jobs.filter((j) => j.bond_status === "pending");
+        {/* Pipeline Summary */}
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="text-base font-medium">
+              Pipeline Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {pipelineStages.map((stage) => (
+              <PipelineStage key={stage.name} stage={stage} />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Matches */}
+      <DashboardSection>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Top Matches This Week</h2>
+          <Button variant="ghost" size="sm" className="text-primary">
+            View all matches
+          </Button>
+        </div>
+        <DashboardGrid columns={3}>
+          {topMatches.map((match) => (
+            <MatchCard key={match.id} match={match} />
+          ))}
+        </DashboardGrid>
+      </DashboardSection>
+    </DashboardShell>
+  )
+}
+
+// Components
+
+function StatCard({
+  title,
+  value,
+  change,
+  changeLabel,
+  icon: Icon,
+  positive,
+}: {
+  title: string
+  value: string
+  change: number
+  changeLabel: string
+  icon: React.ElementType
+  positive?: boolean
+}) {
+  const isPositive = positive !== undefined ? positive : change > 0
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-1">Welcome back</p>
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">{title}</span>
+          <Icon className="size-4 text-muted-foreground" />
         </div>
-        <Link
-          href="/jobs/new"
-          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Post New Job
-        </Link>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        {[
-          { label: "Active Jobs", value: activeJobs.length, icon: Briefcase, href: "/jobs", color: "text-violet-600 bg-violet-50" },
-          { label: "Candidates in Pipeline", value: totalCandidates, icon: Users, href: "/candidates", color: "text-blue-600 bg-blue-50" },
-          { label: "Available Funds", value: `$${Number(wallet.balance).toLocaleString()} USDC`, icon: Wallet, href: "/finance", color: "text-green-600 bg-green-50" },
-          { label: "Avg Time-to-Hire", value: "—", icon: TrendingUp, href: "/analytics", color: "text-orange-600 bg-orange-50" },
-        ].map(({ label, value, icon: Icon, href, color }) => (
-          <Link key={label} href={href} className="bg-white rounded-xl p-5 border border-gray-100 hover:border-violet-200 transition-colors">
-            <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center mb-3`}>
-              <Icon className="w-4 h-4" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            <p className="text-gray-500 text-sm mt-0.5">{label}</p>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-3 gap-6">
-        {/* Urgent actions */}
-        <div className="col-span-2 bg-white rounded-xl border border-gray-100 p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Urgent Actions</h2>
-          {overdueTimers.length === 0 && unfundedJobs.length === 0 ? (
-            <p className="text-gray-400 text-sm">No urgent actions. You&apos;re all caught up!</p>
+        <div className="mt-2">
+          <span className="stat-value">{value}</span>
+        </div>
+        <div className="mt-1 flex items-center gap-1 text-xs">
+          {isPositive ? (
+            <ArrowUpRight className="size-3 text-signal-high" />
           ) : (
-            <ul className="space-y-3">
-              {overdueTimers.map((c) => (
-                <li key={c.id} className="flex items-center gap-3 p-3 bg-red-50 border border-red-100 rounded-lg">
-                  <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{c.name} — 48h review timer expired</p>
-                    <p className="text-xs text-gray-500">{c.job_title}</p>
-                  </div>
-                  <Link href={`/jobs/${c.job_id}`} className="text-xs text-red-600 font-medium hover:underline flex items-center gap-1">
-                    Review <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </li>
-              ))}
-              {unfundedJobs.map((j) => (
-                <li key={j.id} className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-lg">
-                  <Clock className="w-4 h-4 text-orange-500 shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{j.title} — Bond not funded</p>
-                    <p className="text-xs text-gray-500">Job is in draft until bond is staked</p>
-                  </div>
-                  <BondBadge status="pending" />
-                </li>
-              ))}
-            </ul>
+            <ArrowDownRight className="size-3 text-signal-low" />
           )}
+          <span className={isPositive ? "text-signal-high" : "text-signal-low"}>
+            {Math.abs(change)}%
+          </span>
+          <span className="text-muted-foreground">{changeLabel}</span>
         </div>
-
-        {/* Recent activity */}
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Recent Activity</h2>
-          <p className="text-gray-400 text-sm">No recent activity yet.</p>
-        </div>
-      </div>
-
-      {/* Active jobs */}
-      <div className="mt-6 bg-white rounded-xl border border-gray-100 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-gray-900">Active Jobs</h2>
-          <Link href="/jobs" className="text-sm text-violet-600 hover:underline">View all</Link>
-        </div>
-        {activeJobs.length === 0 ? (
-          <div className="text-center py-10">
-            <Briefcase className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm mb-4">No jobs posted yet</p>
-            <Link href="/jobs/new" className="bg-violet-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-violet-500 transition-colors">
-              Post your first job
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {activeJobs.map((job) => (
-              <Link
-                key={job.id}
-                href={`/jobs/${job.id}`}
-                className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 text-sm">{job.title}</p>
-                  <p className="text-xs text-gray-500">{job.department} · {job.location_type}</p>
-                </div>
-                <p className="text-sm text-gray-500">{job.applicant_count} applicants</p>
-                <BondBadge status={job.bond_status} />
-                <ArrowRight className="w-4 h-4 text-gray-300" />
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+      </CardContent>
+    </Card>
+  )
 }
+
+function CandidateRow({
+  candidate,
+}: {
+  candidate: (typeof recentCandidates)[0]
+}) {
+  return (
+    <Link
+      href={`/candidates/${candidate.id}`}
+      className="flex items-center gap-4 border-b px-6 py-3 last:border-0 transition-colors hover:bg-muted/50"
+    >
+      <Avatar className="size-9">
+        <AvatarImage src={candidate.avatar} alt={candidate.name} />
+        <AvatarFallback className="text-xs">
+          {candidate.name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 space-y-0.5">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm">{candidate.name}</span>
+          <Badge
+            variant="secondary"
+            className="h-5 px-1.5 text-xs font-normal"
+          >
+            {candidate.matchScore}% match
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {candidate.role} &middot; {candidate.github}
+        </p>
+      </div>
+      <div className="text-right">
+        <Badge
+          variant="outline"
+          className={`text-xs ${getStageColor(candidate.stage)}`}
+        >
+          {candidate.stage}
+        </Badge>
+        <p className="mt-0.5 text-xs text-muted-foreground">{candidate.added}</p>
+      </div>
+    </Link>
+  )
+}
+
+function PipelineStage({ stage }: { stage: (typeof pipelineStages)[0] }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-sm">
+        <span>{stage.name}</span>
+        <span className="font-mono text-muted-foreground">{stage.count}</span>
+      </div>
+      <Progress value={stage.percentage} className="h-1.5" />
+    </div>
+  )
+}
+
+function MatchCard({ match }: { match: (typeof topMatches)[0] }) {
+  return (
+    <Card className="transition-colors hover:bg-muted/30">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <Avatar className="size-10">
+            <AvatarImage src={match.avatar} alt={match.name} />
+            <AvatarFallback>
+              {match.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">{match.name}</span>
+              <span className="font-mono text-sm text-signal-high">
+                {match.score}%
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">{match.github}</p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {match.skills.map((skill) => (
+            <Badge
+              key={skill}
+              variant="secondary"
+              className="h-5 px-1.5 text-xs font-normal"
+            >
+              {skill}
+            </Badge>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
+          <span>{match.commits} commits</span>
+          <span>{match.repos} repositories</span>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function getStageColor(stage: string) {
+  switch (stage) {
+    case "New":
+      return "border-signal-high/30 text-signal-high"
+    case "Screening":
+      return "border-signal-medium/30 text-signal-medium"
+    case "Interview":
+      return "border-primary/30 text-primary"
+    case "Offer":
+      return "border-chart-3/30 text-chart-3"
+    default:
+      return ""
+  }
+}
+
+// Mock Data
+
+const recentCandidates = [
+  {
+    id: 1,
+    name: "Sarah Chen",
+    role: "Senior Frontend Engineer",
+    github: "@sarahchen",
+    avatar: "",
+    matchScore: 94,
+    stage: "Interview",
+    added: "2h ago",
+  },
+  {
+    id: 2,
+    name: "Marcus Rodriguez",
+    role: "Full Stack Developer",
+    github: "@mrodriguez",
+    avatar: "",
+    matchScore: 89,
+    stage: "Screening",
+    added: "5h ago",
+  },
+  {
+    id: 3,
+    name: "Emily Watson",
+    role: "Backend Engineer",
+    github: "@emwatson",
+    avatar: "",
+    matchScore: 87,
+    stage: "New",
+    added: "1d ago",
+  },
+  {
+    id: 4,
+    name: "James Kim",
+    role: "DevOps Engineer",
+    github: "@jameskim",
+    avatar: "",
+    matchScore: 82,
+    stage: "Offer",
+    added: "2d ago",
+  },
+]
+
+const pipelineStages = [
+  { name: "New", count: 48, percentage: 31 },
+  { name: "Screening", count: 32, percentage: 21 },
+  { name: "Technical", count: 28, percentage: 18 },
+  { name: "Interview", count: 24, percentage: 15 },
+  { name: "Offer", count: 12, percentage: 8 },
+  { name: "Hired", count: 12, percentage: 7 },
+]
+
+const topMatches = [
+  {
+    id: 1,
+    name: "Alex Morgan",
+    github: "@alexmorgan",
+    avatar: "",
+    score: 96,
+    skills: ["TypeScript", "React", "Node.js"],
+    commits: "2.4k",
+    repos: 47,
+  },
+  {
+    id: 2,
+    name: "Jordan Lee",
+    github: "@jordanlee",
+    avatar: "",
+    score: 94,
+    skills: ["Python", "ML", "FastAPI"],
+    commits: "1.8k",
+    repos: 32,
+  },
+  {
+    id: 3,
+    name: "Taylor Swift",
+    github: "@tswift_dev",
+    avatar: "",
+    score: 91,
+    skills: ["Go", "Kubernetes", "AWS"],
+    commits: "3.1k",
+    repos: 56,
+  },
+]
