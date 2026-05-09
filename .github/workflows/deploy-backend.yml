@@ -187,7 +187,6 @@ jobs:
               GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,\
               ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest" \
             --set-env-vars="\
-              NODE_ENV=production,\
               GITHUB_APP_ID=${{ secrets.GITHUB_APP_ID }},\
               GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }},\
               GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},\
