@@ -1,66 +1,61 @@
-"use client"
+"use client";
 
-import { useRef, useEffect, useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { motion, useScroll, useTransform, useInView, AnimatePresence } from "framer-motion"
-import { ArrowRight, Check, Shield, Eye, Zap, Github } from "lucide-react"
+import { useRef, useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { ArrowRight, Check, Shield, Eye, Zap, Github } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 // Premium easing
-const ease = [0.16, 1, 0.3, 1]
+const ease = [0.16, 1, 0.3, 1];
 
 // ============================================================================
 // NAVIGATION
 // ============================================================================
 
 function Navigation() {
-  const [scrolled, setScrolled] = useState(false)
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50)
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <motion.header 
+    <motion.header
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, delay: 0.5, ease }}
       className={`fixed left-0 right-0 top-0 z-50 transition-all duration-500 ${
-        scrolled 
-          ? "border-b border-border/10 bg-background/80 backdrop-blur-2xl" 
+        scrolled
+          ? "border-b border-border/10 bg-background/80 backdrop-blur-2xl"
           : "bg-transparent"
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2.5">
-          <Image 
-            src="/logo.png" 
-            alt="16signals" 
-            width={24} 
-            height={24} 
-          />
+          <Image src="/logo.png" alt="16signals" width={24} height={24} />
           <span className="font-medium tracking-tight">16signals</span>
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm md:flex">
-          <Link 
-            href="#signals" 
+          <Link
+            href="#signals"
             className="text-muted-foreground transition-colors duration-300 hover:text-foreground"
           >
             Signals
           </Link>
-          <Link 
-            href="#how-it-works" 
+          <Link
+            href="#how-it-works"
             className="text-muted-foreground transition-colors duration-300 hover:text-foreground"
           >
             How it works
           </Link>
-          <Link 
-            href="#no-ghost-jobs" 
+          <Link
+            href="#no-ghost-jobs"
             className="text-muted-foreground transition-colors duration-300 hover:text-foreground"
           >
             No ghost jobs
@@ -71,13 +66,11 @@ function Navigation() {
           <Button variant="ghost" size="sm" className="hidden md:inline-flex">
             Sign in
           </Button>
-          <Button size="sm">
-            Get started
-          </Button>
+          <Button size="sm">Get started</Button>
         </div>
       </div>
     </motion.header>
-  )
+  );
 }
 
 // ============================================================================
@@ -85,18 +78,21 @@ function Navigation() {
 // ============================================================================
 
 function HeroSection() {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start start", "end start"]
-  })
-  
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95])
-  const y = useTransform(scrollYProgress, [0, 0.5], [0, 100])
+    offset: ["start start", "end start"],
+  });
+
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
+  const y = useTransform(scrollYProgress, [0, 0.5], [0, 100]);
 
   return (
-    <section ref={containerRef} className="relative flex min-h-screen items-center justify-center overflow-hidden">
+    <section
+      ref={containerRef}
+      className="relative flex min-h-screen items-center justify-center overflow-hidden"
+    >
       {/* Premium ambient background */}
       <div className="pointer-events-none absolute inset-0">
         {/* Primary glow */}
@@ -107,9 +103,15 @@ function HeroSection() {
       </div>
 
       {/* Subtle grain texture */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")' }} />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
+        }}
+      />
 
-      <motion.div 
+      <motion.div
         style={{ opacity, scale, y }}
         className="relative z-10 mx-auto max-w-4xl px-6 text-center"
       >
@@ -140,7 +142,7 @@ function HeroSection() {
         >
           Resumes describe developers.
         </motion.h1>
-        
+
         <motion.h1
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -157,8 +159,8 @@ function HeroSection() {
           transition={{ duration: 1, delay: 0.7, ease }}
           className="mx-auto mt-8 max-w-xl text-lg text-muted-foreground sm:text-xl"
         >
-          Engineering intelligence extracted from years of verified technical work. 
-          16 dimensions of evidence, zero guesswork.
+          Engineering intelligence extracted from years of verified technical
+          work. 16 dimensions of evidence, zero guesswork.
         </motion.p>
 
         {/* CTA */}
@@ -172,7 +174,11 @@ function HeroSection() {
             <Github className="size-5" />
             Connect GitHub
           </Button>
-          <Button variant="ghost" size="lg" className="h-13 px-8 text-base text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="lg"
+            className="h-13 px-8 text-base text-muted-foreground"
+          >
             See how it works
             <ArrowRight className="ml-2 size-4" />
           </Button>
@@ -210,27 +216,31 @@ function HeroSection() {
         </motion.div>
       </motion.div>
     </section>
-  )
+  );
 }
 
 // ============================================================================
 // ANIMATED SECTION WRAPPER - Cinematic reveal on scroll
 // ============================================================================
 
-function Section({ 
-  children, 
+function Section({
+  children,
   className = "",
-  id
-}: { 
-  children: React.ReactNode
-  className?: string
-  id?: string
+  id,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-40% 0px -40% 0px" })
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-40% 0px -40% 0px" });
 
   return (
-    <section ref={ref} id={id} className={`relative ${className}`}>
+    <section
+      ref={ref}
+      id={id}
+      className={`relative overflow-hidden ${className}`}
+    >
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -239,7 +249,7 @@ function Section({
         {children}
       </motion.div>
     </section>
-  )
+  );
 }
 
 // ============================================================================
@@ -261,12 +271,12 @@ function ProblemSection() {
         </h2>
 
         <p className="mx-auto mt-8 max-w-xl text-lg text-muted-foreground">
-          Generic claims. AI-generated fluff. No way to verify depth. 
-          Technical hiring has become expensive guesswork.
+          Generic claims. AI-generated fluff. No way to verify depth. Technical
+          hiring has become expensive guesswork.
         </p>
       </div>
     </Section>
-  )
+  );
 }
 
 // ============================================================================
@@ -276,32 +286,52 @@ function ProblemSection() {
 const signalCategories = [
   {
     title: "Ownership",
-    signals: ["Repository leadership", "Maintainer status", "Decision authority", "Long-term stewardship"],
+    signals: [
+      "Repository leadership",
+      "Maintainer status",
+      "Decision authority",
+      "Long-term stewardship",
+    ],
     gradient: "from-primary/20 to-primary/5",
   },
   {
-    title: "Depth", 
-    signals: ["Architectural impact", "System design", "Complex problem solving", "Technical breadth"],
+    title: "Depth",
+    signals: [
+      "Architectural impact",
+      "System design",
+      "Complex problem solving",
+      "Technical breadth",
+    ],
     gradient: "from-primary/15 to-primary/5",
   },
   {
     title: "Influence",
-    signals: ["Cross-team collaboration", "Review authority", "Mentorship patterns", "Community standing"],
+    signals: [
+      "Cross-team collaboration",
+      "Review authority",
+      "Mentorship patterns",
+      "Community standing",
+    ],
     gradient: "from-primary/10 to-transparent",
   },
   {
     title: "Consistency",
-    signals: ["Contribution patterns", "Quality over time", "Growth trajectory", "Sustained engagement"],
+    signals: [
+      "Contribution patterns",
+      "Quality over time",
+      "Growth trajectory",
+      "Sustained engagement",
+    ],
     gradient: "from-primary/10 to-transparent",
   },
-]
+];
 
 function SignalsSection() {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-30%" })
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-30%" });
 
   return (
-    <section ref={ref} id="signals" className="py-32 md:py-40">
+    <section ref={ref} id="signals" className="overflow-hidden py-32 md:py-40">
       <div className="mx-auto max-w-6xl px-6">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -316,7 +346,7 @@ function SignalsSection() {
             16 dimensions of engineering evidence.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-muted-foreground">
-            We analyze years of verified work to extract what actually matters: 
+            We analyze years of verified work to extract what actually matters:
             ownership, depth, influence, and consistency.
           </p>
         </motion.div>
@@ -330,12 +360,17 @@ function SignalsSection() {
               transition={{ duration: 0.8, delay: 0.2 + idx * 0.1, ease }}
               className="group relative"
             >
-              <div className={`absolute inset-0 rounded-2xl bg-gradient-to-b ${category.gradient} opacity-0 transition-opacity duration-500 group-hover:opacity-100`} />
+              <div
+                className={`absolute inset-0 rounded-2xl bg-gradient-to-b ${category.gradient} opacity-0 transition-opacity duration-500 group-hover:opacity-100`}
+              />
               <div className="relative rounded-2xl border border-border/30 bg-card/30 p-6 transition-colors duration-500 group-hover:border-primary/20">
                 <h3 className="mb-4 text-lg font-medium">{category.title}</h3>
                 <ul className="space-y-2.5">
                   {category.signals.map((signal) => (
-                    <li key={signal} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <li
+                      key={signal}
+                      className="flex items-center gap-2.5 text-sm text-muted-foreground"
+                    >
                       <div className="size-1 rounded-full bg-primary/50" />
                       {signal}
                     </li>
@@ -347,7 +382,7 @@ function SignalsSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 // ============================================================================
@@ -357,28 +392,35 @@ function SignalsSection() {
 const steps = [
   {
     title: "Connect GitHub",
-    description: "One-click authorization with read-only access to your public activity.",
+    description:
+      "One-click authorization with read-only access to your public activity.",
   },
-  { 
+  {
     title: "Extract Signals",
-    description: "Our engine analyzes commits, PRs, reviews, and ownership patterns.",
+    description:
+      "Our engine analyzes commits, PRs, reviews, and ownership patterns.",
   },
   {
     title: "Generate Profile",
-    description: "Receive a verified engineering identity with quantified evidence.",
+    description:
+      "Receive a verified engineering identity with quantified evidence.",
   },
   {
     title: "Get Discovered",
     description: "Match with teams that evaluate capability, not keywords.",
   },
-]
+];
 
 function HowItWorksSection() {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-30%" })
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-30%" });
 
   return (
-    <section ref={ref} id="how-it-works" className="py-32 md:py-40">
+    <section
+      ref={ref}
+      id="how-it-works"
+      className="overflow-hidden py-32 md:py-40"
+    >
       <div className="mx-auto max-w-5xl px-6">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -407,18 +449,20 @@ function HowItWorksSection() {
               {idx < steps.length - 1 && (
                 <div className="absolute left-full top-6 hidden h-px w-full bg-gradient-to-r from-border to-transparent lg:block" />
               )}
-              
+
               <div className="mb-4 font-mono text-5xl font-light text-primary/20">
                 {String(idx + 1).padStart(2, "0")}
               </div>
               <h3 className="mb-2 text-lg font-medium">{step.title}</h3>
-              <p className="text-sm text-muted-foreground">{step.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {step.description}
+              </p>
             </motion.div>
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 // ============================================================================
@@ -426,8 +470,8 @@ function HowItWorksSection() {
 // ============================================================================
 
 function ComparisonSection() {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-30%" })
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-30%" });
 
   const claims = [
     "5+ years of experience",
@@ -435,7 +479,7 @@ function ComparisonSection() {
     "Team player",
     "Fast learner",
     "Passionate about tech",
-  ]
+  ];
 
   const signals = [
     "Primary maintainer: 3 production systems",
@@ -443,10 +487,10 @@ function ComparisonSection() {
     "Infrastructure ownership: 2 organizations",
     "Cross-team architectural influence",
     "18-month sustained contribution pattern",
-  ]
+  ];
 
   return (
-    <section ref={ref} className="py-32 md:py-40">
+    <section ref={ref} className="overflow-hidden py-32 md:py-40">
       <div className="mx-auto max-w-4xl px-6">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -475,7 +519,10 @@ function ComparisonSection() {
             </p>
             <div className="space-y-5">
               {claims.map((claim, idx) => (
-                <div key={idx} className="flex items-center gap-4 text-muted-foreground/70">
+                <div
+                  key={idx}
+                  className="flex items-center gap-4 text-muted-foreground/70"
+                >
                   <div className="size-1.5 rounded-full bg-muted-foreground/20" />
                   <span>{claim}</span>
                 </div>
@@ -496,8 +543,8 @@ function ComparisonSection() {
             </p>
             <div className="relative space-y-5">
               {signals.map((signal, idx) => (
-                <motion.div 
-                  key={idx} 
+                <motion.div
+                  key={idx}
                   initial={{ opacity: 0, x: 20 }}
                   animate={isInView ? { opacity: 1, x: 0 } : {}}
                   transition={{ duration: 0.6, delay: 0.5 + idx * 0.08, ease }}
@@ -514,7 +561,7 @@ function ComparisonSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 // ============================================================================
@@ -525,7 +572,8 @@ const trustFeatures = [
   {
     icon: Shield,
     title: "No ghost jobs",
-    description: "Every opportunity verified. Real budget, real timeline, real hiring intent.",
+    description:
+      "Every opportunity verified. Real budget, real timeline, real hiring intent.",
   },
   {
     icon: Eye,
@@ -537,14 +585,18 @@ const trustFeatures = [
     title: "Instant analysis",
     description: "Complete profile generation in under 5 minutes.",
   },
-]
+];
 
 function TrustSection() {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-30%" })
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-30%" });
 
   return (
-    <section ref={ref} id="no-ghost-jobs" className="py-32 md:py-40">
+    <section
+      ref={ref}
+      id="no-ghost-jobs"
+      className="overflow-hidden py-32 md:py-40"
+    >
       <div className="mx-auto max-w-4xl px-6">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -559,8 +611,8 @@ function TrustSection() {
             Your time matters.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-muted-foreground">
-            Read-only GitHub access. No spam. No fake listings. 
-            Just verified opportunities from teams actually hiring.
+            Read-only GitHub access. No spam. No fake listings. Just verified
+            opportunities from teams actually hiring.
           </p>
         </motion.div>
 
@@ -577,13 +629,15 @@ function TrustSection() {
                 <item.icon className="size-5 text-primary" />
               </div>
               <h3 className="mb-2 font-medium">{item.title}</h3>
-              <p className="text-sm text-muted-foreground">{item.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {item.description}
+              </p>
             </motion.div>
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 // ============================================================================
@@ -591,17 +645,17 @@ function TrustSection() {
 // ============================================================================
 
 function CTASection() {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-30%" })
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-30%" });
 
   return (
-    <section ref={ref} className="relative py-32 md:py-40">
+    <section ref={ref} className="relative overflow-hidden py-32 md:py-40">
       {/* Background gradient */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute bottom-0 left-1/2 h-[500px] w-[800px] -translate-x-1/2 translate-y-1/2 rounded-full bg-primary/10 blur-[100px]" />
       </div>
-      
-      <motion.div 
+
+      <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 1, ease }}
@@ -627,7 +681,7 @@ function CTASection() {
         </p>
       </motion.div>
     </section>
-  )
+  );
 }
 
 // ============================================================================
@@ -636,26 +690,38 @@ function CTASection() {
 
 function Footer() {
   return (
-    <footer className="bg-black py-6">
+    <footer className="relative z-10 bg-black py-6">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
         <div className="flex items-center gap-2">
-          <Image 
-            src="/logo.png" 
-            alt="16signals" 
-            width={16} 
-            height={16} 
+          <Image
+            src="/logo.png"
+            alt="16signals"
+            width={16}
+            height={16}
             className="opacity-60"
           />
-          <span className="text-xs text-muted-foreground/60">2024 16signals</span>
+          <span className="text-xs text-muted-foreground/60">
+            2024 16signals
+          </span>
         </div>
 
         <div className="flex items-center gap-6 text-xs text-muted-foreground/60">
-          <Link href="#" className="transition-colors hover:text-muted-foreground">Privacy</Link>
-          <Link href="#" className="transition-colors hover:text-muted-foreground">Terms</Link>
+          <Link
+            href="#"
+            className="transition-colors hover:text-muted-foreground"
+          >
+            Privacy
+          </Link>
+          <Link
+            href="#"
+            className="transition-colors hover:text-muted-foreground"
+          >
+            Terms
+          </Link>
         </div>
       </div>
     </footer>
-  )
+  );
 }
 
 // ============================================================================
@@ -664,7 +730,7 @@ function Footer() {
 
 export default function LandingPage() {
   return (
-    <main className="relative min-h-screen bg-background">
+    <main className="relative min-h-screen overflow-x-hidden bg-background">
       <Navigation />
       <HeroSection />
       <ProblemSection />
@@ -675,5 +741,5 @@ export default function LandingPage() {
       <CTASection />
       <Footer />
     </main>
-  )
+  );
 }
