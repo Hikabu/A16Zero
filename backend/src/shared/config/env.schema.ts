@@ -1,4 +1,3 @@
-import { A } from '@faker-js/faker/dist/airline-eVQV6kbz';
 import { z } from 'zod';
 
 export const envSchema = z.object({
@@ -54,4 +53,6 @@ export const envSchema = z.object({
   RECLAIM_APP_SECRET: z.string().optional(),
 });
 
-export const env = envSchema.parse(process.env);
+// export function validateEnv(config: Record<string, unknown>) {
+//   return envSchema.parse(config);
+// }
