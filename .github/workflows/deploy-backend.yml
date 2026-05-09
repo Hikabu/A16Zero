@@ -15,12 +15,12 @@ permissions:
 
 env:
   NODE_VERSION: "20"
-  PROJECT_ID: "signals-495504"
-  REGION: "asia-southeast3"
+  PROJECT_ID: ${{ secrets.PROJECT_ID }}
+  REGION: ${{ secrets.REGION }}
   SERVICE: "free-trial-16-signals"
-  ARTIFACT_REPOSITORY: "cloud-run-source-deploy"
+  ARTIFACT_REPOSITORY: ${{ secrets.ARTIFACT_REPOSITORY }}
   IMAGE_NAME: backend
-  CLOUD_SQL_CONNECTION_NAME: "signals-495504:asia-southeast1:free-trial-16-signals"
+  CLOUD_SQL_CONNECTION_NAME: ${{ secrets.CLOUD_SQL_CONNECTION_NAME }}
 
 jobs:
   test:
@@ -129,11 +129,11 @@ jobs:
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v3
       - name: Configure Docker
-        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+        run: gcloud auth configure-docker "${{ secrets.REGION }}-docker.pkg.dev" --quiet
       - id: image
         name: Build image
         run: |
-          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:${GITHUB_SHA}"
+          IMAGE="${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:${GITHUB_SHA}"
           docker build -f backend/Dockerfile -t "${IMAGE}" backend
           echo "image=${IMAGE}" >> "${GITHUB_OUTPUT}"
       - name: Push image
@@ -153,7 +153,7 @@ jobs:
         run: |
           gcloud run deploy "${SERVICE}" \
             --project="signals-495504" \
-            --region="asia-southeast3" \
+            --region="${{ secrets.REGION }}" \
             --image="${{ needs.build-and-push.outputs.image }}" \
             --platform=managed \
             --allow-unauthenticated \
@@ -164,19 +164,38 @@ jobs:
             --max-instances=10 \
             --concurrency=80 \
             --timeout=600 \
-            --add-cloudsql-instances="signals-495504:asia-southeast1:free-trial-16-signals" \
-            --set-secrets="DATABASE_URL=DATABASE_URL:latest,REDIS_URL=REDIS_URL:latest,GITHUB_APP_ID=GITHUB_APP_ID:latest, \
-            GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,GITHUB_CLIENT_SECRET=GITHUB_CLIENT_SECRET:latest, \
-            GITHUB_PRIVATE_KEY=GITHUB_PRIVATE_KEY:latest,GITHUB_SYSTEM_TOKEN=GITHUB_SYSTEM_TOKEN:latest, \
-            GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest, \
-            JWT_SECRET=JWT_SECRET:latest,JWT_ACCESS_SECRET=JWT_ACCESS_SECRET:latest,JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest, \
-            JWT_MFA_SECRET=JWT_MFA_SECRET:latest,JWT_ONBOARDING_SECRET=JWT_ONBOARDING_SECRET:latest, \
-            AUTH_ENCRYPTION_KEY=AUTH_ENCRYPTION_KEY:latest,PRIVY_APP_ID=PRIVY_APP_ID:latest,PRIVY_SECRET=PRIVY_SECRET:latest, \
-            INTERNAL_API_KEY=INTERNAL_API_KEY:latest,HELIUS_API_KEY=HELIUS_API_KEY:latest,HELIUS_WEBHOOK_SECRET=HELIUS_WEBHOOK_SECRET:latest, \
-            WALLET_CHALLENGE_SECRET=WALLET_CHALLENGE_SECRET:latest,SOLANA_RPC_URL=SOLANA_RPC_URL:latest,RESEND_API_KEY=RESEND_API_KEY:latest, \
-            SENTRY_DSN=SENTRY_DSN:latest,GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,RPC_URL=RPC_URL:latest,ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest, \
-            NODE_ENV=NODE_ENV:latest,SERVER_URL=SERVER_URL:latest,FRONTEND_URL=FRONTEND_URL:latest,CORS_ORIGINS=CORS_ORIGINS:latest, \
-            JWT_EXPIRY=JWT_EXPIRY:latest,JWT_REFRESH_EXPIRY=JWT_REFRESH_EXPIRY:latest,JWT_ISSUER=JWT_ISSUER:latest, \
-            JWT_AUDIENCE=JWT_AUDIENCE:latest,PRIVY_JWKS_URL=PRIVY_JWKS_URL:latest,SOLANA_DEVNET_RPC_URL=SOLANA_DEVNET_RPC_URL:latest, \
-            USING_DEVNET=USING_DEVNET:latest,RESEND_FROM=RESEND_FROM:latest,APP_BASE_URL=APP_BASE_URL:latest, \
-            VOUCH_ICON_URL=VOUCH_ICON_URL:latest,CLOUD_SQL_CONNECTION_NAME=CLOUD_SQL_CONNECTION_NAME:latest" 
+            --add-cloudsql-instances="${{ secrets.CLOUD_SQL_CONNECTION_NAME }}" \
+            --set-secrets="\
+              DATABASE_URL=DATABASE_URL:latest,\
+              REDIS_URL=REDIS_URL:latest,\
+              GITHUB_CLIENT_SECRET=GITHUB_CLIENT_SECRET:latest,\
+              GITHUB_PRIVATE_KEY=GITHUB_PRIVATE_KEY:latest,\
+              GITHUB_SYSTEM_TOKEN=GITHUB_SYSTEM_TOKEN:latest,\
+              GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,\
+              JWT_SECRET=JWT_SECRET:latest,\
+              JWT_ACCESS_SECRET=JWT_ACCESS_SECRET:latest,\
+              JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest,\
+              JWT_MFA_SECRET=JWT_MFA_SECRET:latest,\
+              JWT_ONBOARDING_SECRET=JWT_ONBOARDING_SECRET:latest,\
+              AUTH_ENCRYPTION_KEY=AUTH_ENCRYPTION_KEY:latest,\
+              PRIVY_SECRET=PRIVY_SECRET:latest,\
+              INTERNAL_API_KEY=INTERNAL_API_KEY:latest,\
+              HELIUS_API_KEY=HELIUS_API_KEY:latest,\
+              HELIUS_WEBHOOK_SECRET=HELIUS_WEBHOOK_SECRET:latest,\
+              WALLET_CHALLENGE_SECRET=WALLET_CHALLENGE_SECRET:latest,\
+              RESEND_API_KEY=RESEND_API_KEY:latest,\
+              GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,\
+              ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest" \
+            --set-env-vars="\
+              NODE_ENV=production,\
+              GITHUB_APP_ID=${{ secrets.GITHUB_APP_ID }},\
+              GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }},\
+              GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},\
+              PRIVY_APP_ID=${{ secrets.PRIVY_APP_ID }},\
+              SOLANA_RPC_URL=${{ secrets.SOLANA_RPC_URL }},\
+              SERVER_URL=${{ secrets.SERVER_URL }},\
+              FRONTEND_URL=${{ secrets.FRONTEND_URL }},\
+              CORS_ORIGINS=${{ secrets.CORS_ORIGINS }},\
+              JWT_ISSUER=hire-on-chain,\
+              USING_DEVNET=true,\
+              CLOUD_SQL_CONNECTION_NAME=${{ secrets.CLOUD_SQL_CONNECTION_NAME }}"
