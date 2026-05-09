@@ -195,4 +195,5 @@ jobs:
               WALLET_CHALLENGE_SECRET=WALLET_CHALLENGE_SECRET:latest,\
               RESEND_API_KEY=RESEND_API_KEY:latest,\
               GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,\
-              ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest"
+              ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest, \
+              PRIVY_JWKS_URL=PRIVY_JWKS_URL:latest" 
