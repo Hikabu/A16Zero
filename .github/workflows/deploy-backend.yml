@@ -17,7 +17,7 @@ env:
   NODE_VERSION: "20"
   PROJECT_ID: ${{ secrets.PROJECT_ID }}
   REGION: ${{ secrets.REGION }}
-  SERVICE: "free-trial-16-signals"
+  SERVICE: "sixteensignals"
   ARTIFACT_REPOSITORY: ${{ secrets.ARTIFACT_REPOSITORY }}
   IMAGE_NAME: backend
   CLOUD_SQL_CONNECTION_NAME: ${{ secrets.CLOUD_SQL_CONNECTION_NAME }}
@@ -144,12 +144,9 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     needs: build-and-push
+    environment: 
+      name: production
 
-    env:
-      PROJECT_ID: ${{ secrets.PROJECT_ID }}
-      REGION: ${{ secrets.REGION }}
-      ARTIFACT_REPOSITORY: ${{ secrets.ARTIFACT_REPOSITORY }}
-      IMAGE_NAME: backend
     steps:
       - id: auth
         uses: google-github-actions/auth@v2
@@ -195,5 +192,34 @@ jobs:
               WALLET_CHALLENGE_SECRET=WALLET_CHALLENGE_SECRET:latest,\
               RESEND_API_KEY=RESEND_API_KEY:latest,\
               GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,\
-              ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest, \
-              PRIVY_JWKS_URL=PRIVY_JWKS_URL:latest" 
+              ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest,\
+              GITHUB_APP_ID=GITHUB_APP_ID:latest,\
+              GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,\
+              REDIS_HOST=REDIS_HOST:latest,\
+              PRIVY_JWKS_URL=PRIVY_JWKS_URL:latest" \
+            --set-env-vars="\
+              GITHUB_AUTH_ENABLED=true,\
+              GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},\
+              PRIVY_APP_ID=${{ secrets.PRIVY_APP_ID }},\
+              SOLANA_RPC_URL=${{ secrets.SOLANA_RPC_URL }},\
+              SENTRY_DSN=${{ secrets.SENTRY_DSN }},\
+              RPC_URL=${{ secrets.RPC_URL }},\
+              SOLANA_DEVNET_RPC_URL=${{ secrets.SOLANA_DEVNET_RPC_URL }},\
+              RESEND_FROM=${{ secrets.RESEND_FROM }},\
+              APP_BASE_URL=${{ secrets.APP_BASE_URL }},\
+              VOUCH_ICON_URL=${{ secrets.VOUCH_ICON_URL }},\
+              CLOUD_SQL_CONNECTION_NAME=${{ secrets.CLOUD_SQL_CONNECTION_NAME }},\
+              PORT=8080,\
+              NODE_ENV=production,\
+              USING_DEVNET=false,\
+              PRIVY_BYPASS=false,\
+              REDIS_PORT=6379,\
+              DB_NAME=${{ secrets.DB_NAME }},\
+              SERVER_URL=${{ secrets.SERVER_URL }},\
+              FRONTEND_URL=${{ secrets.FRONTEND_URL }},\
+              CORS_ORIGINS=${{ secrets.CORS_ORIGINS}},\
+              JWT_EXPIRY=${{ secrets.JWT_EXPIRY}},\
+              JWT_REFRESH_EXPIRY=${{ secrets.JWT_REFRESH_EXPIRY}},\
+              JWT_ISSUER=${{ secrets.JWT_ISSUER}},\
+              JWT_AUDIENCE=${{ secrets.JWT_AUDIENCE}},\
+              RUN_WORKERS=${{ secrets.RUN_WORKERS}}"
