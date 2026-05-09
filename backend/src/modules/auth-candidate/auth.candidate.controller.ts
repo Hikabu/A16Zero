@@ -63,10 +63,13 @@ export class AuthCandidateController {
   }
 
   private handleAuthResponse(
+    req: any,
     res: Response,
     result: any,
     successRedirect?: string,
   ) {
+    const wantsJson = req?.accepts?.(['html', 'json']) === 'json';
+
     switch (result.type) {
       case AuthState.SUCCESS: {
         res.cookie(
@@ -79,22 +82,64 @@ export class AuthCandidateController {
           result.data.refreshToken,
           this.authCookieOptions,
         );
-        return res.status(200).json({ success: true });
+        if (successRedirect && !wantsJson) {
+          return res.redirect(successRedirect);
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            accessToken: result.data.accessToken,
+            role: 'candidate',
+          },
+        });
       }
 
       case AuthState.NEEDS_VERIFICATION:
+        if (wantsJson) {
+          return res.status(403).json({
+            code: 'email_verification_required',
+            email: result.data.email,
+            message: 'Email verification required.',
+          });
+        }
+
         return res.redirect(
-          `${this.getFrontendUrl()}/verify?email=${encodeURIComponent(result.data.email)}`,
+          `${this.getFrontendUrl()}/auth?verify_email=${encodeURIComponent(result.data.email)}`,
         );
 
-      case AuthState.MFA_REQUIRED:
+      case AuthState.MFA_REQUIRED: {
+        if (wantsJson) {
+          return res.status(401).json({
+            code: 'mfa_required',
+            mfaToken: result.data.mfaToken,
+            userId: result.data.userId,
+            message: 'MFA verification required.',
+          });
+        }
+
+        const params = new URLSearchParams({
+          mfa_token: result.data.mfaToken,
+        });
+        if (result.data.userId) {
+          params.set('user_id', result.data.userId);
+        }
         return res.redirect(
-          `${this.getFrontendUrl()}/mfa?token=${encodeURIComponent(result.data.mfaToken)}`,
+          `${this.getFrontendUrl()}/auth?${params.toString()}`,
         );
+      }
 
       case AuthState.NEEDS_ONBOARDING:
         res.cookie('temp_auth', result.data.tempToken, this.authCookieOptions);
-        return res.redirect(`${this.getFrontendUrl()}/onboarding`);
+        if (wantsJson) {
+          return res.status(202).json({
+            code: 'onboarding_required',
+            token: result.data.tempToken,
+            message: 'Onboarding required.',
+          });
+        }
+
+        return res.redirect(`${this.getFrontendUrl()}/auth?onboarding=1`);
 
       default:
         return res.status(401).json({ message: 'Invalid auth state' });
@@ -110,7 +155,7 @@ export class AuthCandidateController {
       'Registers a new user and starts email verification flow. May return auth state depending on verification status.',
   })
   @ApiBody({ type: RegisterDto })
-  async register(@Body() dto: RegisterDto, @Res() res: Response) {
+  async register(@Body() dto: any, @Res() res: Response) {
     const result = await this.authService.register(dto);
     return res.status(202).json(result);
   }
@@ -130,7 +175,7 @@ export class AuthCandidateController {
       example: { success: true },
     },
   })
-  async verifyEmail(@Body() dto: VerifyEmailDto) {
+  async verifyEmail(@Body() dto: any) {
     await this.authService.verifyEmail(dto.code);
     return { success: true };
   }
@@ -144,9 +189,13 @@ export class AuthCandidateController {
       'Validates credentials and returns auth state (tokens, MFA, onboarding, or verification).',
   })
   @ApiBody({ type: LoginDtoSchema })
-  async login(@Body() dto: LoginDtoSchema, @Res() res: Response) {
+  async login(
+    @Body() dto: any,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
     const result = await this.authService.login(dto);
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
   }
 
   // ---------------- LOGOUT ----------------
@@ -187,7 +236,12 @@ export class AuthCandidateController {
   })
   async githubCallback(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.oauthLogin(req.user, 'GITHUB');
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(
+      req,
+      res,
+      result,
+      `${this.getFrontendUrl()}/auth?oauth=success`,
+    );
   }
 
   @UseGuards(AuthGuard('google'))
@@ -202,7 +256,12 @@ export class AuthCandidateController {
   @SkipThrottle()
   async googleCallback(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.oauthLogin(req.user, 'GOOGLE');
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(
+      req,
+      res,
+      result,
+      `${this.getFrontendUrl()}/auth?oauth=success`,
+    );
   }
 
   // ---------------- ONBOARDING ----------------
@@ -216,7 +275,7 @@ export class AuthCandidateController {
   })
   @ApiBody({ type: OnboardingDto })
   async completeOnboarding(
-    @Body() dto: OnboardingDto,
+    @Body() dto: any,
     @Req() req: any,
     @Res() res: Response,
   ) {
@@ -224,7 +283,7 @@ export class AuthCandidateController {
       dto,
       req.onboarding,
     );
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
   }
 
   // ---------------- ACCOUNT LINKING ----------------
@@ -309,7 +368,7 @@ export class AuthCandidateController {
   })
   async refresh(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.refresh(req.user);
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
   }
 
   // ---------------- PASSWORD RESET ----------------
@@ -321,7 +380,7 @@ export class AuthCandidateController {
       'Starts the password reset flow. Always returns a generic success response.',
   })
   @ApiBody({ type: RequestPasswordResetDto })
-  async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+  async requestPasswordReset(@Body() dto: any) {
     await this.authService.requestPasswordReset(dto);
     return {
       success: true,
@@ -336,7 +395,7 @@ export class AuthCandidateController {
     description: 'Resets the password with a valid password reset token.',
   })
   @ApiBody({ type: ResetPasswordDto })
-  async resetPassword(@Body() dto: ResetPasswordDto) {
+  async resetPassword(@Body() dto: any) {
     await this.authService.resetPassword(dto);
     return { success: true };
   }
@@ -354,25 +413,30 @@ export class AuthCandidateController {
   @Post('mfa/activate')
   @ApiBearerAuth()
   @ApiBody({ type: ActivateMfaDto })
-  activateMfa(@Req() req: any, @Body() dto: ActivateMfaDto) {
+  activateMfa(@Req() req: any, @Body() dto: any) {
     return this.authService.activateMfa(req.user.id, dto.code);
   }
 
   @Post('mfa/verify')
   @ApiBody({ type: VerifyMfaDto })
-  async verifyMfa(@Body() dto: VerifyMfaDto, @Res() res: Response) {
+  async verifyMfa(
+    @Body() dto: any,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
     const result = await this.authService.verifyMfa(
       dto.userId,
       dto.code,
       dto.mfaToken,
     );
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
   }
 
   @Post('mfa/verify-recovery')
   @ApiBody({ type: VerifyMfaRecoveryDto })
   async verifyMfaRecovery(
-    @Body() dto: VerifyMfaRecoveryDto,
+    @Body() dto: any,
+    @Req() req: any,
     @Res() res: Response,
   ) {
     const result = await this.authService.verifyMfaRecovery(
@@ -380,6 +444,6 @@ export class AuthCandidateController {
       dto.backupCode,
       dto.mfaToken,
     );
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
   }
 }

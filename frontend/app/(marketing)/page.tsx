@@ -7,9 +7,10 @@ import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { ArrowRight, Check, Shield, Eye, Zap, Github } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { routes } from "@/lib/routes";
 
 // Premium easing
-const ease = [0.16, 1, 0.3, 1];
+const ease = [0.16, 1, 0.3, 1] as const;
 
 // ============================================================================
 // NAVIGATION
@@ -63,10 +64,17 @@ function Navigation() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="hidden md:inline-flex">
-            Sign in
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden md:inline-flex"
+            asChild
+          >
+            <Link href={routes.auth}>Sign in</Link>
           </Button>
-          <Button size="sm">Get started</Button>
+          <Button size="sm" asChild>
+            <Link href={routes.auth}>Get started</Link>
+          </Button>
         </div>
       </div>
     </motion.header>
@@ -170,9 +178,11 @@ function HeroSection() {
           transition={{ duration: 1, delay: 0.85, ease }}
           className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row"
         >
-          <Button size="lg" className="h-13 gap-2.5 px-8 text-base">
-            <Github className="size-5" />
-            Connect GitHub
+          <Button size="lg" className="h-13 gap-2.5 px-8 text-base" asChild>
+            <Link href={routes.auth}>
+              <Github className="size-5" />
+              Connect GitHub
+            </Link>
           </Button>
           <Button
             variant="ghost"
@@ -670,9 +680,11 @@ function CTASection() {
         </p>
 
         <div className="mt-12">
-          <Button size="lg" className="h-13 gap-2.5 px-8 text-base">
-            <Github className="size-5" />
-            Connect GitHub
+          <Button size="lg" className="h-13 gap-2.5 px-8 text-base" asChild>
+            <Link href={routes.auth}>
+              <Github className="size-5" />
+              Connect GitHub
+            </Link>
           </Button>
         </div>
 

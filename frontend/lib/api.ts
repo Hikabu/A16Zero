@@ -69,13 +69,12 @@ type ApiRequestParts = {
 };
 
 type AuthStoreSnapshot = { token?: string | null };
-type AuthStoreHook = (() => AuthStoreSnapshot) & {
+type AuthStoreHook = {
   getState?: () => AuthStoreSnapshot;
 };
 
 declare global {
-  // Phase 0 keeps the API layer independent while still supporting the app's Zustand auth store shape.
-  // When the real store exists, apiFetch can read either useAuthStore.getState().token or useAuthStore().token.
+  // Keeps the API layer independent while still supporting the app's Zustand auth store shape.
   var useAuthStore: AuthStoreHook | undefined;
 }
 
@@ -100,11 +99,20 @@ export type ApiFetchOptions = Omit<RequestInit, "body" | "headers"> & {
 };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const COOKIE_AUTH_TOKEN = "__cookie_auth__";
 
 function getAuthToken(): string | null {
   const useAuthStore = globalThis.useAuthStore;
 
-  return useAuthStore?.getState?.().token ?? useAuthStore?.().token ?? null;
+  return useAuthStore?.getState?.().token ?? null;
+}
+
+export function getApiUrl(path: string): string {
+  if (!API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  }
+
+  return new URL(path, API_BASE_URL).toString();
 }
 
 function getRequestParts(request: unknown): ApiRequestParts {
@@ -198,6 +206,7 @@ export async function apiFetch<ResponseBody>(
   };
 
   const init: RequestInit = {
+    credentials: "include",
     ...fetchOptions,
     headers,
   };
@@ -215,6 +224,321 @@ export async function apiFetch<ResponseBody>(
   }
 
   return body as ResponseBody;
+}
+
+export type AuthRole = "candidate" | "employer";
+
+export type AuthResponse = {
+  token: string;
+  role: AuthRole;
+  username?: string | null;
+};
+
+export type AuthUrlResponse = {
+  url: string;
+};
+
+export type CandidateLoginInput = {
+  email: string;
+  password: string;
+};
+
+export type CandidateRegisterInput = {
+  email: string;
+  password: string;
+  username: string;
+};
+
+export type EmployerLoginInput = {
+  privyToken: string;
+  walletAddress?: string;
+  smartAccountAddress?: string;
+};
+
+export type PasswordResetRequestInput = {
+  email: string;
+};
+
+export type PasswordResetConfirmInput = {
+  token: string;
+  newPassword: string;
+};
+
+export type VerifyEmailInput = {
+  code: string;
+};
+
+export type CompleteOnboardingInput = {
+  username: string;
+  role?: AuthRole;
+  displayName?: string;
+};
+
+export type VerifyMfaInput = {
+  userId?: string;
+  code: string;
+  mfaToken: string;
+};
+
+export type VerifyMfaRecoveryInput = {
+  userId?: string;
+  backupCode: string;
+  mfaToken: string;
+};
+
+export type EmployerPrivyLoginInput = EmployerLoginInput;
+
+export type MfaRequiredBody = {
+  code: "mfa_required";
+  token?: string;
+  mfaToken?: string;
+  userId?: string;
+  message?: string;
+};
+
+export type EmailVerificationRequiredBody = {
+  code: "email_verification_required";
+  email?: string;
+  message?: string;
+};
+
+type ApiErrorLikeBody = {
+  code?: string;
+  message?: string | string[];
+  token?: string;
+  mfaToken?: string;
+  userId?: string;
+};
+
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong.",
+): string {
+  if (error instanceof ApiError) {
+    const body = error.body as ApiErrorLikeBody | undefined;
+    if (Array.isArray(body?.message)) {
+      return body.message.join(", ");
+    }
+    return body?.message ?? error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+export function getMfaRequiredBody(error: unknown): MfaRequiredBody | null {
+  if (!(error instanceof ApiError)) {
+    return null;
+  }
+
+  const body = error.body as ApiErrorLikeBody | undefined;
+  if (body?.code !== "mfa_required") {
+    return null;
+  }
+
+  return {
+    code: "mfa_required",
+    token: body.token,
+    mfaToken: body.mfaToken,
+    userId: body.userId,
+    message: typeof body.message === "string" ? body.message : undefined,
+  };
+}
+
+export function getEmailVerificationRequiredBody(
+  error: unknown,
+): EmailVerificationRequiredBody | null {
+  if (!(error instanceof ApiError)) {
+    return null;
+  }
+
+  const body = error.body as ApiErrorLikeBody & { email?: string };
+  if (body?.code !== "email_verification_required") {
+    return null;
+  }
+
+  return {
+    code: "email_verification_required",
+    email: typeof body.email === "string" ? body.email : undefined,
+    message: typeof body.message === "string" ? body.message : undefined,
+  };
+}
+
+function normalizeRole(role: unknown, fallback: AuthRole): AuthRole {
+  if (typeof role !== "string") {
+    return fallback;
+  }
+
+  const normalized = role.toLowerCase();
+  if (normalized === "candidate" || normalized === "employer") {
+    return normalized;
+  }
+  if (normalized === "recruiter") {
+    return "employer";
+  }
+
+  return fallback;
+}
+
+function normalizeAuthResponse(
+  body: unknown,
+  fallbackRole: AuthRole,
+): AuthResponse {
+  const record = (body ?? {}) as Record<string, unknown>;
+  const nested =
+    typeof record.data === "object" && record.data
+      ? (record.data as Record<string, unknown>)
+      : typeof record.auth === "object" && record.auth
+        ? (record.auth as Record<string, unknown>)
+        : record;
+  const token =
+    typeof nested.token === "string"
+      ? nested.token
+      : typeof nested.accessToken === "string"
+        ? nested.accessToken
+        : typeof nested.jwt === "string"
+          ? nested.jwt
+          : "";
+
+  if (!token) {
+    if (record.success === true) {
+      return {
+        token: COOKIE_AUTH_TOKEN,
+        role: fallbackRole,
+        username: typeof nested.username === "string" ? nested.username : null,
+      };
+    }
+
+    throw new Error("Authentication response did not include a token.");
+  }
+
+  return {
+    token,
+    role: normalizeRole(nested.role, fallbackRole),
+    username: typeof nested.username === "string" ? nested.username : null,
+  };
+}
+
+export async function loginCandidate(
+  input: CandidateLoginInput,
+): Promise<AuthResponse> {
+  const body = await AuthCandidateController_login({
+    headers: undefined,
+    body: { identifier: input.email, password: input.password },
+  });
+  return normalizeAuthResponse(body, "candidate");
+}
+
+export async function registerCandidate(
+  input: CandidateRegisterInput,
+): Promise<void> {
+  await AuthCandidateController_register({
+    headers: undefined,
+    body: {
+      email: input.email,
+      username: input.username,
+      password: input.password,
+      role: "CANDIDATE",
+    },
+  });
+}
+
+export async function getGithubAuthUrl(): Promise<AuthUrlResponse> {
+  return { url: getApiUrl("/auth/candidate/github") };
+}
+
+export async function getGoogleAuthUrl(): Promise<AuthUrlResponse> {
+  return { url: getApiUrl("/auth/candidate/google") };
+}
+
+export async function loginEmployer(
+  input: EmployerLoginInput,
+): Promise<AuthResponse> {
+  return loginEmployerPrivy(input);
+}
+
+export async function requestPasswordReset(
+  input: PasswordResetRequestInput,
+): Promise<void> {
+  await AuthCandidateController_requestPasswordReset({
+    headers: undefined,
+    body: input,
+  });
+}
+
+export async function confirmPasswordReset(
+  input: PasswordResetConfirmInput,
+): Promise<void> {
+  await AuthCandidateController_resetPassword({
+    headers: undefined,
+    body: input,
+  });
+}
+
+export async function verifyEmail(input: VerifyEmailInput): Promise<unknown> {
+  return AuthCandidateController_verifyEmail({
+    headers: undefined,
+    body: input,
+  });
+}
+
+export async function completeOnboarding(
+  input: CompleteOnboardingInput,
+): Promise<AuthResponse> {
+  const body = await AuthCandidateController_completeOnboarding({
+    headers: undefined,
+    body: { username: input.username },
+  });
+  return normalizeAuthResponse(
+    { ...(body as Record<string, unknown> | undefined), role: input.role },
+    input.role ?? "candidate",
+  );
+}
+
+export async function verifyMfa(input: VerifyMfaInput): Promise<AuthResponse> {
+  const body = await AuthCandidateController_verifyMfa({
+    headers: undefined,
+    body: {
+      userId: input.userId ?? "00000000-0000-0000-0000-000000000000",
+      code: input.code,
+      mfaToken: input.mfaToken,
+    },
+  });
+  return normalizeAuthResponse(body, "candidate");
+}
+
+export async function verifyMfaRecovery(
+  input: VerifyMfaRecoveryInput,
+): Promise<AuthResponse> {
+  const body = await AuthCandidateController_verifyMfaRecovery({
+    headers: undefined,
+    body: {
+      userId: input.userId ?? "00000000-0000-0000-0000-000000000000",
+      backupCode: input.backupCode,
+      mfaToken: input.mfaToken,
+    },
+  });
+  return normalizeAuthResponse(body, "candidate");
+}
+
+export async function loginEmployerPrivy(
+  input: EmployerPrivyLoginInput,
+): Promise<AuthResponse> {
+  const walletAddress = input.walletAddress ?? "";
+  const body = await apiFetch<unknown>("/auth/employer/login", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.privyToken}`,
+    },
+    body: {
+      walletAddress,
+      smartAccountAddress: input.smartAccountAddress ?? walletAddress,
+    },
+  });
+  return normalizeAuthResponse(body, "employer");
 }
 
 type AnalyticsController_getDashboardOperation = ApiOperation<

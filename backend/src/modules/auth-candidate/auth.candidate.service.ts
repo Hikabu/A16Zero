@@ -165,7 +165,7 @@ export class AuthCandidateService {
       );
       return {
         type: AuthState.MFA_REQUIRED,
-        data: { mfaToken },
+        data: { mfaToken, userId: user.id },
       };
     }
 
