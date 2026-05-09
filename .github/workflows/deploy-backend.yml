@@ -186,15 +186,3 @@ jobs:
               RESEND_API_KEY=RESEND_API_KEY:latest,\
               GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,\
               ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest" \
-            --set-env-vars="\
-              GITHUB_APP_ID=${{ secrets.GITHUB_APP_ID }},\
-              GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }},\
-              GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},\
-              PRIVY_APP_ID=${{ secrets.PRIVY_APP_ID }},\
-              SOLANA_RPC_URL=${{ secrets.SOLANA_RPC_URL }},\
-              SERVER_URL=${{ secrets.SERVER_URL }},\
-              FRONTEND_URL=${{ secrets.FRONTEND_URL }},\
-              CORS_ORIGINS=${{ secrets.CORS_ORIGINS }},\
-              JWT_ISSUER=hire-on-chain,\
-              USING_DEVNET=true,\
-              CLOUD_SQL_CONNECTION_NAME=${{ secrets.CLOUD_SQL_CONNECTION_NAME }}"
