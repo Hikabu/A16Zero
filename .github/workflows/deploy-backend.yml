@@ -209,7 +209,6 @@ jobs:
               APP_BASE_URL=${{ secrets.APP_BASE_URL }},\
               VOUCH_ICON_URL=${{ secrets.VOUCH_ICON_URL }},\
               CLOUD_SQL_CONNECTION_NAME=${{ secrets.CLOUD_SQL_CONNECTION_NAME }},\
-              PORT=8080,\
               NODE_ENV=production,\
               USING_DEVNET=false,\
               PRIVY_BYPASS=false,\
