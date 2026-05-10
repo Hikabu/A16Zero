@@ -52,12 +52,23 @@ export class JobsService {
       throw new AppException('Job not found or access denied', 404);
     }
 
-    return this.prisma.jobPost.update({
-      where: { id },
-      data: {
-        status: JobStatus.ACTIVE,
-        publishedAt: new Date(),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const updatedJob = await tx.jobPost.update({
+        where: { id },
+        data: {
+          status: JobStatus.ACTIVE,
+          publishedAt: new Date(),
+        },
+      });
+
+      await tx.company.update({
+        where: { id: companyId },
+        data: {
+          totalJobsPosted: { increment: 1 },
+        },
+      });
+
+      return updatedJob;
     });
   }
 
@@ -115,6 +126,8 @@ export class JobsService {
     seniority?: Seniority;
     skills?: string[];
     isWeb3?: any;
+    isDepositPaid?: any;
+    isVerifiedPayer?: any;
     page?: number;
     limit?: number;
   }) {
@@ -124,6 +137,8 @@ export class JobsService {
       seniority,
       skills,
       isWeb3,
+      isDepositPaid,
+      isVerifiedPayer,
       page = 1,
       limit = 20,
     } = query;
@@ -160,6 +175,23 @@ export class JobsService {
       where.isWeb3Role = isWeb3Bool ?? false;
     }
 
+    const isDepositPaidBool =
+      isDepositPaid === undefined ? undefined : isDepositPaid === true || isDepositPaid === 'true';
+
+    if (isDepositPaidBool) {
+      where.escrowStatus = { in: ['FUNDED', 'RELEASED'] };
+    }
+
+    const isVerifiedPayerBool =
+      isVerifiedPayer === undefined ? undefined : isVerifiedPayer === true || isVerifiedPayer === 'true';
+
+    if (isVerifiedPayerBool) {
+      where.company = {
+        ...(where.company || {}),
+        isVerifiedPayer: true,
+      };
+    }
+
     const [jobs, total] = await Promise.all([
       this.prisma.jobPost.findMany({
         where,
@@ -172,11 +204,13 @@ export class JobsService {
           isWeb3Role: true,
           createdAt: true,
           publishedAt: true,
+          escrowStatus: true,
           company: {
             select: {
               name: true,
               logoUrl: true,
               website: true,
+              isVerifiedPayer: true,
             },
           },
         },

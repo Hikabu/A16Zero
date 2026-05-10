@@ -26,6 +26,13 @@ model Company {
   country            String
   isVerified         Boolean   @default(false)
   verifiedAt         DateTime?
+
+  totalJobsPosted      Int      @default(0)
+  totalEscrowsFunded   Int      @default(0)
+  totalEscrowsReleased Int      @default(0)
+  trustScore           Int      @default(0)   // 0-100, derived
+  isVerifiedPayer      Boolean  @default(false)
+
   createdAt          DateTime  @default(now())
 
   email               String? @unique
@@ -98,6 +105,7 @@ model JobPost {
   escrowAddress   String?       @unique
   candidateWallet String?
   escrowStatus    EscrowStatus  @default(UNFUNDED)
+  escrowFundedAt  DateTime?
 
   publishedAt    DateTime?
   closedAt       DateTime?
