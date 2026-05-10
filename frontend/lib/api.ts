@@ -2379,3 +2379,34 @@ export async function EscrowController_status(
     },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Custom Convenience Wrappers added for Profile UI
+// ---------------------------------------------------------------------------
+
+export const getLinkedGithub = () => ProfileController_getConnectedGithub();
+export const getLinkedWallet = () => ProfileController_getConnectedWallet();
+export const triggerGithubSync = () => GithubSyncController_triggerSync();
+export const startAnalysis = () => AnalysisController_createAnalysis();
+export const getAnalysisCooldown = () => apiFetch<{
+  github: { cooldownUntil: string | null },
+  wallet: { cooldownUntil: string | null },
+  generate: { cooldownUntil: string | null }
+}>('/api/analysis/cooldown');
+export const getMe = () => ProfileController_getProfile();
+export const getCandidateProfile = () => ProfileController_getCandidateProfile();
+export const updateUser = (body: any) => ProfileController_updateProfile({ body });
+export const updateCandidateProfile = (body: any) => ProfileController_updateCandidateProfile({ body });
+
+export const getAnalysisStatus = (jobId: string) => AnalysisController_getStatus({ path: { jobId } });
+export const getAnalysisResult = (jobId: string) => AnalysisController_getResult({ path: { jobId } });
+export const getMyScorecard = () => ScorecardController_getMyScorecard();
+export const getMyRawScorecard = () => ScorecardController_getMyScorecardRaw();
+
+export const getGithubConnectUrl = () => AuthCandidateController_linkGithub();
+export const getGithubSyncStatus = () => GithubSyncController_getSyncStatus();
+export const getWalletChallenge = () => WalletSyncController_getChallenge();
+export const submitWalletSignature = (body: any) => WalletSyncController_linkWallet({ body });
+export const getMfaSetup = () => AuthCandidateController_setupMfa();
+export const activateMfa = (body: any) => AuthCandidateController_activateMfa({ body });
+export const deleteAccount = () => ProfileController_deactivateAccount();
