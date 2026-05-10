@@ -1,0 +1,10 @@
+
+> what is this nav bar ?????  
+
+> no logout?
+
+> Strange current auth (who is authotize to see what?) > make sure to check per page!
+
+
+> analysis cooldown : retunr the dat for cooldown for wallet github and anaylis generate by checking latest in prisma
+

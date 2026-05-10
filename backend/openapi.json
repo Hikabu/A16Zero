@@ -1425,6 +1425,26 @@
             }
           },
           {
+            "name": "isDepositPaid",
+            "required": false,
+            "in": "query",
+            "description": "Filter jobs with escrow paid",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isVerifiedPayer",
+            "required": false,
+            "in": "query",
+            "description": "Filter jobs by companies with verified payer history",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          },
+          {
             "name": "page",
             "required": false,
             "in": "query",
@@ -5161,6 +5181,10 @@
             "type": "string",
             "nullable": true
           },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
           "role": {
             "type": "string"
           },
@@ -5194,6 +5218,7 @@
           "username",
           "firstName",
           "lastName",
+          "name",
           "role",
           "accountStatus",
           "isEmailVerified",
@@ -5228,6 +5253,14 @@
             "type": "string",
             "nullable": true
           },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
           "careerPath": {
             "type": "number"
           },
@@ -5251,6 +5284,8 @@
         "required": [
           "id",
           "bio",
+          "location",
+          "website",
           "careerPath",
           "scorecard",
           "createdAt",

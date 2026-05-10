@@ -23,6 +23,8 @@ export class ProfileService {
         username: true,
         firstName: true,
         lastName: true,
+        name: true,
+
         role: true,
         accountStatus: true,
         isEmailVerified: true,
@@ -59,7 +61,9 @@ export class ProfileService {
       data: {
         ...(dto.firstName !== undefined && { firstName: dto.firstName }),
         ...(dto.lastName !== undefined && { lastName: dto.lastName }),
+        ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.username !== undefined && { username: dto.username }),
+
       },
       select: {
         id: true,
@@ -67,7 +71,9 @@ export class ProfileService {
         username: true,
         firstName: true,
         lastName: true,
+        name: true,
         updatedAt: true,
+
       },
     });
   }
@@ -89,7 +95,10 @@ export class ProfileService {
       select: {
         id: true,
         bio: true,
+        location: true,
+        website: true,
         careerPath: true,
+
         scorecard: true,
         createdAt: true,
         vouches: true,
@@ -127,12 +136,18 @@ export class ProfileService {
       where: { userId },
       data: {
         ...(dto.bio !== undefined && { bio: dto.bio }),
+        ...(dto.location !== undefined && { location: dto.location }),
+        ...(dto.website !== undefined && { website: dto.website }),
         ...(dto.careerPath !== undefined && { careerPath: dto.careerPath }),
+
       },
       select: {
         id: true,
         bio: true,
+        location: true,
+        website: true,
         careerPath: true,
+
         createdAt: true,
       },
     });

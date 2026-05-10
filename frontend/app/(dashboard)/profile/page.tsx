@@ -115,7 +115,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container max-w-4xl py-10 space-y-8">
+    <div className="mx-auto w-full max-w-4xl px-4 py-10 space-y-8">
       {/* S1: Profile Header */}
       <ProfileHeader
         user={{
