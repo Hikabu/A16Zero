@@ -45,6 +45,40 @@ export class ProfileService {
     return user;
   }
 
+async getPublicProfile(username: string) {
+  const user = await this.prisma.user.findUnique({
+    where: { username },
+
+    select: {
+      username: true,
+
+      candidate: {
+        select: {
+          bio: true,
+          location: true,
+          website: true,
+          careerPath: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new NotFoundException(
+      'Profile not found',
+    );
+  }
+
+  return {
+    username: user.username,
+
+    bio: user.candidate?.bio ?? null,
+    location: user.candidate?.location ?? null,
+    website: user.candidate?.website ?? null,
+    careerPath:
+      user.candidate?.careerPath ?? 1,
+  };
+}
   async updateProfile(userId: string, dto: UpdateUserDto) {
     // Check username uniqueness if being changed
     if (dto.username) {

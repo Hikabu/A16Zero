@@ -3017,6 +3017,29 @@
         ]
       }
     },
+    "/profile/public/{username}": {
+      "get": {
+        "operationId": "PublicProfileController_getPublicProfile",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
     "/vouch/confirm": {
       "post": {
         "description": "\n  Creates and anchors a vouch for a candidate using a Solana transaction.\n  \n  This endpoint:\n  - Verifies the transaction exists on-chain\n  - Confirms the voucher wallet is the fee payer\n  - Validates memo message matches the provided message\n  - Enforces rules: no self-vouch, no duplicates, budget limits\n  \n  Authentication: JWT required. Uses the linked Solana wallet.\n\t  ",
