@@ -448,7 +448,7 @@ export function ScorecardView({
                     key={cap.label}
                     label={cap.label}
                     score={cap.score}
-                    delay={i * 0.05}
+                    delay={i * 0.08}
                   />
                 ))}
               </div>

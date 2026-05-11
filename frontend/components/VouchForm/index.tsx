@@ -6,6 +6,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { Transaction } from '@solana/web3.js'
 import bs58 from 'bs58'
 import { useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -366,6 +367,7 @@ export function VouchForm({
   const { publicKey, connected, signTransaction } = useWallet()
   const { connection } = useConnection()
   const queryClient = useQueryClient()
+  const router = useRouter()
 
   const [step, setStep] = useState<number>(1)
   const [txSignature, setTxSignature] = useState('')
@@ -413,6 +415,7 @@ export function VouchForm({
       await confirmVouch({ signature: sig, txData })
       setStep(6)
       queryClient.invalidateQueries({ queryKey: ['publicScorecard', username] })
+      router.refresh()
     } catch (err: any) {
       console.error('Vouch error:', err)
       setError(err.message || 'An error occurred while vouching')

@@ -97,6 +97,8 @@ export type ApiFetchOptions = Omit<RequestInit, "body" | "headers"> & {
   body?: unknown;
   headers?: Record<string, string>;
   query?: Record<string, unknown>;
+  /** When true, the Authorization header is omitted entirely (e.g. public endpoints). */
+  skipAuth?: boolean;
 };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -193,6 +195,7 @@ export async function apiFetch<ResponseBody>(
     body: requestBody,
     headers: customHeaders,
     query,
+    skipAuth,
     ...fetchOptions
   } = options;
 
@@ -200,7 +203,7 @@ export async function apiFetch<ResponseBody>(
   appendQueryParams(url, query);
 
   async function executeRequest(overrideToken?: string) {
-    const token = overrideToken ?? getAuthToken();
+    const token = skipAuth ? null : (overrideToken ?? getAuthToken());
 
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -930,6 +933,24 @@ export async function ScorecardController_getPublicScorecard(
       body: parts.body,
     },
   );
+}
+
+/**
+ * Fetch a public scorecard by GitHub username with no auth.
+ * This is the only unauthenticated API call in the app.
+ */
+export async function getPublicScorecard(
+  username: string,
+): Promise<ScorecardController_getPublicScorecardResponse | null> {
+  try {
+    return await apiFetch<ScorecardController_getPublicScorecardResponse>(
+      `/api/scorecard/registered/${username}`,
+      { method: "GET", skipAuth: true },
+    );
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    return null;
+  }
 }
 
 type ScorecardController_getMyScorecardRawOperation = ApiOperation<
