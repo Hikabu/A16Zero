@@ -5,6 +5,7 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/components/AuthProvider";
 
 // Solana
 import {
@@ -31,10 +32,12 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <PrivyProvider appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}>
-        {content}
-        <Toaster />
-      </PrivyProvider>
+      <AuthProvider>
+        <PrivyProvider appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}>
+          {content}
+          <Toaster />
+        </PrivyProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

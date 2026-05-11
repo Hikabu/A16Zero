@@ -99,10 +99,14 @@ export type ApiFetchOptions = Omit<RequestInit, "body" | "headers"> & {
   query?: Record<string, unknown>;
   /** When true, the Authorization header is omitted entirely (e.g. public endpoints). */
   skipAuth?: boolean;
+  /** Internal flag to prevent infinite loops during token refresh */
+  retried?: boolean;
 };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const COOKIE_AUTH_TOKEN = "__cookie_auth__";
+
+let refreshingPromise: Promise<void> | null = null;
 
 function getAuthToken(): string | null {
   const useAuthStore = globalThis.useAuthStore;
@@ -207,7 +211,7 @@ export async function apiFetch<ResponseBody>(
 
     const headers: Record<string, string> = {
       Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token && token !== COOKIE_AUTH_TOKEN ? { Authorization: `Bearer ${token}` } : {}),
       ...customHeaders,
     };
 
@@ -242,60 +246,37 @@ export async function apiFetch<ResponseBody>(
   // ─────────────────────────────
   // 2. Handle 401 refresh
   // ─────────────────────────────
-  console.log("response status: ", response.status);
-  if (response.status === 401) {
-    try {
-      const refreshResponse = await fetch(
-        new URL("/auth/refresh", API_BASE_URL),
-        {
-          method: "POST",
-          credentials: "include",
-        },
-      );
-
-      if (!refreshResponse.ok) {
-        useAuthStore.getState().clearAuth();
-        throw new ApiError(401, "Unauthorized");
-      }
-
-      const refreshBody = await refreshResponse.json();
-      const newToken = refreshBody.accessToken;
-
-      if (!newToken) {
-        useAuthStore.getState().clearAuth();
-        throw new ApiError(401, "Unauthorized");
-      }
-
-      // ─────────────────────────────
-      // 3. Update store once
-      // ─────────────────────────────
-      useAuthStore.getState().setAuth({
-        token: newToken,
-      });
-
-      // ─────────────────────────────
-      // 4. Retry with fresh token
-      // ─────────────────────────────
-      console.log("retring wiht new token?");
-      ({ response, body } = await executeRequest(newToken));
-
-      if (response.ok) {
-        return body as ResponseBody;
-      }
-
-      // still failing after refresh
-      if (response.status === 401) {
-        console.log("refersh didnt work");
-        useAuthStore.getState().clearAuth();
-        throw new ApiError(401, "Unauthorized");
-      }
-    } catch (err) {
-      useAuthStore.getState().clearAuth();
-      throw new ApiError(401, "Unauthorized");
+  if (response.status === 401 && !fetchOptions.retried) {
+    if (!refreshingPromise) {
+      refreshingPromise = fetch(API_BASE_URL + "/auth/candidate/refresh", {
+        method: "POST",
+        credentials: "include",
+      })
+        .then(async (r) => {
+          if (!r.ok) {
+            useAuthStore.getState().clearAuth();
+            if (typeof window !== "undefined") {
+              window.location.href = "/";
+            }
+            throw new Error("Session expired");
+          }
+        })
+        .finally(() => {
+          refreshingPromise = null;
+        });
     }
+
+    await refreshingPromise;
+
+    // retry original request — new access_token cookie is now set
+    return apiFetch<ResponseBody>(path, { ...options, retried: true });
   }
 
-  throw new ApiError(response.status, body);
+  if (!response.ok) {
+    throw new ApiError(response.status, body);
+  }
+
+  return body as ResponseBody;
 }
 
 export type AuthRole = "candidate" | "employer";
@@ -2581,4 +2562,17 @@ export const updateDecision = async (data: { applicationId: string, decision: st
   return (ApplicantsController_applyDecision as any)({ path: { id: data.applicationId }, body: { decision: data.decision } });
 };
 
-
+export async function rehydrateAuth(): Promise<void> {
+  try {
+    const user = await apiFetch<any>("/me/user");
+    if (user && user.id) {
+      useAuthStore.getState().setAuth({
+        token: COOKIE_AUTH_TOKEN,
+        role: user.role ?? "candidate",
+        username: user.username,
+      });
+    }
+  } catch (error) {
+    useAuthStore.getState().clearAuth();
+  }
+}
