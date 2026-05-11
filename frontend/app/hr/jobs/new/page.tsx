@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-import { JobWizardPage } from "./_components/job-wizard-page";
-
-export default function CreateJobPage() {
-  return <JobWizardPage />;
-=======
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -158,5 +152,4 @@ export default function PostJobPage() {
       )}
     </div>
   )
->>>>>>> frontend
 }
