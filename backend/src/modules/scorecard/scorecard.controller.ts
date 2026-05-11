@@ -29,7 +29,8 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { RawScorecard } from './contract/scorecard.schema';
+
 /**
  * Request DTOs
  */
@@ -49,10 +50,7 @@ class ScorecardErrorResponseDto {
 @ApiTags('Scorecard')
 @Controller('api/scorecard')
 export class ScorecardController {
-  constructor(
-    private readonly scorecardService: ScorecardService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly scorecardService: ScorecardService) {}
 
   /**
    * ----------------------------------------
@@ -99,8 +97,7 @@ export class ScorecardController {
       request.githubUsername,
     );
 
-    const scoreResult = await this.scorecardService.mapToUiModel(result);
-    return scoreResult;
+    return this.scorecardService.mapToUiModel(result);
   }
 
   /**
@@ -165,8 +162,7 @@ export class ScorecardController {
       );
     }
 
-    const result = await this.scorecardService.mapToUiModel(scorecard, req.user.id);
-    return result;
+    return this.scorecardService.mapToUiModel(scorecard);
   }
 
   /**
@@ -204,91 +200,8 @@ export class ScorecardController {
       );
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { username },
-      select: {
-        id: true,
-      },
-    });
-    //TODO
-    if (user && user.id){
-      const result =await this.scorecardService.mapToUiModel(scorecard, user.id);
-      return result;
-    }
-
-    const result = await this.scorecardService.mapToUiModel(scorecard);
-    return result;
+    return this.scorecardService.mapToUiModel(scorecard);
   }
-
-  /**
-   * ----------------------------------------
-   * PUBLIC SCORECARD (UI)
-   * ----------------------------------------
-   */
-  @Get('registered/:username')
-  @ApiOperation({
-    summary: 'Get public scorecard (UI)',
-    description:
-      'Fetch a cached scorecard for a registered username. Returns frontend-ready UI model.',
-  })
-  @ApiParam({
-    name: 'username',
-    type: String,
-    example: 'octocat',
-    description: 'registered username',
-  })
-  @ApiOkResponse({
-    description: 'Public scorecard',
-    type: ScorecardUiDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'No cached scorecard found. Must trigger analysis first.',
-    type: ScorecardErrorResponseDto,
-  })
-  async getPublicRegScorecard(@Param('username') username: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { username },
-      select: {
-        candidate: {
-          select: {
-            devProfile: {
-              select: {
-                 githubProfile: {
-                  select: {
-                    githubUsername: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        id: true,
-      },
-    });
-
-    if (!user || !user.candidate || !user.candidate.devProfile || !user.candidate.devProfile.githubProfile || !user.candidate.devProfile.githubProfile.githubUsername) {
-      throw new NotFoundException(
-        `No registered user with username ${username} found.`,
-      );
-    }
-    const scorecard =
-      await this.scorecardService.getScorecardFromCache(user.candidate.devProfile.githubProfile.githubUsername);
-
-    if (!scorecard) {
-      throw new NotFoundException(
-        `No cached scorecard for ${username}. Trigger via POST /api/analysis`,
-      );
-    }
-
-    if (user && user.id){
-      const result =await this.scorecardService.mapToUiModel(scorecard, user.id);
-      return result;
-    }
-
-    const result = await this.scorecardService.mapToUiModel(scorecard);
-    return result;
-  }
-
 
   /**
    * ----------------------------------------

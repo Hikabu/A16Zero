@@ -10,38 +10,40 @@ export function useWalletFlow(
   const [status, setStatus] = useState<'idle' | 'signing' | 'submitting' | 'done' | 'error'>('idle')
 
   const trigger = async () => {
-  try {
-    setStatus('signing')
-
-    // 1. Ensure connected FIRST
-    
-    if (!wallet.publicKey || !wallet.signMessage) {
-      throw new Error("Wallet does not support signing")
+  
+    if (!wallet.connected) {
+      setStatus('idle')
+      wallet.connect()
+      return
     }
 
-    const timestamp = Date.now()
-    const messageToSign =
-      `Link Solana wallet to 16Signals\nUser: ${userId || 'unknown'}\nTimestamp: ${timestamp}`
+    // if (!wallet.publicKey || !wallet.signMessage) {
+    //   console.error("Wallet not connected or doesn't support signing")
+    //   return
+    // }
 
-    const sig = await wallet.signMessage(
-      new TextEncoder().encode(messageToSign)
-    )
-
-    setStatus('submitting')
-
-    await submitFn({
-      signature: bs58.encode(sig),
-      publicKey: wallet.publicKey.toBase58(),
-      message: messageToSign
-    })
-
-    setStatus('done')
-  } catch (e) {
-    console.error(e)
-    setStatus('error')
-    setTimeout(() => setStatus('idle'), 3000)
+    try {
+      setStatus('signing')
+      
+      const timestamp = Date.now()
+      const messageToSign = `Link Solana wallet to 16Signals\nUser: ${userId || 'unknown'}\nTimestamp: ${timestamp}`
+      
+      const sig = await wallet.signMessage(new TextEncoder().encode(messageToSign))
+      
+      setStatus('submitting')
+      await submitFn({ 
+        signature: bs58.encode(sig), 
+        publicKey: wallet.publicKey.toBase58(),
+        message: messageToSign
+      })
+      
+      setStatus('done')
+    } catch (error) {
+      console.error("Wallet flow error:", error)
+      setStatus('error')
+      setTimeout(() => setStatus('idle'), 3000)
+    }
   }
-}
 
   return { trigger, status }
 }
