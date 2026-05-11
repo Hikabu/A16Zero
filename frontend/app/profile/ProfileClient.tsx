@@ -21,7 +21,7 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { ScorecardSection } from '@/components/profile/ScorecardSection'
 import { SettingsAccordion } from '@/components/profile/SettingsAccordion'
 
-function ProfileContent() {
+export default function ProfileClient() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
@@ -87,7 +87,7 @@ function ProfileContent() {
       if (error?.status === 409) {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL
         if (apiUrl) {
-          // Full browser redirect to the OAuth entry point
+          // Full browser  to the OAuth entry point
           window.location.href = `${apiUrl}/sync/github/connect`
         } else {
           toast({ title: "API URL not configured", variant: "destructive" })
