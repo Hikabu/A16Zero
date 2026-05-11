@@ -56,6 +56,7 @@ export class WalletSyncController {
     const challenge = await this.walletSyncService.generateChallenge(
       req.user.id,
     );
+    console.log("Generated challenge for user", req.user.id, "challenge:", challenge);
 
     return { challenge };
   }
@@ -78,6 +79,7 @@ export class WalletSyncController {
         value: {
           walletAddress: '7Gg3...SolanaAddressExample...',
           signature: '5hK9...Base58Signature...',
+          message: 'link-wallet:user123:1713940000000:a1b2c3',
         },
       },
     },
@@ -121,6 +123,9 @@ export class WalletSyncController {
     @Req() req: any,
     @Body() body: LinkWalletRequestDto,
   ): Promise<LinkWalletResponseDto> {
+    console.log("Link wallet request for user", req.user.id, "walletAddress:", body.walletAddress);
+    console.log("Link wallet request for user", req.user.id, "message:", body.message);
+    console.log("Link wallet request for user", req.user.id, "signature:", body.signature);
     return this.walletSyncService.linkWallet(
       req.user.id,
       body.walletAddress,

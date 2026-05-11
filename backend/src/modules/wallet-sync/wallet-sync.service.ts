@@ -13,6 +13,7 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PublicKey } from '@solana/web3.js';
 import { ProfileResolverService } from '../profile-candidate/profile-resolver.service';
+import crypto from 'crypto';
 
 @Injectable()
 export class WalletSyncService {
@@ -23,7 +24,7 @@ export class WalletSyncService {
   ) {}
 
   async generateChallenge(userId: string): Promise<string> {
-    const randomHex = Math.random().toString(16).substring(2, 8);
+    const randomHex = crypto.randomBytes(8).toString('hex');
     const timestamp = Date.now();
     const challenge = `link-wallet:${userId}:${timestamp}:${randomHex}`;
 
@@ -56,25 +57,42 @@ export class WalletSyncService {
     let finalChallenge: string;
 
     if (message) {
-      // Simplified/Stateless flow
-      // Format: "Link Solana wallet to 16Signals\nUser: <userId>\nTimestamp: <ts>"
-      if (!message.includes(`User: ${userId}`)) {
-        throw new UnauthorizedException('Challenge message user mismatch');
-      }
+  // Expected format:
+  // link-wallet:<userId>:<timestamp>:<randomHex>
 
-      const tsMatch = message.match(/Timestamp: (\d+)/);
-      if (!tsMatch) {
-        throw new BadRequestException('Invalid challenge message format');
-      }
+  const parts = message.split(':');
 
-      const timestamp = parseInt(tsMatch[1], 10);
-      const now = Date.now();
-      if (Math.abs(now - timestamp) > 300_000) { // 5 minutes window
-        throw new UnauthorizedException('Challenge message expired');
-      }
+  if (parts.length !== 4 || parts[0] !== 'link-wallet') {
+    throw new BadRequestException('Invalid challenge message format');
+  }
 
-      finalChallenge = message;
-    } else {
+  const [, challengeUserId, timestampStr] = parts;
+
+  if (challengeUserId !== userId) {
+    throw new UnauthorizedException(
+      'Challenge message user mismatch',
+    );
+  }
+
+  const timestamp = parseInt(timestampStr, 10);
+
+  if (Number.isNaN(timestamp)) {
+    throw new BadRequestException(
+      'Invalid challenge timestamp',
+    );
+  }
+
+  const now = Date.now();
+
+  // 5 minute window
+  if (Math.abs(now - timestamp) > 300_000) {
+    throw new UnauthorizedException(
+      'Challenge message expired',
+    );
+  }
+
+  finalChallenge = message;
+} else {
       // Step 2 — retrieve challenge from Redis (legacy flow)
       const challenge = await this.redis.get(`wallet-challenge:${userId}`);
       if (!challenge) {

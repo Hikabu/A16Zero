@@ -216,6 +216,7 @@ async function parseResponseBody(response: Response): Promise<unknown> {
     return text;
   }
 }
+
 export async function apiFetch<ResponseBody>(
   path: string,
   options: ApiFetchOptions = {},
@@ -229,18 +230,16 @@ export async function apiFetch<ResponseBody>(
     headers: customHeaders,
     query,
     skipAuth,
+    retried,
     ...fetchOptions
   } = options;
 
   const url = new URL(path, API_BASE_URL);
   appendQueryParams(url, query);
 
-  async function executeRequest(overrideToken?: string) {
-    const token = skipAuth ? null : (overrideToken ?? getAuthToken());
-
+  async function executeRequest() {
     const headers: Record<string, string> = {
       Accept: "application/json",
-      ...(token && token !== COOKIE_AUTH_TOKEN ? { Authorization: `Bearer ${token}` } : {}),
       ...customHeaders,
     };
 
@@ -257,7 +256,7 @@ export async function apiFetch<ResponseBody>(
       init.body = JSON.stringify(requestBody);
     }
 
-    const response = await fetch(url, init);
+    const response = await fetch(url.toString(), init);
     const body = await parseResponseBody(response);
 
     return { response, body };
@@ -275,17 +274,31 @@ export async function apiFetch<ResponseBody>(
   // ─────────────────────────────
   // 2. Handle 401 refresh
   // ─────────────────────────────
-  if (response.status === 401 && !fetchOptions.retried) {
+  if (
+    response.status === 401 &&
+    !retried &&
+    !skipAuth
+  ) {
     if (!refreshingPromise) {
-      refreshingPromise = fetch(API_BASE_URL + "/auth/candidate/refresh", {
-        method: "POST",
-        credentials: "include",
-      })
+      refreshingPromise = fetch(
+        API_BASE_URL + "/auth/candidate/refresh",
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      )
         .then(async (r) => {
+          console.log("REFRESH STATUS", r.status);
+
           if (!r.ok) {
+            console.log("REFRESH FAILED");
+
             useAuthStore.getState().clearAuth();
+
             throw new Error("Session expired");
           }
+
+          console.log("REFRESH SUCCESS");
         })
         .finally(() => {
           refreshingPromise = null;
@@ -294,8 +307,11 @@ export async function apiFetch<ResponseBody>(
 
     await refreshingPromise;
 
-    // retry original request — new access_token cookie is now set
-    return apiFetch<ResponseBody>(path, { ...options, retried: true });
+    // retry original request
+    return apiFetch<ResponseBody>(path, {
+      ...options,
+      retried: true,
+    });
   }
 
   if (!response.ok) {

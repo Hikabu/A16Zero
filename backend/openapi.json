@@ -3422,7 +3422,8 @@
                   "summary": "Valid request example",
                   "value": {
                     "walletAddress": "7Gg3...SolanaAddressExample...",
-                    "signature": "5hK9...Base58Signature..."
+                    "signature": "5hK9...Base58Signature...",
+                    "message": "link-wallet:user123:1713940000000:a1b2c3"
                   }
                 }
               }
