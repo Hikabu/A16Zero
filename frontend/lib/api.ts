@@ -255,9 +255,6 @@ export async function apiFetch<ResponseBody>(
         .then(async (r) => {
           if (!r.ok) {
             useAuthStore.getState().clearAuth();
-            if (typeof window !== "undefined") {
-              window.location.href = "/";
-            }
             throw new Error("Session expired");
           }
         })
