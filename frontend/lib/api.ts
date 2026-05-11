@@ -482,6 +482,10 @@ export async function loginCandidate(
   return normalizeAuthResponse(body, "candidate");
 }
 
+export async function logoutCandidate(): Promise<void> {
+  await AuthCandidateController_logout();
+}
+
 export async function registerCandidate(
   input: CandidateRegisterInput,
 ): Promise<void> {
@@ -508,6 +512,10 @@ export async function loginEmployer(
   input: EmployerLoginInput,
 ): Promise<AuthResponse> {
   return loginEmployerPrivy(input);
+}
+
+export async function logoutEmployer(): Promise<void> {
+  await AuthEmployerController_logout();
 }
 
 export async function requestPasswordReset(
@@ -1290,6 +1298,7 @@ export async function JobsController_getPublicJobs(
       query: parts.query,
       headers: parts.headers,
       body: parts.body,
+      skipAuth: true,
     },
   );
 }
@@ -2495,18 +2504,28 @@ export const listJobs = (params: {
   isVerifiedPayer?: boolean;
   page?: number;
   limit?: number;
-}): Promise<{ jobs: any[], total: number }> => (JobsController_getPublicJobs as any)({ query: params });
+}): Promise<{ jobs: any[], total: number }> => apiFetch("/jobs", { method: "GET", query: params as any, skipAuth: true });
 
-export const getJob = (id: string) => JobsController_getPublicJobById({ path: { id } } as any);
+export const getJob = (id: string) => apiFetch(`/jobs/${id}`, { method: "GET", skipAuth: true });
 export const getGapPreview = (params: { jobId: string }) => ApplicantsController_getGapPreview({ query: params } as any);
 export const applyToJob = (jobId: string) => ApplicantsController_apply({ path: { jobId } } as any);
 
-export const initiateVouch = async (username: string, data: { message?: string }) => {
-  return (ActionsController_getBlinkTransaction as any)({
-    path: { username },
-    body: { account: '', data }
-  });
-};
+export const initiateVouch = async (
+  username: string,
+  data: { message?: string },
+  account: string
+) => {
+  return apiFetch<any>(`/api/actions/vouch/${username}`, {
+    method: "POST",
+    body: {
+      account,
+      data: data.message
+        ? { message: data.message }
+        : undefined,
+    },
+    skipAuth: true,
+  })
+}
 
 export const confirmVouch = async (data: { signature: string, txData?: string }) => {
   return (VouchesController_confirmVouch as any)({ body: data });

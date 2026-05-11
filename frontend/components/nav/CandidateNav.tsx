@@ -24,6 +24,7 @@ import {
 import { ExternalLink, LogOut, Menu, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
+import { useLogout } from "@/lib/hooks/useLogout";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 interface CandidateNavProps {
@@ -33,7 +34,7 @@ interface CandidateNavProps {
 
 const NAV_LINKS = [
   { label: "Dashboard", href: "/profile" },
-  { label: "Browse Jobs", href: "/jobs" },
+  { label: "Browse Jobs", href: "/browse" },
 ] as const;
 
 function getInitials(username: string): string {
@@ -42,10 +43,13 @@ function getInitials(username: string): string {
 
 export function CandidateNav({ username, onLogout }: CandidateNavProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const doLogout = useLogout();
   const [open, setOpen] = useState(false);
+const [mounted, setMounted] = useState(false)
 
+useEffect(() => {
+  setMounted(true)
+}, [])
   // Close sheet on route change
   useEffect(() => {
     setOpen(false);
@@ -57,8 +61,7 @@ export function CandidateNav({ username, onLogout }: CandidateNavProps) {
     if (onLogout) {
       onLogout();
     } else {
-      clearAuth();
-      router.push("/");
+      doLogout();
     }
   };
 
@@ -188,7 +191,9 @@ export function CandidateNav({ username, onLogout }: CandidateNavProps) {
             {/* Bottom actions */}
             <div className="flex flex-col gap-1 mt-auto border-t border-border pt-4">
               <div className="px-1 pb-2">
-                <WalletMultiButton />
+                <div className="hidden md:flex items-center gap-2">
+  {mounted && <WalletMultiButton />}
+</div>
               </div>
               <Link
                 href={`/u/${username}`}

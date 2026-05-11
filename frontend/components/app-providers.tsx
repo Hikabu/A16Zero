@@ -18,13 +18,13 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 
 const wallets = [new PhantomWalletAdapter()];
+console.log("RPC URL:", process.env.NEXT_PUBLIC_RPC_URL);
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   const content = (
-    <ConnectionProvider endpoint={process.env.NEXT_PUBLIC_RPC_URL!}>
-      <WalletProvider wallets={wallets} autoConnect>
+<ConnectionProvider endpoint={"https://api.devnet.solana.com"}>      <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>

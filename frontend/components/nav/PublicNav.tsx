@@ -23,6 +23,12 @@ export function PublicNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  const [mounted, setMounted] = useState(false)
+
+useEffect(() => {
+  setMounted(true)
+}, [])
+
   // Close sheet on route change
   useEffect(() => {
     setOpen(false);
@@ -38,7 +44,7 @@ export function PublicNav() {
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-full flex items-center gap-4">
         {/* Logo */}
         <Link
-          href="/browse"
+          href="/"
           className="flex items-center gap-2 shrink-0"
         >
           <Image
@@ -76,12 +82,14 @@ export function PublicNav() {
 
         {/* Auth + Wallet — desktop */}
         <div className="hidden md:flex items-center gap-2">
-          <WalletMultiButton />
+          <div className="hidden md:flex items-center gap-2">
+  {mounted && <WalletMultiButton />}
+</div>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/">Sign in</Link>
+            <Link href="/auth">Sign in</Link>
           </Button>
           <Button variant="default" size="sm" asChild>
-            <Link href="/">Get started</Link>
+            <Link href="/auth">Get started</Link>
           </Button>
         </div>
 
@@ -113,10 +121,10 @@ export function PublicNav() {
             <div className="flex flex-col gap-2 mt-auto">
               <WalletMultiButton />
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/">Sign in</Link>
+                <Link href="/auth">Sign in</Link>
               </Button>
               <Button variant="default" size="sm" asChild>
-                <Link href="/">Get started</Link>
+                <Link href="/auth">Get started</Link>
               </Button>
             </div>
           </SheetContent>

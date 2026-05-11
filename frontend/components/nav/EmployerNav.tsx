@@ -24,6 +24,7 @@ import {
 import { LogOut, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
+import { useLogout } from "@/lib/hooks/useLogout";
 
 interface EmployerNavProps {
   companyName: string;
@@ -46,8 +47,7 @@ function getInitials(name: string): string {
 
 export function EmployerNav({ companyName, onLogout }: EmployerNavProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const doLogout = useLogout();
   const [open, setOpen] = useState(false);
 
   // Close sheet on route change
@@ -61,8 +61,7 @@ export function EmployerNav({ companyName, onLogout }: EmployerNavProps) {
     if (onLogout) {
       onLogout();
     } else {
-      clearAuth();
-      router.push("/");
+      doLogout();
     }
   };
 
