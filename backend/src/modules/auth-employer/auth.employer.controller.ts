@@ -8,6 +8,7 @@ import {
   ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { CookieOptions, Request, Response } from 'express';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 import { AuthEmployerService } from './auth.employer.service';
 import { BaseController } from '../../shared/base.controller';
@@ -103,6 +104,34 @@ export class AuthEmployerController extends BaseController {
       success: true,
       message: 'Logged out successfully',
       data: null,
+    });
+  }
+  // ---------------- REFRESH ----------------
+
+  @UseGuards(JwtAuthGuard)
+  @Post('refresh')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Refresh employer access token',
+    description: 'Issues a new access token for authenticated employer.',
+  })
+  @ApiOkResponse({
+    description: 'Successfully refreshed access token',
+    type: LoginResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired token',
+    type: AuthEmplErrorResponseDto,
+  })
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    const privyUser = await verifyPrivyToken(req);
+    this.logger.log(`Refreshing token for Privy user: ${privyUser.privyUserId}`);
+    const result = await this.authService.login(privyUser);
+    res.cookie('access_token', result.token, this.authCookieOptions);
+    return res.json({
+      success: true,
+      message: 'Token refreshed successfully',
+      data: result,
     });
   }
 }

@@ -2094,6 +2094,44 @@
         ]
       }
     },
+    "/auth/employer/refresh": {
+      "post": {
+        "description": "Issues a new access token for authenticated employer.",
+        "operationId": "AuthEmployerController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successfully refreshed access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthEmplErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refresh employer access token",
+        "tags": [
+          "Auth (Employer)"
+        ]
+      }
+    },
     "/auth/candidate/register": {
       "post": {
         "description": "Registers a new user and starts email verification flow. May return auth state depending on verification status.",

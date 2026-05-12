@@ -243,12 +243,21 @@ export async function apiFetch<ResponseBody>(
       ...customHeaders,
     };
 
+    // Add Authorization header if we have a token and skipAuth is not set
+    // Token is stored in Zustand store after login (from API response body)
+    // Cookies are used by backend middleware for server-side auth
+    if (!skipAuth) {
+      const authToken = getAuthToken();
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+    }
     const init: RequestInit = {
       credentials: "include",
       ...fetchOptions,
       headers,
     };
-
+    
     if (requestBody !== undefined) {
       headers["Content-Type"] =
         headers["Content-Type"] ?? "application/json";
@@ -500,11 +509,19 @@ function normalizeAuthResponse(
           : "";
 
   if (!token) {
+       // Backend sets token in HttpOnly cookie and returns success with user data in body
+    // Return a placeholder token to indicate auth is cookie-based
     if (record.success === true) {
+       const nestedData = typeof record.data === "object" && record.data
+        ? (record.data as Record<string, unknown>)
+        : record;
       return {
         token: COOKIE_AUTH_TOKEN,
         role: fallbackRole,
         username: typeof nested.username === "string" ? nested.username : null,
+        email: typeof nested.email === "string" ? nested.email : null,
+        walletAddress: typeof nested.walletAddress === "string" ? nested.walletAddress : null,
+        id: typeof nested.id === "string" ? nested.id : null,
       };
     }
 
@@ -2736,6 +2753,9 @@ export async function rehydrateAuth(): Promise<void> {
         token: COOKIE_AUTH_TOKEN,
         role: user.role ?? "candidate",
         username: user.username,
+        email: user.email,
+        walletAddress: user.walletAddress,
+        id: user.id,
       });
     }
   } catch (error) {

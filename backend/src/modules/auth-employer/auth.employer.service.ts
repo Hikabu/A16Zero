@@ -69,6 +69,7 @@ export class AuthEmployerService {
 
     const payload = {
       sub: company.id,
+      role: 'employer',
       walletAddress: company.walletAddress,
       privyId: company.privyId,
     };
