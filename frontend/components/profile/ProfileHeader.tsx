@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Pencil,
@@ -139,9 +139,14 @@ export function ProfileHeader({
   const [publicScorecard, setPublicScorecard] = useState(true)
    const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-
+  
+  useEffect(() => {
+  setFormName(user.name)
+  setFormBio(candidate.bio ?? '')
+  setFormLocation(candidate.location ?? '')
+  setFormWebsite(candidate.website ?? '')
+}, [user.name, candidate.bio, candidate.location, candidate.website])
   const onToggleEdit = () => setIsEditing((v) => !v)
-
   const onSave = async () => {
     setIsSaving(true)
     try {
@@ -301,49 +306,64 @@ export function ProfileHeader({
                     </motion.div>
                   ) : (
                     /* ── VIEW MODE ── */
-                    <motion.div
-                      key="view"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="flex flex-col gap-1"
-                    >
-                      <h1 className="text-xl font-semibold leading-tight text-foreground truncate">
-                        {user.name}
-                      </h1>
-                      <p className="text-sm text-muted-foreground">
-                        @{user.username}
-                      </p>
+             <motion.div
+  key="view"
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  exit={{ opacity: 0 }}
+  transition={{ duration: 0.15 }}
+  className="flex flex-col gap-2"
+>
+  {/* NAME */}
+  <h1 className="text-xl font-semibold leading-tight text-foreground truncate">
+    {user.name || ""}
+  </h1>
 
-                      {candidate.bio && (
-                        <p className="mt-1.5 text-sm leading-relaxed text-foreground/80 max-w-prose">
-                          {candidate.bio}
-                        </p>
-                      )}
+  {/* USERNAME */}
+  <p className="text-sm text-muted-foreground">
+    @{user.username}
+  </p>
 
-                      {(candidate.location || candidate.website) && (
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                          {candidate.location && (
-                            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                              <MapPin className="h-3.5 w-3.5 shrink-0" />
-                              {candidate.location}
-                            </span>
-                          )}
-                          {candidate.website && (
-                            <a
-                              href={ensureAbsoluteUrl(candidate.website)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
-                            >
-                              <Globe className="h-3.5 w-3.5 shrink-0" />
-                              {candidate.website.replace(/^https?:\/\//i, '')}
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </motion.div>
+  {/* BIO */}
+  <div className="mt-2">
+    <p className={`text-sm leading-relaxed max-w-prose ${
+      candidate.bio ? "text-foreground/80" : "text-muted-foreground/50"
+    }`}>
+      {candidate.bio || "No bio"}
+    </p>
+  </div>
+
+  {/* META */}
+  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+
+    {/* LOCATION */}
+    <span className="inline-flex items-center gap-1.5 text-sm">
+      <MapPin className="h-3.5 w-3.5 text-muted-foreground/70" />
+      <span className={candidate.location ? "text-muted-foreground" : "text-muted-foreground/40"}>
+        {candidate.location || "Not set"}
+      </span>
+    </span>
+
+    {/* WEBSITE */}
+    <span className="inline-flex items-center gap-1.5 text-sm">
+      <Globe className="h-3.5 w-3.5 text-muted-foreground/70" />
+      {candidate.website ? (
+        <a
+          href={ensureAbsoluteUrl(candidate.website)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {candidate.website.replace(/^https?:\/\//i, '')}
+        </a>
+      ) : (
+        <span className="text-muted-foreground/40">
+          Not set
+        </span>
+      )}
+    </span>
+  </div>
+</motion.div>
                   )}
                 </AnimatePresence>
               </div>
