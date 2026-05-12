@@ -2,7 +2,7 @@
 Architecture
 app/jobs/page.tsx
 ├── FilterBar                    ← FilterState: search, roleType, seniority, isWeb3,
-│                                   isDepositPaid [NEW], isVerifiedPayer [NEW], page, limit
+│                                   isEscrowFunded [NEW], isVerifiedPayer [NEW], page, limit
 ├── JobGrid
 │   ├── JobCard[]                ← isApplied from applications cache; "Verified" badge if depositPaid+verifiedPayer
 │   └── LoadMoreButton

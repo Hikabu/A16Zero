@@ -222,7 +222,7 @@ export function JobDetailSheet({
   gapLoading,
 }: JobDetailSheetProps) {
   const salary = job ? formatSalaryLabel(job) : null
-  const isVerified = job?.isDepositPaid && job?.isVerifiedPayer
+  const isVerified = job?.isEscrowFunded && job?.isVerifiedPayer
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose() }}>
@@ -298,13 +298,13 @@ export function JobDetailSheet({
                     Web3
                   </Badge>
                 )}
-                {job.isDepositPaid && (
+                {job.isEscrowFunded && (
                   <Badge
                     variant="outline"
                     className="rounded-lg border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-400"
                   >
                     <ShieldCheck className="mr-1 h-3 w-3" />
-                    Deposit paid
+                    Fund secured
                   </Badge>
                 )}
                 {job.isVerifiedPayer && (
@@ -313,7 +313,7 @@ export function JobDetailSheet({
                     className="rounded-lg border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-400"
                   >
                     <BadgeCheck className="mr-1 h-3 w-3" />
-                    Verified payer
+                    Verified employer
                   </Badge>
                 )}
               </div>

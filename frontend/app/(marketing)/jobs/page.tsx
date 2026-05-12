@@ -79,7 +79,7 @@ export default function JobsPage() {
       roleType: debouncedFilters.roleType,
       seniority: debouncedFilters.seniority,
       isWeb3: debouncedFilters.isWeb3,
-      isDepositPaid: debouncedFilters.isDepositPaid,
+      isEscrowFunded: debouncedFilters.isEscrowFunded,
       isVerifiedPayer: debouncedFilters.isVerifiedPayer,
       page,
       limit: debouncedFilters.limit ?? 20,

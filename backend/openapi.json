@@ -1469,7 +1469,7 @@
             }
           },
           {
-            "name": "isDepositPaid",
+            "name": "isEscrowFunded",
             "required": false,
             "in": "query",
             "description": "Filter jobs with escrow paid",
@@ -1482,7 +1482,7 @@
             "name": "isVerifiedPayer",
             "required": false,
             "in": "query",
-            "description": "Filter jobs by companies with verified payer history",
+            "description": "Filter jobs by companies with Verified employer history",
             "schema": {
               "example": true,
               "type": "boolean"

@@ -59,10 +59,10 @@ export class GetJobsQueryDto {
     if (value === 'false' || value === false) return false;
     return undefined;
   })
-  isDepositPaid?: boolean;
+  isEscrowFunded?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Filter jobs by companies with verified payer history',
+    description: 'Filter jobs by companies with Verified employer history',
     example: true,
   })
   @IsOptional()

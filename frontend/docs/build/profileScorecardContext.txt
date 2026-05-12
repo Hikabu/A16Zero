@@ -3,9 +3,9 @@ Section breakdown
 Purpose + Content
 Location input, job type select, remote chips
 Salary min/max, tech stack tags, posted-within
-Deposit paid toggle
+Fund secured toggle
 — filters to jobs with on-chain escrow locked
-Verified payer toggle
+Verified employer toggle
 — filters to employers with proven deposit release history
 Clear all, active filter count badge (mobile)
 Visual hierarchy + Interaction
@@ -13,10 +13,10 @@ Horizontal scroll on mobile
 Active filters: chip gets filled background
 Clear all only visible when filter count > 0
 Debounce 300ms on text/number inputs
-"Deposit paid" toggle: green shield icon when active
-"Verified payer" toggle: blue checkmark badge icon when active
+"Fund secured" toggle: green shield icon when active
+"Verified employer" toggle: blue checkmark badge icon when active
 Data deps
-No direct API calls. Filter state passed to listJobs() as React Query key. Params: search, roleType, seniority, isWeb3, isDepositPaid, isVerifiedPayer, page, limit. Build UI now; wire params when API filter schema confirmed.
+No direct API calls. Filter state passed to listJobs() as React Query key. Params: search, roleType, seniority, isWeb3, isEscrowFunded, isVerifiedPayer, page, limit. Build UI now; wire params when API filter schema confirmed.
 
 Purpose + Content
 JobCard grid (1/2/3 col responsive)

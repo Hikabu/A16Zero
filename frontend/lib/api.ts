@@ -2632,7 +2632,7 @@ export const listJobs = (params: {
   roleType?: string;
   seniority?: string;
   isWeb3?: boolean;
-  isDepositPaid?: boolean;
+  isEscrowFunded?: boolean;
   isVerifiedPayer?: boolean;
   page?: number;
   limit?: number;

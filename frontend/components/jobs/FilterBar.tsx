@@ -35,7 +35,7 @@ export type FilterState = {
   postedWithin?: string
   seniority?: string
   isWeb3?: boolean
-  isDepositPaid?: boolean
+  isEscrowFunded?: boolean
   isVerifiedPayer?: boolean
   page?: number
   limit?: number
@@ -185,7 +185,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
     filters.salaryMax,
     stack.length > 0,
     filters.postedWithin && filters.postedWithin !== 'any',
-    filters.isDepositPaid,
+    filters.isEscrowFunded,
     filters.isVerifiedPayer,
   ].filter(Boolean).length
 
@@ -282,17 +282,17 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
           </SelectContent>
         </Select>
 
-        {/* Deposit paid chip */}
+        {/* Fund secured chip */}
         <Tooltip>
           <TooltipTrigger asChild>
             <ToggleChip
               id="filter-deposit-paid"
-              active={!!filters.isDepositPaid}
-              onClick={() => patch({ isDepositPaid: filters.isDepositPaid ? undefined : true })}
+              active={!!filters.isEscrowFunded}
+              onClick={() => patch({ isEscrowFunded: filters.isEscrowFunded ? undefined : true })}
               activeClassName="border-emerald-500/50 bg-emerald-500/15 text-emerald-400"
             >
               <ShieldCheck className="h-3.5 w-3.5" />
-              Deposit paid
+              Fund secured
             </ToggleChip>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs text-xs">
@@ -300,7 +300,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
           </TooltipContent>
         </Tooltip>
 
-        {/* Verified payer chip */}
+        {/* Verified employer chip */}
         <Tooltip>
           <TooltipTrigger asChild>
             <ToggleChip
@@ -312,7 +312,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
               activeClassName="border-blue-500/50 bg-blue-500/15 text-blue-400"
             >
               <BadgeCheck className="h-3.5 w-3.5" />
-              Verified payer
+              Verified employer
             </ToggleChip>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs text-xs">

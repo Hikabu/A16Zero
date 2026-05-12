@@ -28,7 +28,7 @@ export type Job = {
   techStack?: string[]
   roleType?: string
   seniority?: string
-  isDepositPaid?: boolean
+  isEscrowFunded?: boolean
   isVerifiedPayer?: boolean
   isWeb3?: boolean
 }
@@ -75,7 +75,7 @@ export function JobCard({ job, isApplied, isSelected, onClick }: JobCardProps) {
   const salary = formatSalary(job.salaryMin, job.salaryMax, job.currency)
   const postedLabel = formatPostedDate(job.postedAt)
   const isVerified =
-  job.isDepositPaid && job.company?.isVerifiedPayer
+  job.isEscrowFunded && job.company?.isVerifiedPayer
 
   return (
     <Card
@@ -192,7 +192,7 @@ export function JobCard({ job, isApplied, isSelected, onClick }: JobCardProps) {
               Web3
             </Badge>
           )}
-          {job.isDepositPaid && (
+          {job.isEscrowFunded && (
             <Badge
               variant="outline"
               className="rounded-md border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400"
