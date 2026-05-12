@@ -46,6 +46,7 @@ export interface ProfileSaveData {
 export interface ProfileHeaderProps {
   user: ProfileUser
   candidate: ProfileCandidate
+  isPublic?: boolean
   isEditing: boolean
   onToggleEdit: () => void
   onSave: (data: ProfileSaveData) => void
@@ -127,7 +128,8 @@ function UsernameCopyBadge({ username }: { username: string }) {
 
 export function ProfileHeader({
   user,
-  candidate
+  candidate,
+  isPublic = false,
 }: ProfileHeaderProps) {
   // Local form state (only used in edit mode)
   const [formName, setFormName] = useState(user.name)
@@ -347,8 +349,8 @@ export function ProfileHeader({
               </div>
 
               {/* Right: edit toggle + meta controls */}
-              <div className="flex shrink-0 flex-col items-end gap-3">
-                {/* Edit / Cancel icon button */}
+{!isPublic && (
+  <div className="flex shrink-0 flex-col items-end gap-3">                {/* Edit / Cancel icon button */}
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -383,7 +385,7 @@ export function ProfileHeader({
                   </div>
                 </div>
               </div>
-
+)}
             </div>
           </div>
         </div>

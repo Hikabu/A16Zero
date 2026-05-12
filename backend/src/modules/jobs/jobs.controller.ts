@@ -67,17 +67,21 @@ export class JobsController extends BaseController {
     description:
       'Returns a list of published jobs with filtering and pagination.',
   })
-  async getPublicJobs(@Query() query: GetJobsQueryDto) {
-    const jobs = await this.jobsService.getPublicJobs({
-      search: query.search,
-      roleType: query.roleType,
-      seniority: query.seniority,
-      isWeb3: query.isWeb3,
-      page: query.page,
-      limit: query.limit,
-    });
-    return this.handleSuccess(jobs);
-  }
+  @Get()
+async getPublicJobs(@Query() query: GetJobsQueryDto) {
+  const jobs = await this.jobsService.getPublicJobs({
+    search: query.search,
+    roleType: query.roleType,
+    seniority: query.seniority,
+    isWeb3: query.isWeb3,
+    isEscrowFunded: query.isEscrowFunded,        
+    isVerifiedPayer: query.isVerifiedPayer,    
+    page: query.page,
+    limit: query.limit,
+  });
+
+  return this.handleSuccess(jobs);
+}
 
   // ─────────────────────────────
   // COMPANY JOBS

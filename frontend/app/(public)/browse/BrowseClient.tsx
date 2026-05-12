@@ -12,8 +12,8 @@ import { FilterBar, FilterState } from "@/components/jobs/FilterBar";
 import { JobCard, JobCardSkeleton, Job } from "@/components/jobs/JobCard";
 import { JobDetailSheet } from "@/components/jobs/JobDetailSheet";
 import { Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { listJobs, getJob } from "@/lib/api";
+import {useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { listJobs, getJob, getGapPreview, getMe, getCandidateProfile, applyToJob } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -134,54 +134,63 @@ export default function BrowseClient() {
   const initialTab = searchParams.get("tab") === "people" ? "people" : "jobs";
   const [tab, setTab] = useState(initialTab);
 
-  // ── Jobs state ────────────────────────────────────────────────────────────
-  const [filters, setFilters] = useState<FilterState>({});
-  const debouncedFilters = useDebounce(filters, 300);
-  const [page, setPage] = useState(1);
-  const [allJobs, setAllJobs] = useState<Job[]>([]);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+ // ── Jobs state ────────────────────────────────────────────────────────────
+const [filters, setFilters] = useState<FilterState>({});
+const debouncedFilters = useDebounce(filters, 300);
 
-  const {
-    data: jobsData,
-    isLoading: jobsLoading,
-    isFetching: jobsFetching,
-  } = useQuery({
-    queryKey: ["jobs", debouncedFilters, page],
-    queryFn: () => listJobs({ ...debouncedFilters, page, limit: 12 }),
+const [page, setPage] = useState(1);
+const [allJobs, setAllJobs] = useState<Job[]>([]);
+const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+
+// API call
+const {
+  data: jobsData,
+  isLoading: jobsLoading,
+  isFetching: jobsFetching,
+} = useQuery({
+  queryKey: ["jobs", debouncedFilters, page],
+  queryFn: async () => {
+    const res = await listJobs({
+      ...debouncedFilters,
+      page,
+      limit: 12,
+    });
+
+    return res.data; // { jobs, total }
+  },
+});
+
+const { data: jobDetailData } = useQuery({
+  queryKey: ["job", selectedJobId],
+  queryFn: () => getJob(selectedJobId!),
+  enabled: !!selectedJobId,
+});
+
+const jobDetail = jobDetailData as any;
+
+// reset pagination when filters change
+useEffect(() => {
+  setPage(1);
+  setAllJobs([]);
+}, [debouncedFilters]);
+
+// merge paginated results
+useEffect(() => {
+  if (!jobsData?.jobs) return;
+
+  setAllJobs((prev) => {
+    if (page === 1) return jobsData.jobs;
+
+    const existingIds = new Set(prev.map((j) => j.id));
+    const newJobs = jobsData.jobs.filter((j: Job) => !existingIds.has(j.id));
+
+    return [...prev, ...newJobs];
   });
+}, [jobsData, page]);
 
-  const jobsTotal = jobsData?.total ?? 0;
-  const hasMoreJobs = allJobs.length < jobsTotal;
-
-  const { data: jobDetailData } = useQuery({
-    queryKey: ["job", selectedJobId],
-    queryFn: () => getJob(selectedJobId!),
-    enabled: !!selectedJobId,
-  });
-  
-  const jobDetail = jobDetailData as any;
-
-  useEffect(() => {
-    if (debouncedFilters) {
-      setPage(1);
-      setAllJobs([]);
-    }
-  }, [debouncedFilters]);
-
-  useEffect(() => {
-    if (jobsData?.jobs) {
-      if (page === 1) {
-        setAllJobs(jobsData.jobs);
-      } else {
-        setAllJobs((prev) => {
-          const existingIds = new Set(prev.map((j) => j.id));
-          const newJobs = jobsData.jobs.filter((j: any) => !existingIds.has(j.id));
-          return [...prev, ...newJobs];
-        });
-      }
-    }
-  }, [jobsData, page]);
-
+// pagination meta
+const jobsTotal = jobsData?.total ?? 0;
+const hasMoreJobs = allJobs.length < jobsTotal;
   // ── Talent state ──────────────────────────────────────────────────────────
   const [talentSearch, setTalentSearch] = useState("");
   const debouncedTalentSearch = useDebounce(talentSearch, 300);
@@ -211,6 +220,58 @@ export default function BrowseClient() {
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
+  // -- user state----
+  
+  const { data: me } = useQuery({
+  queryKey: ["me"],
+  queryFn: getCandidateProfile
+});
+const hasScorecard = !!me?.scorecard;
+
+const { data: gapData, isLoading: gapLoading } = useQuery({
+  queryKey: ["gap", selectedJobId],
+  enabled: !!selectedJobId && !!me?.scorecard,
+  queryFn: async () => {
+    const res = await getGapPreview({ jobId: selectedJobId! });
+
+    const d = res.data; 
+
+    return {
+      fitScore: d.roleFitScore ?? 0,
+      matched: d.matchedTechnologies ?? [],
+      missing: d.missingTechnologies ?? [],
+      raw: d, // optional debug
+    };
+  },
+});
+
+//------------applying-------------
+const queryClient = useQueryClient()
+
+const applyMut = useMutation({
+  mutationFn: () => applyToJob({ jobId: selectedJobId! }),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["job", selectedJobId] });
+    queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    queryClient.invalidateQueries({ queryKey: ["my-applications"] });
+  },
+});
+
+const { data: myApps } = useQuery({
+  queryKey: ["my-applications"],
+  queryFn: async () => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_API_URL || "") + "/applications/me"
+    );
+    return res.json();
+  },
+});
+
+const isApplied = !!myApps?.applications?.some(
+  (a: any) => a.jobId === selectedJobId
+);
+
+
   return (
     <div className="min-h-screen bg-background">
       {/* ── Hero strip ────────────────────────────────────────────────────── */}
@@ -220,7 +281,7 @@ export default function BrowseClient() {
             Find your next role
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Browse open roles and talent on Colosseum
+            Explore opportunities or discover candidates to vouch for.
           </p>
         </div>
       </div>
@@ -353,19 +414,17 @@ export default function BrowseClient() {
 
       {/* ── Job detail slide-over (public: read-only, sign-in CTA) ────────── */}
       <JobDetailSheet
-        job={jobDetail}
-        jobId={selectedJobId}
-        open={!!selectedJobId}
-        onClose={() => setSelectedJobId(null)}
-        // Public view: no scorecard, no apply — sheet's built-in unauthenticated
-        // branch renders "Log in to apply" automatically via useAuthStore check
-        hasScorecard={false}
-        isApplied={false}
-        onApply={() => {}}
-        isApplying={false}
-        gapData={undefined}
-        gapLoading={false}
-      />
+  job={jobDetail}
+  jobId={selectedJobId}
+  open={!!selectedJobId}
+  onClose={() => setSelectedJobId(null)}
+  hasScorecard={hasScorecard}
+  onApply={() => applyMut.mutate()}
+  isApplying={applyMut.isPending}
+  isApplied={isApplied}
+  gapData={gapData}
+  gapLoading={gapLoading}
+/>
     </div>
   );
 }

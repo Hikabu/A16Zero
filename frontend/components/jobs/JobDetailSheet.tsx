@@ -154,8 +154,10 @@ function GapAnalysisSection({
   }
 
   if (!gapData) return null
+const matched = gapData?.matched ?? [];
+const missing = gapData?.missing ?? [];
 
-  return (
+return (
     <div className="space-y-4">
       {/* Fit score */}
       <div className="flex items-center gap-2">
@@ -164,14 +166,14 @@ function GapAnalysisSection({
       </div>
 
       {/* Matched skills */}
-      {gapData.matched.length > 0 && (
+      {matched.length > 0 && (
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-500/80">
             <CheckCircle2 className="h-3 w-3" />
             Matched
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {gapData.matched.map((skill) => (
+            {matched.map((skill) => (
               <span
                 key={skill}
                 className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400"
@@ -184,14 +186,14 @@ function GapAnalysisSection({
       )}
 
       {/* Missing skills */}
-      {gapData.missing.length > 0 && (
+      {missing.length > 0 && (
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-rose-500/80">
             <XCircle className="h-3 w-3" />
             Gaps
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {gapData.missing.map((skill) => (
+            {missing.map((skill) => (
               <span
                 key={skill}
                 className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[11px] font-medium text-rose-400"
@@ -222,7 +224,7 @@ export function JobDetailSheet({
   gapLoading,
 }: JobDetailSheetProps) {
   const salary = job ? formatSalaryLabel(job) : null
-  const isVerified = job?.isDepositPaid && job?.isVerifiedPayer
+  const isVerified = job?.isEscrowFunded && job?.isVerifiedPayer
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose() }}>
@@ -298,13 +300,13 @@ export function JobDetailSheet({
                     Web3
                   </Badge>
                 )}
-                {job.isDepositPaid && (
+                {job.isEscrowFunded && (
                   <Badge
                     variant="outline"
                     className="rounded-lg border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-400"
                   >
                     <ShieldCheck className="mr-1 h-3 w-3" />
-                    Deposit paid
+                    Fund secured
                   </Badge>
                 )}
                 {job.isVerifiedPayer && (
@@ -313,7 +315,7 @@ export function JobDetailSheet({
                     className="rounded-lg border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-400"
                   >
                     <BadgeCheck className="mr-1 h-3 w-3" />
-                    Verified payer
+                    Verified employer
                   </Badge>
                 )}
               </div>

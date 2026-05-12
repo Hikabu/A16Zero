@@ -50,6 +50,7 @@ const companies = await Promise.all([
       trustScore: 92,
     },
   }),
+
 ]);
   // -----------------------------
   // JOBS
@@ -198,6 +199,67 @@ const companies = await Promise.all([
   });
 
   console.log("✅ Seeding complete");
+
+    await prisma.company.update({
+  where: { id: companies[0].id },
+  data: {
+    totalEscrowsFunded: 0,
+    totalEscrowsReleased: 0,
+    trustScore: 45,
+    isVerifiedPayer: false, // ❌ unverified payer
+  },
+});
+
+await prisma.company.update({
+  where: { id: companies[1].id },
+  data: {
+    totalEscrowsFunded: 3,
+    totalEscrowsReleased: 2,
+    trustScore: 88,
+    isVerifiedPayer: true, // ✅ verified payer
+  },
+});
+
+await prisma.jobPost.create({
+  data: {
+    companyId: companies[0].id,
+    title: "Unverified Payer + UNFUNDED Job (control case)",
+    description: "Should appear ONLY when no filters are applied.",
+    location: "Remote",
+    employmentType: "full-time",
+    bonusAmount: 3000,
+    currency: "USD",
+    status: JobStatus.ACTIVE,
+    roleType: RoleType.BACKEND,
+    seniorityLevel: Seniority.JUNIOR,
+    requiredSkills: ["Node.js"],
+    publishedAt: new Date(),
+
+    escrowStatus: "UNFUNDED",
+    isWeb3Role: false,
+  },
+});
+
+await prisma.jobPost.create({
+  data: {
+    companyId: companies[1].id,
+    title: "Verified Payer + FUNDED Job (🔥 trusted)",
+    description: "Should show when BOTH filters are enabled.",
+    location: "Remote",
+    employmentType: "full-time",
+    bonusAmount: 10000,
+    currency: "USD",
+    status: JobStatus.ACTIVE,
+    roleType: RoleType.SMART_CONTRACT,
+    seniorityLevel: Seniority.SENIOR,
+    requiredSkills: ["Solidity", "Foundry"],
+    publishedAt: new Date(),
+
+    escrowStatus: "FUNDED",
+    escrowFundedAt: new Date(),
+    isWeb3Role: true,
+  },
+});
 }
 
 main()

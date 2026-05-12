@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
-
+import Link from 'next/link'
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -18,6 +18,7 @@ export interface Vouch {
   message?: string
   txSignature: string
   createdAt: string
+  voucherUser?: string | null
 }
 
 interface VouchesSectionProps {
@@ -106,35 +107,50 @@ function VouchCard({ vouch, index }: VouchCardProps) {
         <ShieldCheck className="h-4 w-4 text-teal-500" />
       </div>
 
-      {/* Content */}
-      <div className="min-w-0 flex-1 space-y-1">
-        {/* Wallet */}
-        <CopyWallet address={vouch.voucherWallet} />
+     {/* Content */}
+<div className="min-w-0 flex-1 space-y-2">
 
-        {/* Optional message */}
-        {vouch.message && (
-          <p className="text-xs italic text-muted-foreground leading-relaxed">
-            &ldquo;{vouch.message}&rdquo;
-          </p>
-        )}
+  {/* Main vouch message */}
+  {vouch.message && (
+    <p className="text-sm leading-relaxed text-foreground">
+      &ldquo;{vouch.message}&rdquo;
+    </p>
+  )}
 
-        {/* Bottom row: time + explorer */}
-        <div className="flex items-center gap-3 pt-0.5">
-          <span className="text-[11px] text-muted-foreground/60">
-            {relativeTime(vouch.createdAt)}
-          </span>
-          <a
-            href={explorerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="View transaction on Solana Explorer"
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/60 transition-colors hover:text-foreground"
-          >
-            <ExternalLink className="h-3 w-3" />
-            Explorer
-          </a>
-        </div>
-      </div>
+  {/* Attribution row */}
+  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+
+    <span>—</span>
+
+    {vouch.voucherUser ? (
+      <Link
+        href={`/u/${vouch.voucherUser}`}
+        className="font-medium text-foreground transition-colors hover:text-primary"
+      >
+        @{vouch.voucherUser}
+      </Link>
+    ) : (
+      <CopyWallet address={vouch.voucherWallet} />
+    )}
+
+    <span>•</span>
+
+    <span>
+      {relativeTime(vouch.createdAt)}
+    </span>
+
+    <a
+      href={explorerUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="View transaction on Solana Explorer"
+      className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+    >
+      <ExternalLink className="h-3 w-3" />
+      Explorer
+    </a>
+  </div>
+</div>
     </motion.div>
   )
 }

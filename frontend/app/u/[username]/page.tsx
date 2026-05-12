@@ -2,22 +2,30 @@ import React from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Globe, UserX, Lock } from 'lucide-react'
+
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
-import type { ProfileUser, ProfileCandidate } from '@/components/profile/ProfileHeader'
+import type {
+  ProfileUser,
+  ProfileCandidate,
+} from '@/components/profile/ProfileHeader'
+
 import { ScorecardView } from '@/components/ScorecardView'
 import type { ScorecardData } from '@/components/ScorecardView'
+
 import { VouchesSection } from '@/components/profile/VouchesSection'
 import type { Vouch } from '@/components/profile/VouchesSection'
+
 import { VouchForm } from '@/components/VouchForm'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { getPublicScorecard } from '@/lib/api'
-import ShareButton from './ShareButton'
 
-// ---------------------------------------------------------------------------
-// ISR — revalidate every 60 s
-// ---------------------------------------------------------------------------
+import {
+  getPublicProfile,
+  getPublicScorecard,
+} from '@/lib/api'
+
+import ShareButton from './ShareButton'
 
 export const revalidate = 60
 
@@ -28,28 +36,23 @@ export const revalidate = 60
 export async function generateMetadata({
   params,
 }: {
-  params: { username: string }
+  params: Promise<{ username: string }>
 }): Promise<Metadata> {
-    const { username } = await params
+  const { username } = await params
 
-  const data = await getPublicScorecard(username)
+  const profile = await getPublicProfile(username)
 
-  if (!data) return { title: 'Profile not found' }
-
-  const sc = data as Record<string, unknown>
-  const profile = (sc.profile as Record<string, unknown>) ?? {}
-  const name = (profile.username as string) || username
-  const summary = (profile.summary as string) || undefined
-  const avatarUrl = (profile.avatarUrl as string) || undefined
+  if (!profile) {
+    return {
+      title: 'Profile not found',
+    }
+  }
 
   return {
-    title: `${name}'s 16Signals Profile`,
-    description: summary ?? `View ${name}'s verified Web3 reputation on 16Signals.`,
-    openGraph: {
-      title: `${name} on 16Signals`,
-      description: summary ?? '',
-      images: avatarUrl ? [{ url: avatarUrl }] : [],
-    },
+    title: `${profile.username}'s 16Signals Profile`,
+    description:
+      profile.bio ??
+      `View ${profile.username}'s verified Web3 reputation on 16Signals.`,
   }
 }
 
@@ -57,16 +60,28 @@ export async function generateMetadata({
 // Empty / not-found states
 // ---------------------------------------------------------------------------
 
-function NotFoundState({ username }: { username: string }) {
+function NotFoundState({
+  username,
+}: {
+  username: string
+}) {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
-      <UserX className="h-12 w-12 text-muted-foreground" strokeWidth={1.5} />
+      <UserX
+        className="h-12 w-12 text-muted-foreground"
+        strokeWidth={1.5}
+      />
+
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold text-foreground">Profile not found</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          Profile not found
+        </h1>
+
         <p className="text-sm text-muted-foreground">
           @{username} hasn&apos;t joined 16Signals yet.
         </p>
       </div>
+
       <Button variant="outline" size="sm" asChild>
         <Link href="/">Go to home</Link>
       </Button>
@@ -74,10 +89,18 @@ function NotFoundState({ username }: { username: string }) {
   )
 }
 
-function NoScorecardState({ name }: { name: string }) {
+function NoScorecardState({
+  name,
+}: {
+  name: string
+}) {
   return (
     <Card className="flex flex-col items-center justify-center gap-3 border-dashed p-10 text-center">
-      <Lock className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.5} />
+      <Lock
+        className="h-8 w-8 text-muted-foreground/50"
+        strokeWidth={1.5}
+      />
+
       <p className="text-sm text-muted-foreground">
         {name} hasn&apos;t generated a scorecard yet.
       </p>
@@ -86,7 +109,7 @@ function NoScorecardState({ name }: { name: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Page — async Server Component
+// Page
 // ---------------------------------------------------------------------------
 
 export default async function PublicProfilePage({
@@ -94,55 +117,86 @@ export default async function PublicProfilePage({
 }: {
   params: Promise<{ username: string }>
 }) {
-  const { username } = await params;
-  console.log("📄 Generating profile page for:", username);
+  const { username } = await params
 
-  const data = await getPublicScorecard(username)
-
-  // 404 — full-screen empty state, no two-column layout
-  if (!data) return <NotFoundState username={username} />
-
-  // Extract fields from ScorecardUiDto: { profile, score, trust, insights }
-  const sc = data as Record<string, unknown>
-  const profile = (sc.profile as Record<string, unknown>) ?? {}
-
-  // Serialisable props for child Server / Client components
-  const user: ProfileUser = {
-    name: (profile.username as string) || username,
+  console.log(
+    '📄 Generating profile page for:',
     username,
+  )
+
+  // -----------------------------------------------------------------------
+  // Public profile = source of truth
+  // -----------------------------------------------------------------------
+
+  const profile =
+    await getPublicProfile(username)
+
+  if (!profile) {
+    return (
+      <NotFoundState username={username} />
+    )
+  }
+
+  // -----------------------------------------------------------------------
+  // Optional scorecard
+  // -----------------------------------------------------------------------
+
+  const scorecard =
+    await getPublicScorecard(username)
+
+  const sc =
+    (scorecard as Record<string, unknown>) ??
+    {}
+
+  // -----------------------------------------------------------------------
+  // Header data
+  // -----------------------------------------------------------------------
+
+  const user: ProfileUser = {
+    name: profile.username,
+    username: profile.username,
     email: '',
-    avatarUrl: (profile.avatarUrl as string) || undefined,
+    avatarUrl: undefined,
   }
 
   const candidate: ProfileCandidate = {
-    bio: (profile.summary as string) || undefined,
-    location: undefined,
-    website: undefined,
+    bio: profile.bio || undefined,
+    location:
+      profile.location || undefined,
+    website:
+      profile.website || undefined,
   }
 
-  const scorecard = data as unknown as ScorecardData
+  // -----------------------------------------------------------------------
+  // Vouches
+  // -----------------------------------------------------------------------
 
-  // wallet is not exposed on the public scorecard endpoint;
-  // VouchForm self-vouch guard handles the empty string case gracefully.
+  const vouches: Vouch[] =
+  profile.vouches ?? []
+
   const ownerWalletAddress = ''
 
-  const vouches: Vouch[] = ((sc.vouches as Vouch[]) ?? [])
+  // -----------------------------------------------------------------------
+  // Render
+  // -----------------------------------------------------------------------
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      {/* ── Full-width: profile header ──────────────────────────── */}
+      {/* Header */}
       <div className="relative mb-8">
-        {/* Share — client island */}
         <div className="absolute right-0 top-0 z-10">
-          <ShareButton username={username} displayName={user.name} />
+          <ShareButton
+            username={username}
+            displayName={user.name}
+          />
         </div>
 
         <ProfileHeader
-  user={user}
-  candidate={candidate}
-/>
+          user={user}
+          candidate={candidate}
+          isPublic={true}
+        />
 
-        {/* Public profile badge */}
         <div className="mt-2">
           <Badge
             variant="outline"
@@ -154,25 +208,37 @@ export default async function PublicProfilePage({
         </div>
       </div>
 
-      {/* ── Two-column body ─────────────────────────────────────── */}
-      {/*
-        Desktop: left 60% (scorecard) / right 40% (vouches + form)
-        Mobile:  single column, order preserved by DOM order
-      */}
+      {/* Body */}
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[3fr_2fr]">
-        {/* Left column — scorecard */}
+        {/* Scorecard */}
         <div className="min-w-0">
           {scorecard ? (
-            <ScorecardView scorecard={scorecard} isPublic={true} />
+            <ScorecardView
+              scorecard={
+                scorecard as ScorecardData
+              }
+              isPublic={true}
+            />
           ) : (
-            <NoScorecardState name={user.name} />
+            <NoScorecardState
+              name={user.name}
+            />
           )}
         </div>
 
-        {/* Right column — sticky on desktop */}
+        {/* Sidebar */}
         <div className="flex flex-col gap-6 md:sticky md:top-8 md:self-start">
-          <VouchesSection vouches={vouches} isPublic={true} />
-          <VouchForm username={username} ownerWalletAddress={ownerWalletAddress} />
+          <VouchesSection
+            vouches={vouches}
+            isPublic={true}
+          />
+
+          <VouchForm
+            username={username}
+            ownerWalletAddress={
+              ownerWalletAddress
+            }
+          />
         </div>
       </div>
     </div>

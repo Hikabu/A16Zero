@@ -1469,7 +1469,7 @@
             }
           },
           {
-            "name": "isDepositPaid",
+            "name": "isEscrowFunded",
             "required": false,
             "in": "query",
             "description": "Filter jobs with escrow paid",
@@ -1482,7 +1482,7 @@
             "name": "isVerifiedPayer",
             "required": false,
             "in": "query",
-            "description": "Filter jobs by companies with verified payer history",
+            "description": "Filter jobs by companies with Verified employer history",
             "schema": {
               "example": true,
               "type": "boolean"
@@ -2988,6 +2988,29 @@
         "summary": "Get wallet connection status",
         "tags": [
           "Profile (candidate)"
+        ]
+      }
+    },
+    "/profile/public/{username}": {
+      "get": {
+        "operationId": "PublicProfileController_getPublicProfile",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Public Profiles"
         ]
       }
     },
@@ -4625,12 +4648,18 @@
         "type": "object",
         "properties": {
           "userId": {
-            "type": "string"
+            "type": "string",
+            "example": "7b986a14-4f1b-4330-8120-f0ec4342c7ec"
           },
           "force": {
-            "type": "boolean"
+            "type": "boolean",
+            "example": true
           }
-        }
+        },
+        "required": [
+          "userId",
+          "force"
+        ]
       },
       "JobResponseDto": {
         "type": "object",

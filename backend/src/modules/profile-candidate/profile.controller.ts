@@ -142,3 +142,5 @@ export class ProfileController {
     return this.profileService.getConnectedWallet(req.user.id);
   }
 }
+
+

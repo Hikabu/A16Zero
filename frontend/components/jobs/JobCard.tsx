@@ -13,7 +13,12 @@ import { Badge } from '@/components/ui/badge'
 export type Job = {
   id: string
   title: string
-  company: string
+  company: {
+  name: string
+  logoUrl?: string | null
+  website?: string
+  isVerifiedPayer?: boolean
+}
   location?: string
   remoteType?: string
   salaryMin?: number
@@ -23,7 +28,7 @@ export type Job = {
   techStack?: string[]
   roleType?: string
   seniority?: string
-  isDepositPaid?: boolean
+  isEscrowFunded?: boolean
   isVerifiedPayer?: boolean
   isWeb3?: boolean
 }
@@ -69,7 +74,8 @@ function formatPostedDate(date?: string | Date): string | null {
 export function JobCard({ job, isApplied, isSelected, onClick }: JobCardProps) {
   const salary = formatSalary(job.salaryMin, job.salaryMax, job.currency)
   const postedLabel = formatPostedDate(job.postedAt)
-  const isVerified = job.isDepositPaid && job.isVerifiedPayer
+  const isVerified =
+  job.isEscrowFunded && job.company?.isVerifiedPayer
 
   return (
     <Card
@@ -101,7 +107,7 @@ export function JobCard({ job, isApplied, isSelected, onClick }: JobCardProps) {
         {/* Company + location row */}
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <div className="flex items-center gap-1">
-            <span className="text-sm text-muted-foreground">{job.company}</span>
+            <span className="text-sm text-muted-foreground">{job.company?.name}</span>
 
             {/* Verified badge next to company name */}
             {isVerified && (
@@ -186,7 +192,7 @@ export function JobCard({ job, isApplied, isSelected, onClick }: JobCardProps) {
               Web3
             </Badge>
           )}
-          {job.isDepositPaid && (
+          {job.isEscrowFunded && (
             <Badge
               variant="outline"
               className="rounded-md border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400"

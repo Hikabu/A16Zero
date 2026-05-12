@@ -45,6 +45,96 @@ export class ProfileService {
     return user;
   }
 
+async getPublicProfile(username: string) {
+  const user = await this.prisma.user.findUnique({
+    where: { username },
+
+    select: {
+      username: true,
+
+      candidate: {
+        select: {
+          bio: true,
+          location: true,
+          website: true,
+          careerPath: true,
+
+          vouches: {
+            where: {
+              isActive: true,
+            },
+
+            orderBy: {
+              confirmedAt: 'desc',
+            },
+
+            select: {
+              id: true,
+              message: true,
+              voucherWallet: true,
+              weight: true,
+              confirmedAt: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  
+
+  if (!user) {
+    throw new NotFoundException(
+      'Profile not found',
+    );
+  }
+
+  const enrichedVouches = await Promise.all(
+  (user.candidate?.vouches ?? []).map(
+    async (vouch) => {
+      const linkedWallet =
+        await this.prisma.web3Profile.findFirst({
+          where: {
+            solanaAddress: vouch.voucherWallet,
+          },
+
+          select: {
+            user: {
+              select: {
+                username: true,
+              },
+            },
+          },
+        });
+
+      return {
+        ...vouch,
+
+        voucherUser:
+          linkedWallet?.user?.username ?? null,
+      };
+    },
+  ),
+);
+
+  return {
+    username: user.username,
+
+    bio: user.candidate?.bio ?? null,
+
+    location:
+      user.candidate?.location ?? null,
+
+    website:
+      user.candidate?.website ?? null,
+
+    careerPath:
+      user.candidate?.careerPath ?? 1,
+
+    vouches:
+      enrichedVouches,
+  };
+}
   async updateProfile(userId: string, dto: UpdateUserDto) {
     // Check username uniqueness if being changed
     if (dto.username) {

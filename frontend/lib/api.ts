@@ -2211,6 +2211,16 @@ export async function ProfileController_getProfile(
   );
 }
 
+type PublicProfile = {
+  username: string;
+  bio?: string | null;
+  location?: string | null;
+  website?: string | null;
+  careerPath?: number;
+}
+
+
+
 type ProfileController_updateProfileOperation = ApiOperation<
   "/me/user",
   "patch"
@@ -2689,7 +2699,7 @@ export const listJobs = (params: {
   roleType?: string;
   seniority?: string;
   isWeb3?: boolean;
-  isDepositPaid?: boolean;
+  isEscrowFunded?: boolean;
   isVerifiedPayer?: boolean;
   page?: number;
   limit?: number;
@@ -2726,8 +2736,13 @@ export const initiateVouch = async (
   })
 }
 
-export const confirmVouch = async (data: { signature: string, txData?: string }) => {
-  return (VouchesController_confirmVouch as any)({ body: data });
+export const confirmVouch = async (
+  data: {
+    candidateIdentifier: string
+    message: string
+    txSignature: string
+  }
+) => {  return (VouchesController_confirmVouch as any)({ body: data });
 };
 
 export const confirmEscrowFunded = async (data: { jobPostId: string, txSignature: string }) => {
@@ -2809,5 +2824,45 @@ export async function rehydrateAuth(): Promise<void> {
     }
   } catch (error) {
     useAuthStore.getState().clearAuth();
+  }
+}
+
+
+export type PublicVouchDto = {
+  id: string;
+  message: string;
+  voucherWallet: string;
+  weight: string;
+  confirmedAt: string;
+};
+
+export type PublicProfileDto = {
+  username: string;
+  bio: string | null;
+  location: string | null;
+  website: string | null;
+  careerPath: number;
+
+  vouches: PublicVouchDto[];
+};
+export async function getPublicProfile(
+  username: string,
+): Promise<PublicProfileDto | null> {
+  try {
+    return await apiFetch<PublicProfileDto>(
+      `/profile/public/${username}`,
+      {
+        skipAuth: true,
+      },
+    );
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      error.status === 404
+    ) {
+      return null;
+    }
+
+    throw error;
   }
 }
