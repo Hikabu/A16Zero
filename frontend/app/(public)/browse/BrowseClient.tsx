@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -13,7 +13,7 @@ import { JobCard, JobCardSkeleton, Job } from "@/components/jobs/JobCard";
 import { JobDetailSheet } from "@/components/jobs/JobDetailSheet";
 import { Search } from "lucide-react";
 import {useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { listJobs, getJob, getGapPreview, getMe, getCandidateProfile, applyToJob } from "@/lib/api";
+import { listJobs, getJob, getGapPreview, getMe, getCandidateProfile, applyToJob, getMyApplications } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -155,7 +155,6 @@ const {
       page,
       limit: 12,
     });
-
     return res.data; // { jobs, total }
   },
 });
@@ -245,32 +244,75 @@ const { data: gapData, isLoading: gapLoading } = useQuery({
   },
 });
 
-//------------applying-------------
-const queryClient = useQueryClient()
-
-const applyMut = useMutation({
-  mutationFn: () => applyToJob({ jobId: selectedJobId! }),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["job", selectedJobId] });
-    queryClient.invalidateQueries({ queryKey: ["jobs"] });
-    queryClient.invalidateQueries({ queryKey: ["my-applications"] });
-  },
-});
+// ── applications state ─────────────────────────────────────────────
 
 const { data: myApps } = useQuery({
   queryKey: ["my-applications"],
-  queryFn: async () => {
-    const res = await fetch(
-      (process.env.NEXT_PUBLIC_API_URL || "") + "/applications/me"
-    );
-    return res.json();
+  queryFn: getMyApplications,
+});
+
+// normalize into Set for fast lookup
+const appliedSet = useMemo(() => {
+  const apps = myApps?.data ?? []; 
+
+  return new Set(
+    apps
+      .map((a: any) => a?.jobId)
+      .filter(Boolean)
+  );
+}, [myApps]);
+
+console.log("applied set: ", appliedSet);
+// check if a specific job is applied (list view)
+const isJobApplied = (jobId: string) => {
+  return appliedSet.has(jobId);
+};
+
+// check selected job (detail sheet)
+const isSelectedJobApplied = useMemo(() => {
+  if (!selectedJobId) return false;
+  return appliedSet.has(selectedJobId);
+}, [appliedSet, selectedJobId]);
+
+// ── apply mutation ────────────────────────────────────────────────
+
+const queryClient = useQueryClient();
+
+const applyMut = useMutation({
+  mutationFn: () => applyToJob(selectedJobId!),
+
+  onMutate: async () => {
+    await queryClient.cancelQueries({ queryKey: ["my-applications"] });
+
+    const prev = queryClient.getQueryData(["my-applications"]);
+
+    return { prev };
+  },
+
+  onSuccess: async () => {
+    // 🔥 FORCE SERVER SOURCE OF TRUTH
+    await queryClient.invalidateQueries({ queryKey: ["my-applications"] });
+    await queryClient.refetchQueries({ queryKey: ["my-applications"] });
+  },
+
+  onError: (_err, _vars, context) => {
+    queryClient.setQueryData(["my-applications"], context?.prev);
   },
 });
 
-const isApplied = !!myApps?.applications?.some(
-  (a: any) => a.jobId === selectedJobId
-);
+const handleApply = () => {
+  if (!selectedJobId) return;
 
+  if (appliedSet.has(selectedJobId)) {
+    return; // prevent duplicate call
+  }
+
+  applyMut.mutate();
+};
+
+useEffect(() => {
+  queryClient.invalidateQueries({ queryKey: ["my-applications"] });
+}, [selectedJobId]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -341,17 +383,18 @@ const isApplied = !!myApps?.applications?.some(
                       ))
                     : allJobs.length > 0
                     ? allJobs.map((job) => (
-                        <JobCard
-                          key={job.id}
-                          job={job}
-                          isApplied={false}
-                          isSelected={selectedJobId === job.id}
-                          onClick={() =>
-                            setSelectedJobId((prev) =>
-                              prev === job.id ? null : job.id
-                            )
-                          }
-                        />
+                      
+                       <JobCard
+  key={job.id}
+  job={job}
+  isApplied={isJobApplied(job.id)}
+  isSelected={selectedJobId === job.id}
+  onClick={() =>
+    setSelectedJobId((prev) =>
+      prev === job.id ? null : job.id
+    )
+  }
+/>
                       ))
                     : !jobsLoading && (
                         <div className="col-span-full flex flex-col items-center gap-2 py-20 text-center">
@@ -413,15 +456,15 @@ const isApplied = !!myApps?.applications?.some(
       </div>
 
       {/* ── Job detail slide-over (public: read-only, sign-in CTA) ────────── */}
-      <JobDetailSheet
+<JobDetailSheet
   job={jobDetail}
   jobId={selectedJobId}
   open={!!selectedJobId}
   onClose={() => setSelectedJobId(null)}
   hasScorecard={hasScorecard}
-  onApply={() => applyMut.mutate()}
+  onApply={handleApply}
   isApplying={applyMut.isPending}
-  isApplied={isApplied}
+  isApplied={isSelectedJobApplied}   // ✅ FIXED
   gapData={gapData}
   gapLoading={gapLoading}
 />
