@@ -81,11 +81,41 @@ async getPublicProfile(username: string) {
     },
   });
 
+  
+
   if (!user) {
     throw new NotFoundException(
       'Profile not found',
     );
   }
+
+  const enrichedVouches = await Promise.all(
+  (user.candidate?.vouches ?? []).map(
+    async (vouch) => {
+      const linkedWallet =
+        await this.prisma.web3Profile.findFirst({
+          where: {
+            solanaAddress: vouch.voucherWallet,
+          },
+
+          select: {
+            user: {
+              select: {
+                username: true,
+              },
+            },
+          },
+        });
+
+      return {
+        ...vouch,
+
+        voucherUser:
+          linkedWallet?.user?.username ?? null,
+      };
+    },
+  ),
+);
 
   return {
     username: user.username,
@@ -102,7 +132,7 @@ async getPublicProfile(username: string) {
       user.candidate?.careerPath ?? 1,
 
     vouches:
-      user.candidate?.vouches ?? [],
+      enrichedVouches,
   };
 }
   async updateProfile(userId: string, dto: UpdateUserDto) {
