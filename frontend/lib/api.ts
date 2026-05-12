@@ -2669,8 +2669,13 @@ export const initiateVouch = async (
   })
 }
 
-export const confirmVouch = async (data: { signature: string, txData?: string }) => {
-  return (VouchesController_confirmVouch as any)({ body: data });
+export const confirmVouch = async (
+  data: {
+    candidateIdentifier: string
+    message: string
+    txSignature: string
+  }
+) => {  return (VouchesController_confirmVouch as any)({ body: data });
 };
 
 export const confirmEscrowFunded = async (data: { jobPostId: string, txSignature: string }) => {
@@ -2754,14 +2759,23 @@ export async function rehydrateAuth(): Promise<void> {
 }
 
 
+export type PublicVouchDto = {
+  id: string;
+  message: string;
+  voucherWallet: string;
+  weight: string;
+  confirmedAt: string;
+};
+
 export type PublicProfileDto = {
   username: string;
   bio: string | null;
   location: string | null;
   website: string | null;
   careerPath: number;
-};
 
+  vouches: PublicVouchDto[];
+};
 export async function getPublicProfile(
   username: string,
 ): Promise<PublicProfileDto | null> {

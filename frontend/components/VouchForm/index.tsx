@@ -463,7 +463,13 @@ export function VouchForm({
     setTxSignature(sig)
 
     // Step 6 — confirm on-chain
-    await confirmVouch({ signature: sig, txData })
+    // await confirmVouch({ signature: sig, txData })
+
+    await confirmVouch({
+      candidateIdentifier: username,
+      message,
+      txSignature: sig,
+    })
 
     setStep(6)
 

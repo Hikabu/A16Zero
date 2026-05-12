@@ -58,6 +58,24 @@ async getPublicProfile(username: string) {
           location: true,
           website: true,
           careerPath: true,
+
+          vouches: {
+            where: {
+              isActive: true,
+            },
+
+            orderBy: {
+              confirmedAt: 'desc',
+            },
+
+            select: {
+              id: true,
+              message: true,
+              voucherWallet: true,
+              weight: true,
+              confirmedAt: true,
+            },
+          },
         },
       },
     },
@@ -73,10 +91,18 @@ async getPublicProfile(username: string) {
     username: user.username,
 
     bio: user.candidate?.bio ?? null,
-    location: user.candidate?.location ?? null,
-    website: user.candidate?.website ?? null,
+
+    location:
+      user.candidate?.location ?? null,
+
+    website:
+      user.candidate?.website ?? null,
+
     careerPath:
       user.candidate?.careerPath ?? 1,
+
+    vouches:
+      user.candidate?.vouches ?? [],
   };
 }
   async updateProfile(userId: string, dto: UpdateUserDto) {

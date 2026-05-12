@@ -172,7 +172,7 @@ export default async function PublicProfilePage({
   // -----------------------------------------------------------------------
 
   const vouches: Vouch[] =
-    ((sc.vouches as Vouch[]) ?? [])
+  profile.vouches ?? []
 
   const ownerWalletAddress = ''
 
