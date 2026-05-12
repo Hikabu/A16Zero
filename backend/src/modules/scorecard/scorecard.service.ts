@@ -52,6 +52,7 @@ export class ScorecardService {
     const candidate = await this.prisma.candidate.findFirst({
       where: { userId },
       select: {
+        id: true,
         scorecard: true,
         devProfile: {
           select: {
@@ -74,13 +75,67 @@ export class ScorecardService {
     }
 
     const username = candidate.devProfile?.githubProfile?.githubUsername;
-    if (username) {
-      this.logger.warn(`DB scorecard empty for user ${userId}, checking Redis`);
-      return this.getScorecardFromCache(username);
-    }
+    
+  if (!username) return null;
 
-    return null;
+  this.logger.warn(
+    `DB scorecard missing for user ${userId}, attempting recovery from cache`,
+  );
+
+    // 2. Redis fallback
+  const cached = await this.getScorecardFromCache(username);
+
+  if (cached) {
+    await this.persistRecoveredScorecard(candidate.id, cached);
+    return cached;
   }
+
+  // 3. FINAL fallback: reconstruct from analysis cache
+  const rebuilt = await this.rebuildScorecardFromAnalysis(username);
+
+  if (rebuilt) {
+    await this.persistRecoveredScorecard(candidate.id, rebuilt);
+    return rebuilt;
+  }
+
+  return null;
+  }
+private async rebuildScorecardFromAnalysis(
+  username: string,
+): Promise<RawScorecard | null> {
+  const cacheKey = this.cacheService.buildCacheKey(username, undefined);
+
+  const cachedAnalysis = await this.cacheService.get(cacheKey);
+  if (!cachedAnalysis) return null;
+
+  const candidate = await this.prisma.candidate.findFirst({
+    where: {
+      devProfile: {
+        githubProfile: { githubUsername: username },
+      },
+    },
+    select: { id: true, scorecard: true },
+  });
+
+  if (!candidate) {
+    return cachedAnalysis as RawScorecard;
+  }
+
+  // ONLY persist if missing
+  if (!candidate.scorecard) {
+    await this.persistRecoveredScorecard(candidate.id, cachedAnalysis as RawScorecard);
+  }
+
+  return cachedAnalysis as RawScorecard;
+}
+  private async persistRecoveredScorecard(candidateId: string, scorecard: RawScorecard) {
+  await this.prisma.candidate.update({
+    where: { id: candidateId },
+    data: {
+      scorecard: scorecard as any,
+    },
+  });
+}
 
   async getScorecardFromCache(
     githubUsername: string,

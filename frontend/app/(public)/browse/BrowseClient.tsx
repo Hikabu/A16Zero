@@ -13,7 +13,7 @@ import { JobCard, JobCardSkeleton, Job } from "@/components/jobs/JobCard";
 import { JobDetailSheet } from "@/components/jobs/JobDetailSheet";
 import { Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { listJobs, getJob } from "@/lib/api";
+import { listJobs, getJob, getGapPreview, getMe, getCandidateProfile } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -220,6 +220,31 @@ const hasMoreJobs = allJobs.length < jobsTotal;
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
+  // -- user state----
+  
+  const { data: me } = useQuery({
+  queryKey: ["me"],
+  queryFn: getCandidateProfile
+});
+const hasScorecard = !!me?.scorecard;
+
+const { data: gapData, isLoading: gapLoading } = useQuery({
+  queryKey: ["gap", selectedJobId],
+  enabled: !!selectedJobId && !!me?.scorecard,
+  queryFn: async () => {
+    const res = await getGapPreview({ jobId: selectedJobId! });
+
+    const d = res.data; 
+
+    return {
+      fitScore: d.roleFitScore ?? 0,
+      matched: d.matchedTechnologies ?? [],
+      missing: d.missingTechnologies ?? [],
+      raw: d, // optional debug
+    };
+  },
+});
+
   return (
     <div className="min-h-screen bg-background">
       {/* ── Hero strip ────────────────────────────────────────────────────── */}
@@ -362,19 +387,17 @@ const hasMoreJobs = allJobs.length < jobsTotal;
 
       {/* ── Job detail slide-over (public: read-only, sign-in CTA) ────────── */}
       <JobDetailSheet
-        job={jobDetail}
-        jobId={selectedJobId}
-        open={!!selectedJobId}
-        onClose={() => setSelectedJobId(null)}
-        // Public view: no scorecard, no apply — sheet's built-in unauthenticated
-        // branch renders "Log in to apply" automatically via useAuthStore check
-        hasScorecard={false}
-        isApplied={false}
-        onApply={() => {}}
-        isApplying={false}
-        gapData={undefined}
-        gapLoading={false}
-      />
+  job={jobDetail}
+  jobId={selectedJobId}
+  open={!!selectedJobId}
+  onClose={() => setSelectedJobId(null)}
+  hasScorecard={hasScorecard}
+  isApplied={false}
+  onApply={() => {}}
+  isApplying={false}
+  gapData={gapData}
+  gapLoading={gapLoading}
+/>
     </div>
   );
 }
