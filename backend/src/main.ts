@@ -11,7 +11,6 @@ import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
 import * as fs from 'fs';
 import * as path from 'path';
 
-
 const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
@@ -25,7 +24,11 @@ async function bootstrap() {
   app.set('trust proxy', 1);
   app.enableShutdownHooks();
   app.use(cookieParser());
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   const corsOrigins = (
     process.env.CORS_ORIGINS ||
@@ -36,9 +39,20 @@ async function bootstrap() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  const defaultOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3009',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3009',
+  ];
+
   app.enableCors({
-    origin: corsOrigins.length > 0 ? corsOrigins : ['http://localhost:3001'],
+    origin: corsOrigins.length > 0 ? corsOrigins : defaultOrigins,
     credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
 
   app.useGlobalPipes(

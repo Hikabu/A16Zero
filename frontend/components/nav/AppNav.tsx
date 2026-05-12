@@ -20,9 +20,12 @@ export function AppNav() {
   const pathname = usePathname();
   const role = useAuthStore((s) => s.role);
   const username = useAuthStore((s) => s.username);
+  const isRestoring = useAuthStore((s) => s.isRestoring);
 
   // Marketing pages have their own built-in Navigation component
   if (MARKETING_ROUTES.has(pathname)) return null;
+
+  if (isRestoring) return null;
 
   if (role === "employer") {
     return <EmployerNav companyName={username ?? "Employer"} />;

@@ -55,9 +55,11 @@ function storeAndRoute(
   router: ReturnType<typeof useRouter>,
 ) {
   useAuthStore.getState().setAuth({
-    token: "__cookie_auth__",
     role: data.role,
     username: data.username,
+    email: data.email,
+    walletAddress: data.walletAddress,
+    id: data.id,
   });
 
   router.push(routeForRole(data.role));
@@ -89,7 +91,6 @@ function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const token = useAuthStore((state) => state.token);
   const role = useAuthStore((state) => state.role);
   const clearAuth = useAuthStore((state) => state.clearAuth);
 
@@ -97,14 +98,13 @@ function AuthPageContent() {
   // Only validate if token exists.
   // Your previous version validated even without a token,
   // which caused auth redirects / login flashes.
-  const [isValidating, setIsValidating] = useState(Boolean(token));
+  const [isValidating, setIsValidating] = useState(Boolean(role));
 
   useEffect(() => {
     let cancelled = false;
 
     async function validateSession() {
-      // No token -> stay on page.
-      if (!token) {
+      if (!role) {
         setIsValidating(false);
         return;
       }
@@ -134,7 +134,7 @@ function AuthPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [token, role, router, clearAuth]);
+  }, [role, router, clearAuth]);
 
   useEffect(() => {
     if (searchParams.get("clear_session") === "true") {
@@ -153,7 +153,6 @@ function AuthPageContent() {
 
     if (searchParams.get("oauth") === "success") {
       useAuthStore.getState().setAuth({
-        token: "__cookie_auth__",
         role: "candidate",
       });
 
@@ -209,9 +208,11 @@ function AuthPageContent() {
       const nextRole = data.role ?? variables.role ?? "candidate";
 
       useAuthStore.getState().setAuth({
-        token: "__cookie_auth__",
         role: nextRole,
         username: data.username ?? variables.username,
+        email: data.email,
+        walletAddress: data.walletAddress,
+        id: data.id,
       });
 
       router.push(routeForRole(nextRole));

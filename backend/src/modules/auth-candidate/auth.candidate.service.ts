@@ -33,7 +33,7 @@ export class AuthCandidateService {
 
   private readonly logger = new Logger(AuthCandidateService.name);
   private readonly passwordHashRounds = 12;
-  private readonly refreshTokenTtlSeconds = 60 * 60 * 24 * 7;
+  private readonly refreshTokenTtlSeconds = 60 * 60 * 24 * 30;
   private readonly genericRegistrationResponse = {
     success: true,
     message:
@@ -209,7 +209,7 @@ export class AuthCandidateService {
     return this.issueTokens(userId, dbUser.isEmailVerified, currentJti);
   }
   async logout(user: any) {
-    await this.redis.del(`refresh:${user.id}`);
+    await this.redis.del(`refresh:${user.id ?? user.userId ?? user.sub}`);
     return { message: 'Logged out' };
   }
 
@@ -230,7 +230,7 @@ export class AuthCandidateService {
       },
       {
         secret: this.config.get('jwt_secret.access'),
-        expiresIn: '15m',
+        expiresIn: (this.config.get<string>('JWT_EXPIRY') || '15m') as any,
       },
     );
     const refreshJti = crypto.randomUUID();
@@ -238,7 +238,7 @@ export class AuthCandidateService {
       { sub: userId, jti: refreshJti },
       {
         secret: this.config.get('jwt_secret.refresh'),
-        expiresIn: '7d',
+        expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRY') || '30d') as any,
       },
     );
     const refreshKey = `refresh:${userId}`;

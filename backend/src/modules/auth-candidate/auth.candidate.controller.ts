@@ -8,7 +8,7 @@ import {
   UseGuards,
   Query,
 } from '@nestjs/common';
-import { CookieOptions, Response } from 'express';
+import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthCandidateService } from './auth.candidate.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -42,6 +42,10 @@ import {
 } from '@nestjs/swagger';
 import { OnboardingGuard } from './guards/onboarding.guard';
 import { AuthState } from './schemas/auth-result.dto';
+import {
+  clearAuthCookies,
+  setAuthCookies,
+} from '../../shared/auth/auth-cookie';
 
 @ApiTags('Auth (candidates)')
 @Throttle({ default: { limit: 500, ttl: 60000 } })
@@ -51,12 +55,6 @@ export class AuthCandidateController {
     private readonly authService: AuthCandidateService,
     private readonly config: ConfigService,
   ) {}
-
-  private readonly authCookieOptions: CookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-  };
 
   private getFrontendUrl() {
     return this.config.get<string>('FRONTEND_URL') || '';
@@ -72,16 +70,11 @@ export class AuthCandidateController {
 
     switch (result.type) {
       case AuthState.SUCCESS: {
-        res.cookie(
-          'access_token',
-          result.data.accessToken,
-          this.authCookieOptions,
-        );
-        res.cookie(
-          'refresh_token',
-          result.data.refreshToken,
-          this.authCookieOptions,
-        );
+        setAuthCookies(res, {
+          accessToken: result.data.accessToken,
+          refreshToken: result.data.refreshToken,
+          role: 'candidate',
+        });
         if (successRedirect && !wantsJson) {
           return res.redirect(successRedirect);
         }
@@ -89,7 +82,6 @@ export class AuthCandidateController {
         return res.status(200).json({
           success: true,
           data: {
-            accessToken: result.data.accessToken,
             role: 'candidate',
           },
         });
@@ -130,7 +122,13 @@ export class AuthCandidateController {
       }
 
       case AuthState.NEEDS_ONBOARDING:
-        res.cookie('temp_auth', result.data.tempToken, this.authCookieOptions);
+        res.cookie('temp_auth', result.data.tempToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          path: '/',
+          maxAge: 1000 * 60 * 15,
+        });
         if (wantsJson) {
           return res.status(202).json({
             code: 'onboarding_required',
@@ -210,8 +208,7 @@ export class AuthCandidateController {
   async logout(@Req() req: any, @Res() res: Response) {
     await this.authService.logout(req.user);
 
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    clearAuthCookies(res);
 
     return res.json({ success: true });
   }

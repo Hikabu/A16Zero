@@ -7,7 +7,6 @@ import Cookies from "js-cookie";
 
 export type AuthRole = "candidate" | "employer";
 
-const TOKEN_COOKIE_NAME = "access_token";
 const ROLE_COOKIE_NAME = "16signals-role";
 const PERSIST_KEY = "16signals-auth";
 
@@ -18,14 +17,16 @@ type AuthState = {
   email: string | null;
   walletAddress: string | null;
   id: string | null;
+  user: { id: string } | null;
+  isRestoring: boolean;
   setAuth: (auth: {
-    token?: string | null;
     role?: AuthRole | string | null;
     username?: string | null;
     email?: string | null;
     walletAddress?: string | null;
     id?: string | null;
   }) => void;
+  setRestoring: (isRestoring: boolean) => void;
   clearAuth: () => void;
   /**
    * Full logout: clears Zustand, cookies, localStorage persist key, and
@@ -54,25 +55,19 @@ function normalizeRole(role?: AuthRole | string | null): AuthRole | null {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
       role: null,
+      token: null,
       username: null,
       email: null,
       walletAddress: null,
       id: null,
+      user: null,
+      isRestoring: true,
 
-      setAuth: ({ token, role, username, email, walletAddress, id }) => {
+      setAuth: ({ role, username, email, walletAddress, id }) => {
         const normalizedRole = normalizeRole(role);
 
-        // Sync with cookies for middleware
-        if (token !== undefined) {
-          if (token) {
-            Cookies.set(TOKEN_COOKIE_NAME, token, { expires: 7, path: "/" });
-          } else {
-            Cookies.remove(TOKEN_COOKIE_NAME);
-          }
-        }
-
+        // Non-sensitive route hint only. HttpOnly auth cookies are server-owned.
         if (normalizedRole) {
           Cookies.set(ROLE_COOKIE_NAME, normalizedRole, { expires: 7, path: "/" });
         } else if (role === null) {
@@ -80,28 +75,27 @@ export const useAuthStore = create<AuthState>()(
         }
 
         set((state) => ({
-          token: token ?? state.token,
           role: normalizedRole ?? state.role,
           username: username ?? state.username,
           email: email ?? state.email,
           walletAddress: walletAddress ?? state.walletAddress,
           id: id ?? state.id,
+          user: id ?? state.id ? { id: (id ?? state.id) as string } : null,
+          isRestoring: false,
         }));
       },
 
+      setRestoring: (isRestoring) => set({ isRestoring }),
+
       clearAuth: () => {
-        Cookies.remove(TOKEN_COOKIE_NAME);
         Cookies.remove(ROLE_COOKIE_NAME);
-        set({ token: null, role: null, username: null, email: null, walletAddress: null, id: null });
+        set({ token: null, role: null, username: null, email: null, walletAddress: null, id: null, user: null, isRestoring: false });
       },
 
       logout: () => {
-        // 1. Clear cookies
-        Cookies.remove(TOKEN_COOKIE_NAME);
         Cookies.remove(ROLE_COOKIE_NAME);
 
-        // 2. Clear Zustand state
-        set({ token: null, role: null, username: null, email: null, walletAddress: null, id: null });
+        set({ token: null, role: null, username: null, email: null, walletAddress: null, id: null, user: null, isRestoring: false });
 
         // 3. Clear the Zustand persist storage (localStorage key)
         if (typeof window !== "undefined") {

@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import DashboardNavbar from "@/components/Navbar"
 import { CommandPalette } from "@/components/command-palette"
 
 export default function DashboardLayout({
@@ -26,9 +25,6 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* TOP NAVBAR */}
-      <DashboardNavbar />
-
       {/* PAGE CONTENT */}
       <main className="flex-1 overflow-hidden">
         {children}

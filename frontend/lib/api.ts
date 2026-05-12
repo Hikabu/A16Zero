@@ -1,6 +1,5 @@
 import type { paths } from "@/src/api/schema";
 import {useAuthStore } from "./auth-store";
-import { getAccessToken, logout } from "./auth";
 
 type HttpMethod = "get" | "post" | "put" | "patch" | "delete";
 type ApiOperation<
@@ -70,7 +69,7 @@ type ApiRequestParts = {
   body?: unknown;
 };
 
-type AuthStoreSnapshot = { token?: string | null };
+type AuthStoreSnapshot = { role?: AuthRole | null };
 type AuthStoreHook = {
   getState?: () => AuthStoreSnapshot;
 };
@@ -105,15 +104,55 @@ export type ApiFetchOptions = Omit<RequestInit, "body" | "headers"> & {
 };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-const COOKIE_AUTH_TOKEN = "__cookie_auth__";
 
 let refreshingPromise: Promise<void> | null = null;
 
-// function getAuthToken(): string | null {
-//   const useAuthStore = globalThis.useAuthStore;
+function getRoleHint(): AuthRole | null {
+  const role = useAuthStore.getState().role;
+  if (role) return role;
 
-//   return useAuthStore?.getState?.().token ?? null;
-// }
+  if (typeof document === "undefined") return null;
+
+  const match = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("16signals-role="));
+  const cookieRole = match?.split("=")[1];
+
+  if (cookieRole === "candidate" || cookieRole === "employer") {
+    return cookieRole;
+  }
+
+  return null;
+}
+
+async function refreshSession(roleHint: AuthRole | null): Promise<void> {
+  if (!API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  }
+
+  const roles: AuthRole[] = roleHint ? [roleHint] : ["candidate", "employer"];
+  let lastError: Error | null = null;
+
+  for (const role of roles) {
+    const endpoint =
+      role === "employer" ? "/auth/employer/refresh" : "/auth/candidate/refresh";
+    const response = await fetch(new URL(endpoint, API_BASE_URL).toString(), {
+      method: "POST",
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+
+    if (response.ok) {
+      useAuthStore.getState().setAuth({ role });
+      return;
+    }
+
+    lastError = new Error(`Refresh failed for ${role}`);
+  }
+
+  useAuthStore.getState().clearAuth();
+  throw lastError ?? new Error("Session expired");
+}
 
 export function getApiUrl(path: string): string {
   if (!API_BASE_URL) {
@@ -284,33 +323,10 @@ export async function apiFetch<ResponseBody>(
     !retried &&
     !skipAuth
   ) {
-    const role =useAuthStore.getState().role;
-    const refreshEndpoint = role === 'employer'
-        ? '/auth/employer/refresh'
-        : '/auth/candidate/refresh';
+    const role = getRoleHint();
 
     if (!refreshingPromise) {
-
-      refreshingPromise = fetch(
-        API_BASE_URL + refreshEndpoint,
-        {
-          method: 'POST',
-          credentials: 'include',
-        },
-      )
-        .then(async (r) => {
-          console.log("REFRESH STATUS", r.status);
-
-          if (!r.ok) {
-            console.log("REFRESH FAILED");
-
-            useAuthStore.getState().clearAuth();
-
-            throw new Error("Session expired");
-          }
-
-          console.log("REFRESH SUCCESS");
-        })
+      refreshingPromise = refreshSession(role)
         .finally(() => {
           refreshingPromise = null;
         });
@@ -595,7 +611,11 @@ export async function loginCandidate(
     headers: undefined,
     body: { identifier: input.email, password: input.password },
   });
-  return normalizeAuthResponse(body, "candidate");
+  const profile = await apiFetch<any>("/me/user", { method: "GET" });
+  return normalizeAuthResponse(
+    { ...unwrapApiSuccessData<Record<string, unknown>>(profile), role: "candidate" },
+    "candidate",
+  );
 }
 
 export async function logoutCandidate(): Promise<void> {
@@ -662,18 +682,19 @@ export async function verifyEmail(input: VerifyEmailInput): Promise<unknown> {
 export async function completeOnboarding(
   input: CompleteOnboardingInput,
 ): Promise<AuthResponse> {
-  const body = await AuthCandidateController_completeOnboarding({
+  await AuthCandidateController_completeOnboarding({
     headers: undefined,
     body: { username: input.username },
   });
+  const profile = await apiFetch<any>("/me/user", { method: "GET" });
   return normalizeAuthResponse(
-    { ...(body as Record<string, unknown> | undefined), role: input.role },
+    { ...unwrapApiSuccessData<Record<string, unknown>>(profile), role: input.role },
     input.role ?? "candidate",
   );
 }
 
 export async function verifyMfa(input: VerifyMfaInput): Promise<AuthResponse> {
-  const body = await AuthCandidateController_verifyMfa({
+  await AuthCandidateController_verifyMfa({
     headers: undefined,
     body: {
       userId: input.userId ?? "00000000-0000-0000-0000-000000000000",
@@ -681,13 +702,17 @@ export async function verifyMfa(input: VerifyMfaInput): Promise<AuthResponse> {
       mfaToken: input.mfaToken,
     },
   });
-  return normalizeAuthResponse(body, "candidate");
+  const profile = await apiFetch<any>("/me/user", { method: "GET" });
+  return normalizeAuthResponse(
+    { ...unwrapApiSuccessData<Record<string, unknown>>(profile), role: "candidate" },
+    "candidate",
+  );
 }
 
 export async function verifyMfaRecovery(
   input: VerifyMfaRecoveryInput,
 ): Promise<AuthResponse> {
-  const body = await AuthCandidateController_verifyMfaRecovery({
+  await AuthCandidateController_verifyMfaRecovery({
     headers: undefined,
     body: {
       userId: input.userId ?? "00000000-0000-0000-0000-000000000000",
@@ -695,7 +720,11 @@ export async function verifyMfaRecovery(
       mfaToken: input.mfaToken,
     },
   });
-  return normalizeAuthResponse(body, "candidate");
+  const profile = await apiFetch<any>("/me/user", { method: "GET" });
+  return normalizeAuthResponse(
+    { ...unwrapApiSuccessData<Record<string, unknown>>(profile), role: "candidate" },
+    "candidate",
+  );
 }
 
 export async function loginEmployerPrivy(
@@ -2745,25 +2774,48 @@ export const confirmVouch = async (
 ) => {  return (VouchesController_confirmVouch as any)({ body: data });
 };
 
-export const confirmEscrowFunded = async (data: { jobPostId: string, txSignature: string }) => {
+export const confirmEscrowFunded = async (data: { jobPostId: string, escrowAddress?: string, txSignature?: string }) => {
   if (!isValidJobPostPathId(data.jobPostId)) {
     return Promise.reject(new Error("Invalid job id"));
   }
-  return (EscrowController_confirmFunded as any)({ body: data });
+  const escrowAddress =
+    data.escrowAddress ??
+    unwrapApiSuccessData<any>(
+      await (EscrowController_initParams as any)({
+        path: { jobPostId: data.jobPostId },
+      }),
+    )?.escrowAddress;
+
+  if (!escrowAddress) {
+    return Promise.reject(new Error("Missing escrow address"));
+  }
+
+  return (EscrowController_confirmFunded as any)({
+    body: {
+      jobPostId: data.jobPostId,
+      escrowAddress,
+    },
+  });
 };
 
 export const getEscrowStatus = async (jobPostId: string) => {
   if (!isValidJobPostPathId(jobPostId)) {
     return Promise.reject(new Error("Invalid job id"));
   }
-  return (EscrowController_status as any)({ path: { jobPostId } });
+  const raw = await (EscrowController_status as any)({ path: { jobPostId } });
+  return unwrapApiSuccessData<any>(raw);
 };
 
 export const setEscrowCandidate = async (data: { jobPostId: string, candidateId: string, walletAddress: string }) => {
   if (!isValidJobPostPathId(data.jobPostId)) {
     return Promise.reject(new Error("Invalid job id"));
   }
-  return (EscrowController_setCandidate as any)({ body: data });
+  return (EscrowController_setCandidate as any)({
+    body: {
+      jobPostId: data.jobPostId,
+      candidateWallet: data.walletAddress,
+    },
+  });
 };
 
 export const confirmEscrowReleased = async (data: { jobPostId: string }) => {
@@ -2811,19 +2863,37 @@ export const updateDecision = async (data: { applicationId: string, decision: st
 };
 
 export async function rehydrateAuth(): Promise<void> {
+  useAuthStore.getState().setRestoring(true);
   try {
-    const user = await apiFetch<any>("/me/user");
-    if (user && user.id) {
+    const role = getRoleHint();
+
+    if (role === "employer") {
+      const company = await getEmployerProfile();
       useAuthStore.getState().setAuth({
-        role: user.role ?? "candidate",
-        username: user.username,
-        email: user.email,
-        walletAddress: user.walletAddress,
-        id: user.id,
+        role: "employer",
+        username: company.name,
+        email: company.email,
+        walletAddress: company.walletAddress,
+        id: company.id,
+      });
+      return;
+    }
+
+    const user = await apiFetch<any>("/me/user", { method: "GET" });
+    const profile = unwrapApiSuccessData<any>(user);
+    if (profile && profile.id) {
+      useAuthStore.getState().setAuth({
+        role: "candidate",
+        username: profile.username,
+        email: profile.email,
+        walletAddress: profile.walletAddress,
+        id: profile.id,
       });
     }
   } catch (error) {
     useAuthStore.getState().clearAuth();
+  } finally {
+    useAuthStore.getState().setRestoring(false);
   }
 }
 

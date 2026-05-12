@@ -240,7 +240,18 @@ function EscrowManagement({
   const [candidateWallet, setCandidateWallet] = useState('')
   const [txSigInput, setTxSigInput] = useState('')
 
-  const status = escrowData?.status || 'not_set'
+  const dbState = escrowData?.dbState ?? escrowData;
+  const rawStatus = String(dbState?.escrowStatus ?? '').toUpperCase();
+  const status =
+    rawStatus === 'UNFUNDED'
+      ? dbState?.escrowAddress
+        ? 'set'
+        : 'not_set'
+      : rawStatus === 'FUNDED' || rawStatus === 'CANDIDATE_SET'
+        ? 'funded'
+        : rawStatus === 'RELEASED' || rawStatus === 'REFUNDED'
+          ? rawStatus.toLowerCase()
+          : 'not_set'
 
   if (status === 'not_set') return (
     <div className="space-y-3">
@@ -351,7 +362,10 @@ function CandidatePipelinePageInner({ jobId }: { jobId: string }) {
     queryKey: ['escrow', jobId],
     queryFn: () => getEscrowStatus(jobId),
     enabled: jobApisEnabled,
-    refetchInterval: (query) => (query.state.data as any)?.status === 'funded' ? 5000 : false,
+    refetchInterval: (query) => {
+      const state = (query.state.data as any)?.dbState?.escrowStatus;
+      return state === 'FUNDED' || state === 'CANDIDATE_SET' ? 5000 : false;
+    },
   })
 
   // -- Mutations --

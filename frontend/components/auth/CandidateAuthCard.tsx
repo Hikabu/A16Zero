@@ -180,7 +180,13 @@ function LoginTab({
   const loginMutation = useMutation({
     mutationFn: loginCandidate,
     onSuccess: (data) => {
-      useAuthStore.getState().setAuth({ token: data.token, role: "candidate" });
+      useAuthStore.getState().setAuth({
+        role: "candidate",
+        username: data.username,
+        email: data.email,
+        walletAddress: data.walletAddress,
+        id: data.id,
+      });
       onLoginSuccess?.();
       router.push("/profile");
     },

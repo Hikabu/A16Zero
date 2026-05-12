@@ -12,11 +12,7 @@ import {
   ApiOperation,
 } from '@nestjs/swagger';
 
-import {
-  CookieOptions,
-  Request,
-  Response,
-} from 'express';
+import { Request, Response } from 'express';
 
 import { JwtService } from '@nestjs/jwt';
 
@@ -31,6 +27,11 @@ import { AuthGuard } from '@nestjs/passport/dist/auth.guard';
 import { UseGuards } from '@nestjs/common';
 
 import { verifyPrivyToken } from './verify-privy-token';
+import {
+  clearAuthCookies,
+  getCookieToken,
+  setAuthCookies,
+} from '../../shared/auth/auth-cookie';
 
 @ApiTags('Auth (Employer)')
 @Controller('auth/employer')
@@ -45,15 +46,6 @@ export class AuthEmployerController extends BaseController {
   ) {
     super();
   }
-
-  private readonly authCookieOptions: CookieOptions =
-    {
-      httpOnly: true,
-      secure:
-        process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    };
 
   // LOGIN
 
@@ -75,24 +67,11 @@ export class AuthEmployerController extends BaseController {
           privyUser,
         );
 
-      res.cookie(
-        'access_token',
-        result.accessToken,
-        {
-          ...this.authCookieOptions,
-          maxAge: 1000 * 60 * 15,
-        },
-      );
-
-      res.cookie(
-        'refresh_token',
-        result.refreshToken,
-        {
-          ...this.authCookieOptions,
-          maxAge:
-            1000 * 60 * 60 * 24 * 7,
-        },
-      );
+      setAuthCookies(res, {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        role: 'employer',
+      });
 
       return res.json({
         success: true,
@@ -114,9 +93,9 @@ export class AuthEmployerController extends BaseController {
 
   @Post('logout')
   @UseGuards(AuthGuard('jwt-employer'))
-  async logout(@Res() res: Response) {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+  async logout(@Req() req: Request, @Res() res: Response) {
+    await this.authService.logout(((req as any).user as any).id);
+    clearAuthCookies(res);
 
     return res.json({
       success: true,
@@ -132,8 +111,7 @@ export class AuthEmployerController extends BaseController {
     @Res() res: Response,
   ) {
     try {
-      const refreshToken =
-        req.cookies.refresh_token;
+      const refreshToken = getCookieToken(req, 'refresh_token');
 
       if (!refreshToken) {
         throw new UnauthorizedException(
@@ -144,6 +122,9 @@ export class AuthEmployerController extends BaseController {
       const payload =
         this.jwtService.verify(
           refreshToken,
+          {
+            secret: process.env.JWT_REFRESH_SECRET,
+          },
         );
 
       const result =
@@ -151,23 +132,20 @@ export class AuthEmployerController extends BaseController {
           payload,
         );
 
-      res.cookie(
-        'access_token',
-        result.accessToken,
-        {
-          ...this.authCookieOptions,
-          maxAge: 1000 * 60 * 15,
-        },
-      );
+      setAuthCookies(res, {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        role: 'employer',
+      });
 
       return res.json({
         success: true,
-        data: result,
+        data: {
+          role: 'employer',
+        },
       });
     } catch {
-      res.clearCookie('access_token');
-
-      res.clearCookie('refresh_token');
+      clearAuthCookies(res);
 
       return res.status(401).json({
         success: false,
