@@ -109,35 +109,6 @@ Optional if authenticated.
     let walletAddress: string | null = null;
     let useGithubCache = false;
 
-    //     if (req.user) {
-    //       const userId = req.user.id;
-    //     //   const githubProfile = await this.prisma.githubProfile.findUnique({
-    //     //     where: { userId },
-    //     //   });
-    // 	const { devProfile } = await this.profileResolver.ensureDevStack(userId);
-
-    // const githubProfile = devProfile?.githubProfile;
-    // const web3Profile = devProfile?.web3Profile;
-    // console.log('devProfile:', devProfile);
-    // console.log('githubProfile:', githubProfile);
-    //     //   const web3Profile = await this.prisma.web3Profile.findUnique({
-    //     //     where: { userId },
-    //     //   });
-
-    //       if (!githubProfile && !web3Profile) {
-    //         throw new BadRequestException(
-    //           'No linked accounts. Use POST /sync/github or POST /sync/wallet first.',
-    //         );
-    //       }
-
-    //       githubUsername = githubProfile?.githubUsername ?? null;
-    //       walletAddress = web3Profile?.solanaAddress ?? null;
-
-    //       if (githubProfile?.lastSyncAt) {
-    //         useGithubCache =
-    //           githubProfile.lastSyncAt.getTime() > Date.now() - 86_400_000;
-    //       }
-    //     }
     if (req.user) {
       const userId = req.user.id;
       
@@ -147,20 +118,20 @@ Optional if authenticated.
         select: { generateCooldownUntil: true },
       });
 
-      if (candidate?.generateCooldownUntil && candidate.generateCooldownUntil > new Date()) {
-        const diffMs = candidate.generateCooldownUntil.getTime() - Date.now();
-        const diffMinutes = Math.ceil(diffMs / (1000 * 60));
+      // if (candidate?.generateCooldownUntil && candidate.generateCooldownUntil > new Date()) {
+      //   const diffMs = candidate.generateCooldownUntil.getTime() - Date.now();
+      //   const diffMinutes = Math.ceil(diffMs / (1000 * 60));
         
-        throw new HttpException(
-          {
-            code: 'RATE_LIMITED',
-            message: `Please wait ${diffMinutes}m before generating a new scorecard.`,
-            cooldownUntil: candidate.generateCooldownUntil,
-            retryAfter: diffMinutes,
-          },
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
+      //   throw new HttpException(
+      //     {
+      //       code: 'RATE_LIMITED',
+      //       message: `Please wait ${diffMinutes}m before generating a new scorecard.`,
+      //       cooldownUntil: candidate.generateCooldownUntil,
+      //       retryAfter: diffMinutes,
+      //     },
+      //     HttpStatus.TOO_MANY_REQUESTS,
+      //   );
+      // }
 
       // Set new cooldown (1 hour from now)
       const nextCooldown = new Date(Date.now() + 60 * 60 * 1000);
@@ -208,6 +179,11 @@ Optional if authenticated.
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         const result = await this.withFreshVouchSignal(cacheKey, cached);
+        if (req.user?.id) {
+      this.syncCachedResultToUser(req.user.id, result);
+    }
+
+
         return { jobId: `cached-${cacheKey}`, cached: true, result };
       }
     }
@@ -233,6 +209,7 @@ Optional if authenticated.
         req.user?.id ?? null,
         Boolean(githubUsername),
       );
+      console.log("aanalyzing");
       await this.signalQueue.add(
         'analyze',
         {
@@ -304,6 +281,8 @@ Use this for admin/system reprocessing.
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         const result = await this.withFreshVouchSignal(cacheKey, cached);
+      this.syncCachedResultToUser(userId, result);
+
         return { jobId: `cached-${cacheKey}`, cached: true, result };
       }
     }
@@ -839,4 +818,25 @@ Use this for admin/system reprocessing.
     }
     return 0;
   }
+
+  private async syncCachedResultToUser(
+  userId: string,
+  result: any
+) {
+  try {
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { userId },
+    });
+
+    if (!candidate) return;
+await this.prisma.candidate.update({
+    where: { id: candidate.id },
+    data: {
+      scorecard: result as any,
+    },
+  });
+  } catch (err) {
+    console.error('Failed to sync cached scorecard:', err);
+  }
+}
 }

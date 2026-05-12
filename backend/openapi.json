@@ -4674,12 +4674,18 @@
         "type": "object",
         "properties": {
           "userId": {
-            "type": "string"
+            "type": "string",
+            "example": "7b986a14-4f1b-4330-8120-f0ec4342c7ec"
           },
           "force": {
-            "type": "boolean"
+            "type": "boolean",
+            "example": true
           }
-        }
+        },
+        "required": [
+          "userId",
+          "force"
+        ]
       },
       "JobResponseDto": {
         "type": "object",

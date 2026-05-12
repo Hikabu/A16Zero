@@ -150,6 +150,7 @@ export class SignalComputeProcessor extends WorkerHost {
             result: result as any,
           },
         });
+      await this.persistScorecard(userId ?? null, result);
 
         // console.log("result: ", result);
 
@@ -275,6 +276,8 @@ export class SignalComputeProcessor extends WorkerHost {
           result: result as any,
         },
       });
+      await this.persistScorecard(userId ?? null, result);
+  
 
       // Update profile status
       if (profile) {
@@ -433,4 +436,21 @@ export class SignalComputeProcessor extends WorkerHost {
       activeVouches,
     );
   }
+
+  private async persistScorecard(userId: string | null, result: AnalysisResult) {
+    if (!userId) return;
+
+  const candidate = await this.prisma.candidate.findUnique({
+    where: { userId },
+  });
+
+  if (!candidate) return;
+
+  await this.prisma.candidate.update({
+    where: { id: candidate.id },
+    data: {
+      scorecard: result as any,
+    },
+  });
+}
 }
