@@ -12,8 +12,8 @@ import { FilterBar, FilterState } from "@/components/jobs/FilterBar";
 import { JobCard, JobCardSkeleton, Job } from "@/components/jobs/JobCard";
 import { JobDetailSheet } from "@/components/jobs/JobDetailSheet";
 import { Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { listJobs, getJob, getGapPreview, getMe, getCandidateProfile } from "@/lib/api";
+import {useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { listJobs, getJob, getGapPreview, getMe, getCandidateProfile, applyToJob } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -245,6 +245,33 @@ const { data: gapData, isLoading: gapLoading } = useQuery({
   },
 });
 
+//------------applying-------------
+const queryClient = useQueryClient()
+
+const applyMut = useMutation({
+  mutationFn: () => applyToJob({ jobId: selectedJobId! }),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["job", selectedJobId] });
+    queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    queryClient.invalidateQueries({ queryKey: ["my-applications"] });
+  },
+});
+
+const { data: myApps } = useQuery({
+  queryKey: ["my-applications"],
+  queryFn: async () => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_API_URL || "") + "/applications/me"
+    );
+    return res.json();
+  },
+});
+
+const isApplied = !!myApps?.applications?.some(
+  (a: any) => a.jobId === selectedJobId
+);
+
+
   return (
     <div className="min-h-screen bg-background">
       {/* ── Hero strip ────────────────────────────────────────────────────── */}
@@ -392,9 +419,9 @@ const { data: gapData, isLoading: gapLoading } = useQuery({
   open={!!selectedJobId}
   onClose={() => setSelectedJobId(null)}
   hasScorecard={hasScorecard}
-  isApplied={false}
-  onApply={() => {}}
-  isApplying={false}
+  onApply={() => applyMut.mutate()}
+  isApplying={applyMut.isPending}
+  isApplied={isApplied}
   gapData={gapData}
   gapLoading={gapLoading}
 />
