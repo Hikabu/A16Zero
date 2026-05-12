@@ -7,7 +7,7 @@ import Cookies from "js-cookie";
 
 export type AuthRole = "candidate" | "employer";
 
-const TOKEN_COOKIE_NAME = "16signals-token";
+const TOKEN_COOKIE_NAME = "access_token";
 const ROLE_COOKIE_NAME = "16signals-role";
 const PERSIST_KEY = "16signals-auth";
 

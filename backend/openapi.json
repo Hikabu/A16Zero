@@ -2027,47 +2027,14 @@
     },
     "/auth/employer/login": {
       "post": {
-        "description": "Verifies a Privy access token from Authorization header and returns an employer JWT.",
         "operationId": "AuthEmployerController_login",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "Successfully authenticated and returned application JWT",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LoginResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Missing authorization header or invalid request payload",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthEmplErrorResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Invalid or missing Privy token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthEmplErrorResponseDto"
-                }
-              }
-            }
+          "201": {
+            "description": ""
           }
         },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Login with Privy token",
+        "summary": "Employer login",
         "tags": [
           "Auth (Employer)"
         ]
@@ -2075,7 +2042,6 @@
     },
     "/auth/employer/logout": {
       "post": {
-        "description": "Invalidates the user session or JWT token.",
         "operationId": "AuthEmployerController_logout",
         "parameters": [],
         "responses": {
@@ -2083,12 +2049,6 @@
             "description": ""
           }
         },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Logout user",
         "tags": [
           "Auth (Employer)"
         ]
@@ -2096,37 +2056,13 @@
     },
     "/auth/employer/refresh": {
       "post": {
-        "description": "Issues a new access token for authenticated employer.",
         "operationId": "AuthEmployerController_refresh",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "Successfully refreshed access token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LoginResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Invalid or expired token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthEmplErrorResponseDto"
-                }
-              }
-            }
+          "201": {
+            "description": ""
           }
         },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Refresh employer access token",
         "tags": [
           "Auth (Employer)"
         ]
@@ -5081,14 +5017,6 @@
           "isWeb3Role",
           "parserConfidence"
         ]
-      },
-      "LoginResponseDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "AuthEmplErrorResponseDto": {
-        "type": "object",
-        "properties": {}
       },
       "RegisterDto": {
         "type": "object",

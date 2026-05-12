@@ -1,11 +1,8 @@
 "use client"
 
 import * as React from "react"
-
-import { AppHeader } from "@/components/app-header"
-import { AppSidebar } from "@/components/app-sidebar"
+import DashboardNavbar from "@/components/Navbar"
 import { CommandPalette } from "@/components/command-palette"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
 export default function DashboardLayout({
   children,
@@ -14,7 +11,7 @@ export default function DashboardLayout({
 }) {
   const [commandOpen, setCommandOpen] = React.useState(false)
 
-  // Global keyboard shortcut for command palette
+  // Global keyboard shortcut (⌘K / Ctrl+K)
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -28,15 +25,17 @@ export default function DashboardLayout({
   }, [])
 
   return (
-    <SidebarProvider>
-      <AppSidebar onOpenCommandPalette={() => setCommandOpen(true)} />
-      <SidebarInset>
-        <AppHeader onOpenCommandPalette={() => setCommandOpen(true)} />
-        <main className="flex flex-1 flex-col overflow-hidden">
-          {children}
-        </main>
-      </SidebarInset>
+    <div className="flex min-h-screen flex-col bg-background">
+      {/* TOP NAVBAR */}
+      <DashboardNavbar />
+
+      {/* PAGE CONTENT */}
+      <main className="flex-1 overflow-hidden">
+        {children}
+      </main>
+
+      {/* GLOBAL COMMAND PALETTE */}
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
-    </SidebarProvider>
+    </div>
   )
 }

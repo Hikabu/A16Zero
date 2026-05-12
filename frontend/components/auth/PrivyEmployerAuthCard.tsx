@@ -72,12 +72,11 @@ export function PrivyEmployerAuthCard({
     },
     onSuccess: async (data) => {
       // Set token immediately so the API call has it
-      useAuthStore.getState().setAuth({ token: data.token, role: "employer" });
+      useAuthStore.getState().setAuth({ role: "employer" });
       
       try {
         const profile = await getEmployerProfile();
         useAuthStore.getState().setAuth({ 
-          token: data.token, 
           role: "employer",
           username: profile.name,
           email: profile.email,
@@ -89,7 +88,7 @@ export function PrivyEmployerAuthCard({
       }
 
       onLoginSuccess?.();
-      router.push("/hr/jobs/new");
+      router.replace("/dashboard");
     },
     onError: (err) => {
       setEmailLoading(false);

@@ -1,143 +1,11 @@
-// // middleware.ts - UPDATED
-// import { NextResponse } from 'next/server'
-// import type { NextRequest } from 'next/server'
-
-// export const config = {
-//   matcher: ['/profile/:path*', '/jobs/:path*', '/hr/:path*'],
-// }
-
-// function decodeJwt(token: string) {
-//   try {
-//     const base64Url = token.split('.')[1]
-//     let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-//     while (base64.length % 4) {
-//       base64 += '='
-//     }
-//     const jsonPayload = decodeURIComponent(
-//       atob(base64)
-//         .split('')
-//         .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-//         .join('')
-//     )
-//     return JSON.parse(jsonPayload)
-//   } catch (e) {
-//     return null
-//   }
-// }
-
-// export default async function middleware(request: NextRequest) {
-//   try {
-//     const { pathname } = request.nextUrl
-
-//     const isCandidateRoute = pathname.startsWith('/profile') || pathname.startsWith('/jobs')
-//     const isEmployerRoute = pathname.startsWith('/hr')
-
-//     if (!isCandidateRoute && !isEmployerRoute) {
-//       return NextResponse.next()
-//     }
-
-//     const accessToken = request.cookies.get('access_token')?.value
-//     const refreshToken = request.cookies.get('refresh_token')?.value
-
-//     let payload = accessToken ? decodeJwt(accessToken) : null
-//     const now = Math.floor(Date.now() / 1000)
-
-//     let isTokenValid = payload && payload.exp && payload.exp > now
-//     let newCookies: string[] = []
-
-//     if (!isTokenValid) {
-//       if (!refreshToken) {
-//         return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-//       }
-
-//       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-//       const refreshEndpoint = isEmployerRoute ? '/auth/employer/refresh' : '/auth/candidate/refresh'
-
-//       const refreshRes = await fetch(`${apiUrl}${refreshEndpoint}`, {
-//         method: 'POST',
-//         headers: {
-//           Cookie: `refresh_token=${refreshToken}`,
-//         },
-//       })
-
-//       if (!refreshRes.ok) {
-//         return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-//       }
-
-//       const setCookies = refreshRes.headers.getSetCookie ? refreshRes.headers.getSetCookie() : []
-//       if (setCookies.length > 0) {
-//         newCookies = setCookies
-//       } else {
-//         const fallbackCookie = refreshRes.headers.get('Set-Cookie')
-//         if (fallbackCookie) {
-//           newCookies = [fallbackCookie]
-//         }
-//       }
-
-//       try {
-//         const body = await refreshRes.json()
-//         if (body && body.data && body.data.accessToken) {
-//           payload = decodeJwt(body.data.accessToken)
-//         } else if (body && body.access_token) {
-//           payload = decodeJwt(body.access_token)
-//         }
-//       } catch (e) {
-//         // Fallback to previous payload if body parsing fails
-//       }
-//     }
-
-//     if (!payload || !payload.role) {
-//       return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-//     }
-
-//     const role = String(payload.role).toLowerCase()
-
-//     if (isCandidateRoute) {
-//       if (role !== 'candidate') {
-//         return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-//       }
-//     }
-
-//     if (isEmployerRoute) {
-//       if (!['employer', 'hr', 'hr_admin'].includes(role)) {
-//         return NextResponse.redirect(new URL('/profile', request.url))
-//       }
-//     }
-
-//     const requestHeaders = new Headers(request.headers)
-//     requestHeaders.set('x-user-role', role)
-
-//     const response = NextResponse.next({
-//       request: {
-//         headers: requestHeaders,
-//       },
-//     })
-
-//     if (newCookies.length > 0) {
-//       newCookies.forEach((cookie) => response.headers.append('Set-Cookie', cookie))
-//     }
-
-//     return response
-//   } catch (error) {
-//     return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-//   }
-// }
-
-
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-
-// ✅ Use consistent cookie names (prefer refresh-capable ones)
-const ACCESS_TOKEN_COOKIE = 'access_token'
-const REFRESH_TOKEN_COOKIE = 'refresh_token'
-const ROLE_COOKIE_NAME = '16signals-role' // Optional: keep if you store role separately
+import { NextRequest, NextResponse } from 'next/server'
 
 export const config = {
   matcher: [
     '/profile/:path*',
     '/dashboard/:path*',
     '/hr/:path*',
-    '/jobs/:path*',           // Include candidate job routes
+    '/jobs/:path*',
     '/candidates/:path*',
     '/analytics/:path*',
     '/pipeline/:path*',
@@ -145,117 +13,27 @@ export const config = {
   ],
 }
 
-// ✅ JWT Decoder (from middleware 2)
-function decodeJwt(token: string) {
-  try {
-    const base64Url = token.split('.')[1]
-    if (!base64Url) return null
-    let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    while (base64.length % 4) base64 += '='
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
+export default function middleware(request: NextRequest) {
+  const accessToken =
+    request.cookies.get('access_token')?.value
+
+  const { pathname } = request.nextUrl
+
+  const isProtectedRoute =
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/hr') ||
+    pathname.startsWith('/jobs') ||
+    pathname.startsWith('/candidates') ||
+    pathname.startsWith('/analytics') ||
+    pathname.startsWith('/pipeline') ||
+    pathname.startsWith('/settings')
+
+  if (isProtectedRoute && !accessToken) {
+    return NextResponse.redirect(
+      new URL('/auth', request.url),
     )
-    return JSON.parse(jsonPayload)
-  } catch {
-    return null
   }
-}
 
-export default async function middleware(request: NextRequest) {
-  try {
-    const { pathname } = request.nextUrl
-
-    // ✅ Route categorization (combine both)
-    const isCandidateRoute = pathname.startsWith('/profile') || 
-                             pathname.startsWith('/jobs') ||
-                             pathname.startsWith('/candidates')
-    const isEmployerRoute = pathname.startsWith('/hr') ||
-                            pathname.startsWith('/dashboard') ||
-                            pathname.startsWith('/analytics') ||
-                            pathname.startsWith('/pipeline') ||
-                            pathname.startsWith('/settings')
-
-    // Skip middleware for public routes
-    if (!isCandidateRoute && !isEmployerRoute) {
-      return NextResponse.next()
-    }
-
-    // ✅ Get tokens
-    const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value
-    const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value
-
-    let payload = accessToken ? decodeJwt(accessToken) : null
-    const now = Math.floor(Date.now() / 1000)
-
-    let isTokenValid = payload?.exp && payload.exp > now
-    let newCookies: string[] = []
-
-    // ✅ Token refresh logic (if expired)
-    if (!isTokenValid) {
-      if (!refreshToken) {
-        return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-      }
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      const refreshEndpoint = isEmployerRoute 
-        ? '/auth/employer/refresh' 
-        : '/auth/candidate/refresh'
-
-      const refreshRes = await fetch(`${apiUrl}${refreshEndpoint}`, {
-        method: 'POST',
-        headers: { Cookie: `${REFRESH_TOKEN_COOKIE}=${refreshToken}` },
-      })
-
-      if (!refreshRes.ok) {
-        return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-      }
-
-      // ✅ Handle Set-Cookie from refresh response
-      const setCookies = refreshRes.headers.getSetCookie?.() || []
-      newCookies = setCookies.length > 0 
-        ? setCookies 
-        : [refreshRes.headers.get('Set-Cookie')].filter(Boolean) as string[]
-
-      // ✅ Extract new access token from response
-      try {
-        const body = await refreshRes.json()
-        const newToken = body?.data?.accessToken || body?.access_token
-        if (newToken) payload = decodeJwt(newToken)
-      } catch {
-        // Fallback: use existing payload if body parsing fails
-      }
-    }
-
-    // ✅ Validate payload and role
-    if (!payload?.role) {
-      return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-    }
-
-    const role = String(payload.role).toLowerCase()
-
-    // ✅ Role-based route protection
-    if (isCandidateRoute && role !== 'candidate') {
-      return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-    }
-
-    if (isEmployerRoute && !['employer', 'hr', 'hr_admin'].includes(role)) {
-      return NextResponse.redirect(new URL('/profile', request.url))
-    }
-
-    // ✅ Inject role header for downstream use
-    const requestHeaders = new Headers(request.headers)
-    requestHeaders.set('x-user-role', role)
-
-    const response = NextResponse.next({ request: { headers: requestHeaders } })
-
-    // ✅ Apply refreshed cookies if any
-    newCookies.forEach((cookie) => response.headers.append('Set-Cookie', cookie))
-
-    return response
-  } catch {
-    return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-  }
+  return NextResponse.next()
 }

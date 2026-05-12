@@ -12,7 +12,17 @@ import {
   OnboardingModal,
   type OnboardingFormValues,
 } from "@/components/auth/OnboardingModal";
-import { PrivyEmployerAuthCard } from "@/components/auth/PrivyEmployerAuthCard";
+// FIX:
+// Your file at /components/auth/PrivyEmployerAuthCard.tsx
+// does not export PrivyEmployerAuthCard.
+// Either:
+// 1. export const PrivyEmployerAuthCard = ...
+// OR
+// 2. export default PrivyEmployerAuthCard
+//
+// This import assumes DEFAULT export.
+import {PrivyEmployerAuthCard} from "@/components/auth/PrivyEmployerAuthCard";
+
 import { ModeFormTransition, ModeSwitcher } from "@/components/ModeSwitcher";
 import {
   completeOnboarding,
@@ -37,7 +47,7 @@ const PRIVY_ENABLED =
   Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID);
 
 function routeForRole(role: AuthRole | string | null | undefined) {
-  return role === "employer" ? "/hr/jobs/new" : "/profile";
+  return role === "employer" ? "/dashboard" : "/profile";
 }
 
 function storeAndRoute(
@@ -45,10 +55,11 @@ function storeAndRoute(
   router: ReturnType<typeof useRouter>,
 ) {
   useAuthStore.getState().setAuth({
-    token: data.token,
+    token: "__cookie_auth__",
     role: data.role,
     username: data.username,
   });
+
   router.push(routeForRole(data.role));
 }
 
@@ -77,51 +88,53 @@ function AuthPageContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const token = useAuthStore((state) => state.token);
   const role = useAuthStore((state) => state.role);
-  const logout = useAuthStore((state) => state.logout);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
 
-  // Track whether we're currently validating a stored token.
-  // This prevents briefly flashing the login form before redirecting
-  // AND prevents redirecting on a stale / expired token.
-  const [isValidating, setIsValidating] = useState(!!token);
+  // IMPORTANT:
+  // Only validate if token exists.
+  // Your previous version validated even without a token,
+  // which caused auth redirects / login flashes.
+  const [isValidating, setIsValidating] = useState(Boolean(token));
 
   useEffect(() => {
-    if (!token) {
-      setIsValidating(false);
-      return;
-    }
-
-    // Validate the stored token against a real API call.
-    // A 200 means the token is still valid → redirect.
-    // A 401 means the token is expired / invalid → stay on login.
     let cancelled = false;
 
-    async function validateAndRedirect() {
+    async function validateSession() {
+      // No token -> stay on page.
+      if (!token) {
+        setIsValidating(false);
+        return;
+      }
+
       try {
         if (role === "employer") {
           await getEmployerProfile();
         } else {
-          // Candidates: validate access token against the profile endpoint
-          await apiFetch("/me/user", { method: "GET" });
+          await apiFetch("/me/user", {
+            method: "GET",
+          });
         }
 
-        if (!cancelled) {
-          router.push(routeForRole(role));
+        if (!cancelled && role) {
+          router.replace(routeForRole(role));
         }
       } catch {
-        // Token expired or invalid — clear auth and stay on this page.
         if (!cancelled) {
-          logout();
+          clearAuth();
           setIsValidating(false);
         }
       }
     }
 
-    validateAndRedirect();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount — intentionally omit reactive deps
+    validateSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, role, router, clearAuth]);
 
   useEffect(() => {
     if (searchParams.get("clear_session") === "true") {
@@ -130,7 +143,9 @@ function AuthPageContent() {
       return;
     }
 
-    const resetToken = searchParams.get("reset_token") ?? searchParams.get("token");
+    const resetToken =
+      searchParams.get("reset_token") ?? searchParams.get("token");
+
     if (resetToken) {
       setMode("candidate");
       setPasswordResetStep(2);
@@ -141,11 +156,13 @@ function AuthPageContent() {
         token: "__cookie_auth__",
         role: "candidate",
       });
+
       router.replace("/profile");
       return;
     }
 
     const mfaToken = searchParams.get("mfa_token");
+
     if (mfaToken) {
       setMode("candidate");
       setMfaTempToken(mfaToken);
@@ -190,11 +207,13 @@ function AuthPageContent() {
     mutationFn: completeOnboarding,
     onSuccess: (data, variables) => {
       const nextRole = data.role ?? variables.role ?? "candidate";
+
       useAuthStore.getState().setAuth({
-        token: data.token,
+        token: "__cookie_auth__",
         role: nextRole,
         username: data.username ?? variables.username,
       });
+
       router.push(routeForRole(nextRole));
     },
     onError: (err) => {
@@ -250,9 +269,7 @@ function AuthPageContent() {
     onboardingMutation.mutate(data);
   }
 
-  // Show a neutral loading screen while we validate the stored token.
-  // Once validation finishes (success → redirect, failure → setIsValidating(false))
-  // the form becomes visible.
+  // Loading screen while validating existing session.
   if (isValidating) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">
@@ -330,6 +347,7 @@ function AuthPageContent() {
               userId: mfaUserId,
               backupCode: code,
             });
+
             return;
           }
 

@@ -1,5 +1,6 @@
 import type { paths } from "@/src/api/schema";
 import {useAuthStore } from "./auth-store";
+import { getAccessToken, logout } from "./auth";
 
 type HttpMethod = "get" | "post" | "put" | "patch" | "delete";
 type ApiOperation<
@@ -108,11 +109,11 @@ const COOKIE_AUTH_TOKEN = "__cookie_auth__";
 
 let refreshingPromise: Promise<void> | null = null;
 
-function getAuthToken(): string | null {
-  const useAuthStore = globalThis.useAuthStore;
+// function getAuthToken(): string | null {
+//   const useAuthStore = globalThis.useAuthStore;
 
-  return useAuthStore?.getState?.().token ?? null;
-}
+//   return useAuthStore?.getState?.().token ?? null;
+// }
 
 export function getApiUrl(path: string): string {
   if (!API_BASE_URL) {
@@ -246,12 +247,7 @@ export async function apiFetch<ResponseBody>(
     // Add Authorization header if we have a token and skipAuth is not set
     // Token is stored in Zustand store after login (from API response body)
     // Cookies are used by backend middleware for server-side auth
-    if (!skipAuth) {
-      const authToken = getAuthToken();
-      if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
-      }
-    }
+
     const init: RequestInit = {
       credentials: "include",
       ...fetchOptions,
@@ -288,12 +284,18 @@ export async function apiFetch<ResponseBody>(
     !retried &&
     !skipAuth
   ) {
+    const role =useAuthStore.getState().role;
+    const refreshEndpoint = role === 'employer'
+        ? '/auth/employer/refresh'
+        : '/auth/candidate/refresh';
+
     if (!refreshingPromise) {
+
       refreshingPromise = fetch(
-        API_BASE_URL + "/auth/candidate/refresh",
+        API_BASE_URL + refreshEndpoint,
         {
-          method: "POST",
-          credentials: "include",
+          method: 'POST',
+          credentials: 'include',
         },
       )
         .then(async (r) => {
@@ -333,7 +335,6 @@ export async function apiFetch<ResponseBody>(
 export type AuthRole = "candidate" | "employer";
 
 export type AuthResponse = {
-  token: string;
   role: AuthRole;
   username?: string | null;
   email?: string | null;
@@ -492,49 +493,98 @@ function normalizeAuthResponse(
   body: unknown,
   fallbackRole: AuthRole,
 ): AuthResponse {
-  const record = (body ?? {}) as Record<string, unknown>;
+  const record =
+    (body ?? {}) as Record<string, unknown>;
+
   const nested =
-    typeof record.data === "object" && record.data
-      ? (record.data as Record<string, unknown>)
-      : typeof record.auth === "object" && record.auth
-        ? (record.auth as Record<string, unknown>)
+    typeof record.data === "object" &&
+    record.data
+      ? (record.data as Record<
+          string,
+          unknown
+        >)
+      : typeof record.auth === "object" &&
+          record.auth
+        ? (record.auth as Record<
+            string,
+            unknown
+          >)
         : record;
-  const token =
-    typeof nested.token === "string"
-      ? nested.token
-      : typeof nested.accessToken === "string"
-        ? nested.accessToken
-        : typeof nested.jwt === "string"
-          ? nested.jwt
-          : "";
-
-  if (!token) {
-       // Backend sets token in HttpOnly cookie and returns success with user data in body
-    // Return a placeholder token to indicate auth is cookie-based
-    if (record.success === true) {
-       const nestedData = typeof record.data === "object" && record.data
-        ? (record.data as Record<string, unknown>)
-        : record;
-      return {
-        token: COOKIE_AUTH_TOKEN,
-        role: fallbackRole,
-        username: typeof nested.username === "string" ? nested.username : null,
-        email: typeof nested.email === "string" ? nested.email : null,
-        walletAddress: typeof nested.walletAddress === "string" ? nested.walletAddress : null,
-        id: typeof nested.id === "string" ? nested.id : null,
-      };
-    }
-
-    throw new Error("Authentication response did not include a token.");
-  }
 
   return {
-    token,
-    role: normalizeRole(nested.role, fallbackRole),
-    username: typeof nested.username === "string" ? nested.username : null,
-    email: typeof nested.email === "string" ? nested.email : null,
-    walletAddress: typeof nested.walletAddress === "string" ? nested.walletAddress : null,
-    id: typeof nested.id === "string" ? nested.id : null,
+    role:
+      typeof nested.role === "string"
+        ? (nested.role as AuthRole)
+        : fallbackRole,
+
+    username:
+      typeof nested.username === "string"
+        ? nested.username
+        : typeof nested.user === "object" &&
+            nested.user &&
+            typeof (
+              nested.user as Record<
+                string,
+                unknown
+              >
+            ).name === "string"
+          ? (nested.user as Record<
+              string,
+              unknown
+            >).name as string
+          : null,
+
+    email:
+      typeof nested.email === "string"
+        ? nested.email
+        : typeof nested.user === "object" &&
+            nested.user &&
+            typeof (
+              nested.user as Record<
+                string,
+                unknown
+              >
+            ).email === "string"
+          ? (nested.user as Record<
+              string,
+              unknown
+            >).email as string
+          : null,
+
+    walletAddress:
+      typeof nested.walletAddress ===
+      "string"
+        ? nested.walletAddress
+        : typeof nested.user === "object" &&
+            nested.user &&
+            typeof (
+              nested.user as Record<
+                string,
+                unknown
+              >
+            ).walletAddress === "string"
+          ? (nested.user as Record<
+              string,
+              unknown
+            >).walletAddress as string
+          : null,
+
+    id:
+      typeof nested.id === "string"
+        ? nested.id
+        : typeof nested.user === "object" &&
+            nested.user &&
+            typeof (
+              nested.user as Record<
+                string,
+                unknown
+              >
+            ).id === "string"
+          ? (nested.user as Record<
+              string,
+              unknown
+            >).id as string
+          : null,
   };
 }
 
@@ -2750,7 +2800,6 @@ export async function rehydrateAuth(): Promise<void> {
     const user = await apiFetch<any>("/me/user");
     if (user && user.id) {
       useAuthStore.getState().setAuth({
-        token: COOKIE_AUTH_TOKEN,
         role: user.role ?? "candidate",
         username: user.username,
         email: user.email,
