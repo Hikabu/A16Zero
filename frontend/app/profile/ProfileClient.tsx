@@ -148,10 +148,10 @@ export default function ProfileClient() {
   }
 
   const walletStatus = {
-    isLinked: !!walletData?.connected,
-    address: (walletData as any)?.address ?? undefined,
-    cooldownUntil: cooldown?.wallet?.cooldownUntil ?? undefined,
-  }
+  isLinked: walletData?.connected ?? false,
+  address: walletData?.web3?.solanaAddress ?? undefined,
+  cooldownUntil: cooldown?.wallet?.cooldownUntil ?? undefined,
+}
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10 space-y-8">

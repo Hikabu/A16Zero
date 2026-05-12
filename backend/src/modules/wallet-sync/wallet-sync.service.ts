@@ -32,115 +32,103 @@ export class WalletSyncService {
 
     return challenge;
   }
-
-  async linkWallet(
-    userId: string,
-    walletAddress: string,
-    signature: string,
-    message?: string,
-  ): Promise<{ linked: boolean; solanaAddress: string }> {
-    // Cooldown Check
-    const candidate = await this.prisma.candidate.findUnique({
-      where: { userId },
-      select: { walletCooldownUntil: true },
-    });
-
-    if (candidate?.walletCooldownUntil && candidate.walletCooldownUntil > new Date()) {
-      throw new HttpException('Please wait before linking another wallet.', HttpStatus.TOO_MANY_REQUESTS);
-    }
-
-    // Step 1 — validate walletAddress format
-    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(walletAddress)) {
-      throw new BadRequestException('Invalid Solana wallet address');
-    }
-
-    let finalChallenge: string;
-
-    if (message) {
-  // Expected format:
-  // link-wallet:<userId>:<timestamp>:<randomHex>
-
-  const parts = message.split(':');
-
-  if (parts.length !== 4 || parts[0] !== 'link-wallet') {
-    throw new BadRequestException('Invalid challenge message format');
+async linkWallet(
+  userId: string,
+  walletAddress: string,
+  signature: string,
+  message?: string,
+): Promise<{ linked: boolean; solanaAddress: string }> {
+  // 1. Validate wallet format
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(walletAddress)) {
+    throw new BadRequestException('Invalid Solana wallet address');
   }
 
-  const [, challengeUserId, timestampStr] = parts;
+  // 2. Resolve challenge
+  let finalChallenge: string;
 
-  if (challengeUserId !== userId) {
+  if (message) {
+    const parts = message.split(':');
+
+    if (parts.length !== 4 || parts[0] !== 'link-wallet') {
+      throw new BadRequestException('Invalid challenge message format');
+    }
+
+    const [, challengeUserId, timestampStr] = parts;
+
+    if (challengeUserId !== userId) {
+      throw new UnauthorizedException('Challenge user mismatch');
+    }
+
+    const timestamp = parseInt(timestampStr, 10);
+
+    if (Number.isNaN(timestamp)) {
+      throw new BadRequestException('Invalid timestamp');
+    }
+
+    if (Math.abs(Date.now() - timestamp) > 300_000) {
+      throw new UnauthorizedException('Challenge expired');
+    }
+
+    finalChallenge = message;
+  } else {
+    const challenge = await this.redis.get(`wallet-challenge:${userId}`);
+
+    if (!challenge) {
+      throw new NotFoundException('Challenge expired or not found');
+    }
+
+    finalChallenge = challenge;
+    await this.redis.del(`wallet-challenge:${userId}`);
+  }
+
+  // 3. Verify signature (BEFORE DB writes)
+  try {
+    const msgBytes = Buffer.from(finalChallenge, 'utf8');
+    const sigBytes = bs58.decode(signature);
+    const pubkeyBytes = new PublicKey(walletAddress).toBytes();
+
+    const valid = nacl.sign.detached.verify(
+      msgBytes,
+      sigBytes,
+      pubkeyBytes,
+    );
+
+    if (!valid) {
+      throw new UnauthorizedException('Wallet signature invalid');
+    }
+  } catch (err) {
     throw new UnauthorizedException(
-      'Challenge message user mismatch',
+      `Verification failed: ${(err as Error).message}`,
     );
   }
 
-  const timestamp = parseInt(timestampStr, 10);
+  // 4. Ensure dev profile exists
+  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
 
-  if (Number.isNaN(timestamp)) {
-    throw new BadRequestException(
-      'Invalid challenge timestamp',
-    );
-  }
+  // 5. Upsert wallet
+  await this.prisma.web3Profile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      solanaAddress: walletAddress,
+      devCandidateId: devProfile.id,
+    },
+    update: {
+      solanaAddress: walletAddress,
+    },
+  });
 
-  const now = Date.now();
+  // 6. Apply cooldown AFTER successful link (15 min)
+  await this.prisma.candidate.update({
+    where: { userId },
+    data: {
+      walletCooldownUntil: new Date(Date.now() + 15 * 60 * 1000),
+    },
+  });
 
-  // 5 minute window
-  if (Math.abs(now - timestamp) > 300_000) {
-    throw new UnauthorizedException(
-      'Challenge message expired',
-    );
-  }
-
-  finalChallenge = message;
-} else {
-      // Step 2 — retrieve challenge from Redis (legacy flow)
-      const challenge = await this.redis.get(`wallet-challenge:${userId}`);
-      if (!challenge) {
-        throw new NotFoundException('Challenge expired or not found');
-      }
-      finalChallenge = challenge;
-      await this.redis.del(`wallet-challenge:${userId}`);
-    }
-
-    // Step 3 — verify signature
-    try {
-      const msgBytes = Buffer.from(finalChallenge, 'utf8');
-      const sigBytes = bs58.decode(signature);
-      const pubkeyBytes = new PublicKey(walletAddress).toBytes();
-
-      const valid = nacl.sign.detached.verify(msgBytes, sigBytes, pubkeyBytes);
-      if (!valid) {
-        throw new UnauthorizedException('Wallet signature invalid');
-      }
-    } catch (err) {
-      throw new UnauthorizedException(
-        `Verification failed: ${(err as Error).message}`,
-      );
-    }
-    // console.log("userid: ", userId);
-    // Step 5 — ensure Candidate + DeveloperCandidate exist
-
-    // Step 5 — ensure stack + upsert Web3Profile
-    const { devProfile } = await this.profileResolver.ensureDevStack(userId);
-
-    await this.prisma.web3Profile.upsert({
-      where: { userId },
-      create: {
-        userId,
-        solanaAddress: walletAddress,
-        devCandidateId: devProfile.id,
-      },
-      update: {
-        solanaAddress: walletAddress,
-      },
-    });
-
-    // Set 10m cooldown
-    await this.prisma.candidate.update({
-      where: { userId },
-      data: { walletCooldownUntil: new Date(Date.now() + 10 * 60 * 1000) },
-    });
-
-    return { linked: true, solanaAddress: walletAddress };
-  }
+  return {
+    linked: true,
+    solanaAddress: walletAddress,
+  };
+}
 }

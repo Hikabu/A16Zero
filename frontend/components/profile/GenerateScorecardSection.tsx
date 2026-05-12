@@ -122,14 +122,15 @@ export function GenerateScorecardSection({
   isSyncing,
   isGenerating,
 }: GenerateScorecardSectionProps) {
+  console.log('walletStatus:', walletStatus);
   // Cooldown derivations
   const githubOnCooldown =
     !!githubStatus.cooldownUntil &&
     Date.now() < new Date(githubStatus.cooldownUntil).getTime()
 
-  const walletOnCooldown =
-    !!walletStatus.cooldownUntil &&
-    Date.now() < new Date(walletStatus.cooldownUntil).getTime()
+  const walletSyncOnCooldown =
+  !!walletStatus.cooldownUntil &&
+  Date.now() < new Date(walletStatus.cooldownUntil).getTime()
 
   const generateOnCooldown =
     !!generateCooldownUntil &&
@@ -239,46 +240,53 @@ export function GenerateScorecardSection({
             {/* Left: icon + label + status chip */}
             <div className="flex items-center gap-2.5 min-w-0">
               <Wallet
-                className={`h-4 w-4 shrink-0 ${walletStatus.isLinked ? 'text-teal-400' : 'text-muted-foreground'}`}
-              />
+className={`h-4 w-4 shrink-0 ${
+  walletStatus.isLinked
+    ? 'text-emerald-400'
+    : 'text-muted-foreground'
+}`}              />
               <span className="text-sm font-medium text-foreground whitespace-nowrap">
                 Solana Wallet
               </span>
-              {walletStatus.isLinked && walletStatus.address ? (
-                <Badge
-                  variant="outline"
-                  className="text-[11px] border-teal-500/30 bg-teal-500/10 text-teal-400 px-1.5 py-0 font-mono font-normal"
-                >
-                  {truncateAddress(walletStatus.address)}
-                </Badge>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="text-[11px] border-border bg-transparent text-muted-foreground px-1.5 py-0 font-normal"
-                >
-                  <Circle className="mr-1 h-2.5 w-2.5" />
-                  Not linked
-                </Badge>
-              )}
+             {walletStatus.isLinked && walletStatus.address ? (
+  <Badge
+    variant="outline"
+    className="text-[11px] border-emerald-500/30 bg-emerald-500/10 text-emerald-400 px-1.5 py-0 font-normal"
+  >
+    <CheckCircle2 className="mr-1 h-2.5 w-2.5" />
+    Linked
+  </Badge>
+) : (
+  <Badge
+    variant="outline"
+    className="text-[11px] border-border bg-transparent text-muted-foreground px-1.5 py-0 font-normal"
+  >
+    <Circle className="mr-1 h-2.5 w-2.5" />
+    Not linked
+  </Badge>
+)}
             </div>
 
             {/* Right: only show action if not linked */}
-            {!walletStatus.isLinked && (
-              <SolanaLinkButton 
-                variant="outline"
-                size="sm"
-                className="h-7 px-2.5 text-xs shrink-0 cursor-pointer"
-                onSuccess={() => {}} // Invalidation handled inside
-              />
-            )}
+           <SolanaLinkButton
+  variant="outline"
+  size="sm"
+  className="h-7 px-2.5 text-xs shrink-0 cursor-pointer"
+  onSuccess={() => {}}
+  disabled={!!walletSyncOnCooldown}
+/>
+            
           </div>
 
-          {/* Cooldown chip */}
-          {walletOnCooldown && (
-            <div className="pl-[26px]">
-              <CooldownChip until={walletStatus.cooldownUntil} />
-            </div>
-          )}
+          {/* Only show as "sync restriction", not linking restriction */}
+{walletStatus.isLinked && walletSyncOnCooldown && (
+  <div className="pl-[26px]">
+    <span className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400 ring-1 ring-amber-500/20">
+      <Clock className="h-3 w-3 shrink-0" />
+      Wallet sync available in {formatCountdown(walletStatus.cooldownUntil)}
+    </span>
+  </div>
+)}
         </div>
 
         <RowSeparator />

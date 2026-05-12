@@ -20,8 +20,9 @@ export function SolanaLinkButton({
   className, 
   variant = "outline", 
   size = "sm",
-  onSuccess 
-}: SolanaLinkButtonProps) {
+  onSuccess,
+  disabled = false
+}: SolanaLinkButtonProps & { disabled?: boolean }) {
   const { user } = useAuthStore()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -54,7 +55,7 @@ export function SolanaLinkButton({
       variant={variant}
       size={size}
       onClick={() => walletFlow.trigger()}
-      disabled={walletFlow.status !== 'idle' && walletFlow.status !== 'error'}
+      disabled={(walletFlow.status !== 'idle' && walletFlow.status !== 'error' )|| disabled}
       className={className}
     >
       {walletFlow.status === 'signing' ? (
