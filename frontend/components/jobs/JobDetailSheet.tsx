@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthStore } from '@/lib/auth-store'
 import { type Job } from '@/components/jobs/JobCard'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { SheetTitle } from "@/components/ui/sheet"
 
 // ---------------------------------------------------------------------------
 // Extended Job type for sheet detail
@@ -232,6 +234,9 @@ export function JobDetailSheet({
         side="right"
         className="flex w-full max-w-lg flex-col gap-0 p-0 bg-[#111827] border-border"
       >
+        <VisuallyHidden>
+    <SheetTitle>Job Details</SheetTitle>
+  </VisuallyHidden>
         {/* ── Scrollable body ─────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto">
           {/* ── 1. Header ─────────────────────────────────────────────── */}

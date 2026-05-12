@@ -13,6 +13,8 @@ import {
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { SheetTitle } from "@/components/ui/sheet"
 
 const NAV_LINKS = [
   { label: "Browse Jobs", href: "/browse" },
@@ -102,6 +104,9 @@ useEffect(() => {
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-72 flex flex-col gap-6 pt-10">
+            <VisuallyHidden>
+    <SheetTitle>Public Nav</SheetTitle>
+  </VisuallyHidden>
             <nav className="flex flex-col gap-1">
               {NAV_LINKS.map((link) => (
                 <Link

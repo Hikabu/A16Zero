@@ -25,6 +25,8 @@ import { LogOut, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
 import { useLogout } from "@/lib/hooks/useLogout";
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { SheetTitle } from "@/components/ui/sheet"
 
 interface EmployerNavProps {
   companyName: string;
@@ -145,6 +147,9 @@ export function EmployerNav({ companyName, onLogout }: EmployerNavProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-72 flex flex-col gap-6 pt-10">
+            <VisuallyHidden>
+    <SheetTitle>Employer Nav</SheetTitle>
+  </VisuallyHidden>
             {/* Company identity */}
             <div className="flex items-center gap-3 px-3">
               <Avatar className="h-9 w-9">

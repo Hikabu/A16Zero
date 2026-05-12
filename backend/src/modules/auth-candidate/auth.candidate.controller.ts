@@ -240,7 +240,7 @@ export class AuthCandidateController {
       req,
       res,
       result,
-      `${this.getFrontendUrl()}/auth?oauth=success`,
+      `${this.getFrontendUrl()}/profile`,
     );
   }
 
@@ -260,7 +260,7 @@ export class AuthCandidateController {
       req,
       res,
       result,
-      `${this.getFrontendUrl()}/auth?oauth=success`,
+      `${this.getFrontendUrl()}/profile`,
     );
   }
 

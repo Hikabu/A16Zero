@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
 import { useLogout } from "@/lib/hooks/useLogout";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { SheetTitle } from "@/components/ui/sheet"
 
 interface CandidateNavProps {
   username: string;
@@ -158,6 +160,9 @@ useEffect(() => {
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-72 flex flex-col gap-6 pt-10">
+            <VisuallyHidden>
+    <SheetTitle>Candidate Nav</SheetTitle>
+  </VisuallyHidden>
             {/* User identity */}
             <div className="flex items-center gap-3 px-3">
               <Avatar className="h-9 w-9">
