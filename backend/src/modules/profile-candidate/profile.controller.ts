@@ -6,7 +6,10 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
+  Post,
   Req,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -31,6 +34,8 @@ import {
 } from './dto/profile.response.dto';
 
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
+
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @VerifiedAuth()
 @ApiBearerAuth()
@@ -141,6 +146,15 @@ export class ProfileController {
   getConnectedWallet(@Req() req: any) {
     return this.profileService.getConnectedWallet(req.user.id);
   }
+
+@Post('avatar')
+@UseInterceptors(FileInterceptor('file'))
+async uploadAvatar(
+  @UploadedFile() file: Express.Multer.File,
+  @Req() req,
+) {
+  return this.profileService.uploadAvatar(req.user.id, file);
+}
 }
 
 

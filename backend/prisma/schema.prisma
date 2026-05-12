@@ -288,6 +288,7 @@ model AuthAccount {
 model Candidate {
   id         String              @id @default(uuid())
   userId     String              @unique
+  avatarUrl String?
   user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   bio        String?             @db.VarChar(500)
   location   String?             @db.VarChar(255)

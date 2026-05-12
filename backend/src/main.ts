@@ -10,7 +10,7 @@ import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
 import * as fs from 'fs';
 import * as path from 'path';
-
+import * as multer from 'multer';
 
 const logger = new Logger('Bootstrap');
 

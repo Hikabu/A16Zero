@@ -7,6 +7,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
 import { AccountStatus } from '@prisma/client';
+import {
+  Controller,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import cloudinary from '../../cloudinary/cloudinary.config';
 
 @Injectable()
 export class ProfileService {
@@ -58,6 +66,7 @@ async getPublicProfile(username: string) {
           location: true,
           website: true,
           careerPath: true,
+          avatarUrl: true, 
 
           vouches: {
             where: {
@@ -124,6 +133,7 @@ async getPublicProfile(username: string) {
 
     location:
       user.candidate?.location ?? null,
+       avatarUrl: user.candidate?.avatarUrl ?? null,
 
     website:
       user.candidate?.website ?? null,
@@ -205,7 +215,7 @@ async getPublicProfile(username: string) {
         location: true,
         website: true,
         careerPath: true,
-
+avatarUrl: true, 
         scorecard: true,
         createdAt: true,
         vouches: true,
@@ -231,35 +241,36 @@ async getPublicProfile(username: string) {
 
     return candidate;
   }
+async updateCandidateProfile(userId: string, dto: UpdateCandidateDto) {
+  const candidate = await this.prisma.candidate.findUnique({
+    where: { userId },
+  });
 
-  async updateCandidateProfile(userId: string, dto: UpdateCandidateDto) {
-    const candidate = await this.prisma.candidate.findUnique({
-      where: { userId },
-    });
-
-    if (!candidate) throw new NotFoundException('Candidate profile not found');
-
-    return this.prisma.candidate.update({
-      where: { userId },
-      data: {
-        ...(dto.bio !== undefined && { bio: dto.bio }),
-        ...(dto.location !== undefined && { location: dto.location }),
-        ...(dto.website !== undefined && { website: dto.website }),
-        ...(dto.careerPath !== undefined && { careerPath: dto.careerPath }),
-
-      },
-      select: {
-        id: true,
-        bio: true,
-        location: true,
-        website: true,
-        careerPath: true,
-
-        createdAt: true,
-      },
-    });
+  if (!candidate) {
+    throw new NotFoundException('Candidate profile not found');
   }
 
+  return this.prisma.candidate.update({
+    where: { userId },
+    data: {
+      ...(dto.bio !== undefined && { bio: dto.bio }),
+      ...(dto.location !== undefined && { location: dto.location }),
+      ...(dto.website !== undefined && { website: dto.website }),
+      ...(dto.careerPath !== undefined && { careerPath: dto.careerPath }),
+
+      ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
+    },
+    select: {
+      id: true,
+      bio: true,
+      location: true,
+      website: true,
+      careerPath: true,
+      avatarUrl: true,
+      createdAt: true,
+    },
+  });
+}
   // ─── GitHub Connection ────────────────────────────────────────────────────
 
   async getConnectedGithub(userId: string) {
@@ -324,4 +335,42 @@ async getPublicProfile(username: string) {
       web3,
     };
   }
+
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
+  if (!file) throw new Error('No file provided');
+
+  const result = await new Promise<any>((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        {
+          folder: 'avatars',
+          transformation: [
+            { width: 300, height: 300, crop: 'fill', gravity: 'face' },
+            { quality: 'auto:good', fetch_format: 'auto' },
+          ],
+          strip_metadata: true,
+        },
+        (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        },
+      )
+      .end(file.buffer);
+  });
+
+  const avatarUrl = result.secure_url;
+
+  // FIXED: use userId (not req)
+  await this.prisma.candidate.upsert({
+  where: { userId },
+  update: {
+    avatarUrl,
+  },
+  create: {
+    userId,
+    avatarUrl,
+  },
+});
+  return { url: avatarUrl };
+}
 }

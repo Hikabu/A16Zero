@@ -4,6 +4,7 @@ import { ProfileService } from './profile.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PublicProfileController } from './profile-public.controller';
 
+
 @Module({
   imports: [PrismaModule],
   controllers: [ProfileController, PublicProfileController],

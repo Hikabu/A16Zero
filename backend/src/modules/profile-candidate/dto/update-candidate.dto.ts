@@ -20,4 +20,9 @@ export class UpdateCandidateDto {
   @IsInt()
   @Min(1)
   careerPath?: number;
+
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
 }

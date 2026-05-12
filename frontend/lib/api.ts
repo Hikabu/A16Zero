@@ -93,6 +93,7 @@ export class ApiError extends Error {
   }
 }
 
+
 export type ApiFetchOptions = Omit<RequestInit, "body" | "headers"> & {
   body?: unknown;
   headers?: Record<string, string>;
@@ -2796,4 +2797,37 @@ export async function getPublicProfile(
 
     throw error;
   }
+}
+
+export async function apiUpload<ResponseBody>(
+  path: string,
+  file: File,
+): Promise<ResponseBody> {
+  if (!API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  }
+
+  const url = new URL(path, API_BASE_URL);
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  const body = await parseResponseBody(response);
+
+  if (!response.ok) {
+    throw new Error(body?.message || "Upload failed");
+  }
+
+  return body;
+}
+
+export async function uploadAvatar(file: File) {
+  const body = await apiUpload("me/user/avatar", file);
+  return body;
 }

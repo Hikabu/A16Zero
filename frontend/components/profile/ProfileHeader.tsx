@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import {uploadAvatar} from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,6 +74,21 @@ function ensureAbsoluteUrl(url: string): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`
 }
 
+export function cleanUrlForDisplay(url: string) {
+  if (!url) return ''
+
+  return url
+    .replace(/^https?:\/\//i, '') // remove http / https
+    .replace(/^www\./i, '')       // remove www
+    .replace(/\/$/, '')           // remove trailing slash
+}
+function getAvatarFallback(user: ProfileUser) {
+  return (
+    user.name ||
+    user.username ||
+    "?"
+  )
+}
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -88,13 +104,15 @@ function UsernameCopyBadge({ username }: { username: string }) {
     })
   }
 
+
+
   return (
     <button
       onClick={handleCopy}
       aria-label="Copy profile path"
       className="group inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] text-muted-foreground transition-colors duration-150 hover:border-border/80 hover:bg-muted/70 hover:text-foreground cursor-pointer"
     >
-      <span>{process.env.NEXT_PUBLIC_FRONTEND_URL}/u/{username}</span>
+      <span>{cleanUrlForDisplay(`${process.env.NEXT_PUBLIC_FRONTEND_URL}/u/${username}`)}</span>
       <AnimatePresence mode="wait" initial={false}>
         {copied ? (
           <motion.span
@@ -139,13 +157,16 @@ export function ProfileHeader({
   const [publicScorecard, setPublicScorecard] = useState(true)
    const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+const [avatarUrl, setAvatarUrl] = useState(candidate.avatarUrl ?? '')  
   useEffect(() => {
   setFormName(user.name)
   setFormBio(candidate.bio ?? '')
   setFormLocation(candidate.location ?? '')
   setFormWebsite(candidate.website ?? '')
-}, [user.name, candidate.bio, candidate.location, candidate.website])
+    setAvatarUrl(candidate.avatarUrl ?? '')
+
+}, [user.name, candidate.avatarUrl, candidate.bio, candidate.location, candidate.website])
   const onToggleEdit = () => setIsEditing((v) => !v)
   const onSave = async () => {
     setIsSaving(true)
@@ -153,7 +174,13 @@ export function ProfileHeader({
       await fetch("/api/profile/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, candidate }),
+    body: JSON.stringify({
+  name: formName,
+  bio: formBio,
+  location: formLocation,
+  website: formWebsite,
+  avatarUrl, // from state
+})
       })
     } finally {
       setIsSaving(false)
@@ -178,22 +205,63 @@ export function ProfileHeader({
     })
   }
 
+const handleAvatarChange = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file || uploadingAvatar) return
+
+  setUploadingAvatar(true)
+
+  try {
+    const res = await uploadAvatar(file)
+    console.log("res:", res);
+    setAvatarUrl(res.url)
+  } finally {
+    setUploadingAvatar(false)
+  }
+}
+
   const initials = getInitials(user.name)
 
   return (
     <motion.div layout transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}>
       <Card className="w-full overflow-hidden rounded-xl px-6 py-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+{/* ── Avatar ─────────────────────────────── */}
+<div className="relative w-fit">
 
-          {/* ── Avatar ─────────────────────────────── */}
-          <Avatar className="size-14 shrink-0 text-base font-semibold">
-            {user.avatarUrl && (
-              <AvatarImage src={user.avatarUrl} alt={`${user.name} avatar`} />
-            )}
-            <AvatarFallback className="bg-primary/10 text-primary text-base font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+  <Avatar className="size-14 overflow-hidden">
+    {avatarUrl ? (
+      <AvatarImage src={avatarUrl} alt={`${user.name} avatar`} />
+    ) : null}
+
+    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary text-base font-semibold">
+      {getInitials(getAvatarFallback(user))}
+    </AvatarFallback>
+  </Avatar>
+
+  {/* ✅ LOADING OVERLAY (PUT HERE) */}
+  {uploadingAvatar && (
+    <div className="absolute inset-0 grid place-items-center rounded-full bg-black/30">
+      <Loader2 className="h-4 w-4 animate-spin text-white" />
+    </div>
+  )}
+
+  {/* ONLY show upload in edit mode */}
+  {isEditing && (
+    <>
+      <input
+        type="file"
+        accept="image/*"
+        disabled={uploadingAvatar}
+        className="absolute inset-0 opacity-0 cursor-pointer rounded-full"
+        onChange={handleAvatarChange}
+      />
+
+      <div className="absolute inset-0 rounded-full ring-1 ring-primary/20 pointer-events-none" />
+    </>
+  )}
+
+</div>
 
           {/* ── Main content ───────────────────────── */}
           <div className="min-w-0 flex-1">

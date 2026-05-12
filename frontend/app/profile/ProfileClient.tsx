@@ -161,12 +161,13 @@ export default function ProfileClient() {
           name: (user as any)?.name ?? '',
           username: (user as any)?.username ?? '',
           email: (user as any)?.email ?? '',
-          avatarUrl: (user as any)?.avatarUrl ?? undefined,
         }}
         candidate={{
           bio: (candidate as any)?.bio ?? '',
           location: (candidate as any)?.location ?? '',
           website: (candidate as any)?.website ?? '',
+            avatarUrl: (candidate as any)?.avatarUrl ?? '',
+
         }}
         isEditing={isEditing}
         onToggleEdit={() => setIsEditing(!isEditing)}
