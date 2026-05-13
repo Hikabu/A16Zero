@@ -256,9 +256,6 @@ model User {
 
   authAccounts  AuthAccount[]
   candidate     Candidate?
-  web3Profile   Web3Profile?
-  githubProfile GithubProfile?
-  analysisJobs  AnalysisJob[]
 }
 
 // ─── User AUTH  ──────────────────────────────────────────
@@ -301,14 +298,15 @@ model Candidate {
   walletCooldownUntil   DateTime?
   generateCooldownUntil DateTime?
   scorecard  Json? // { roleType, seniorityLevel, signals: { key: value }, overallFit }
+  analysisJobs  AnalysisJob[]
   vouches    Vouch[]
   createdAt  DateTime            @default(now())
 }
 
 model DeveloperCandidate {
   id            String         @id @default(uuid())
-  candidateId   String         @unique
-  candidate     Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  userId        String          @unique
+  candidate     Candidate      @relation(fields: [userId], references: [userId], onDelete: Cascade)
   githubProfile GithubProfile?
   web3Profile   Web3Profile?
   createdAt     DateTime       @default(now())
@@ -328,11 +326,9 @@ enum SyncStatus {
 
 model GithubProfile {
   id             String             @id @default(uuid())
-  devCandidateId String             @unique
-  devCandidate   DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
 
   userId String? @unique
-  user   User?   @relation(fields: [userId], references: [id])
+  devCandidate   DeveloperCandidate @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   githubUsername  String     @unique
   githubUserId    String     @unique
@@ -352,11 +348,8 @@ model GithubProfile {
 
 model Web3Profile {
   id             String             @id @default(uuid())
-  devCandidateId String             @unique
-  devCandidate   DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-
   userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  devCandidate   DeveloperCandidate @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   solanaAddress     String?
   // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
@@ -409,7 +402,7 @@ model AnalysisJob {
   result    Json?
   error     String?
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  candidate      Candidate?    @relation(fields: [userId], references: [userId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

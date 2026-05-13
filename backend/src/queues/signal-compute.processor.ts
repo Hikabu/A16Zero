@@ -3,7 +3,6 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GithubRawDataSnapshot } from '../modules/scoring/github-adapter/types';
-import { SyncStatus } from '@prisma/client';
 import { AnalysisResult } from '../modules/scoring/types/result.types';
 import { ScoringService } from '../modules/scoring/scoring-service/scoring.service';
 import { SignalExtractorService } from '../modules/scoring/signal-extractor/signal-extractor.service';
@@ -212,7 +211,7 @@ export class SignalComputeProcessor extends WorkerHost {
               where: { id: profile.id },
               data: {
                 rawDataSnapshot: rawData,
-                lastSyncAt: new Date(),
+                // lastSyncAt: new Date(),
               },
             });
           }
@@ -281,13 +280,13 @@ export class SignalComputeProcessor extends WorkerHost {
 
       // Update profile status
       if (profile) {
-        await this.prisma.githubProfile.update({
-          where: { id: profile.id },
-          data: {
-            syncStatus: SyncStatus.SYNC_SUCCESS,
-            syncProgress: JSON.stringify({ stage: 'complete', percent: 100 }),
-          },
-        });
+        // await this.prisma.githubProfile.update({
+        //   where: { id: profile.id },
+        //   data: {
+        //     syncStatus: SyncStatus.SYNC_SUCCESS,
+        //     syncProgress: JSON.stringify({ stage: 'complete', percent: 100 }),
+        //   },
+        // });
       }
 
       this.logger.log(
@@ -320,17 +319,17 @@ export class SignalComputeProcessor extends WorkerHost {
 
       if (profile) {
         try {
-          await this.prisma.githubProfile.update({
-            where: { id: profile.id },
-            data: {
-              syncStatus: SyncStatus.SYNC_FAILED,
-              syncProgress: JSON.stringify({
-                stage: 'failed',
-                percent: 0,
-                error: (error as Error).message,
-              }),
-            },
-          });
+          // await this.prisma.githubProfile.update({
+          //   where: { id: profile.id },
+          //   data: {
+          //     syncStatus: SyncStatus.SYNC_FAILED,
+          //     syncProgress: JSON.stringify({
+          //       stage: 'failed',
+          //       percent: 0,
+          //       error: (error as Error).message,
+          //     }),
+          //   },
+          // });
         } catch (updateError) {
           this.logger.warn(
             `Failed to update profile status on failure: ${updateError.message}`,
@@ -350,12 +349,12 @@ export class SignalComputeProcessor extends WorkerHost {
     if (!profileId) return;
 
     try {
-      await this.prisma.githubProfile.update({
-        where: { id: profileId },
-        data: {
-          syncProgress: JSON.stringify({ stage, percent }),
-        },
-      });
+      // await this.prisma.githubProfile.update({
+      //   where: { id: profileId },
+      //   data: {
+      //     syncProgress: JSON.stringify({ stage, percent }),
+      //   },
+      // });
     } catch (error) {
       this.logger.warn(`Failed to update progress: ${error.message}`);
     }

@@ -118,22 +118,6 @@ Optional if authenticated.
         select: { generateCooldownUntil: true },
       });
 
-      // if (candidate?.generateCooldownUntil && candidate.generateCooldownUntil > new Date()) {
-      //   const diffMs = candidate.generateCooldownUntil.getTime() - Date.now();
-      //   const diffMinutes = Math.ceil(diffMs / (1000 * 60));
-        
-      //   throw new HttpException(
-      //     {
-      //       code: 'RATE_LIMITED',
-      //       message: `Please wait ${diffMinutes}m before generating a new scorecard.`,
-      //       cooldownUntil: candidate.generateCooldownUntil,
-      //       retryAfter: diffMinutes,
-      //     },
-      //     HttpStatus.TOO_MANY_REQUESTS,
-      //   );
-      // }
-
-      // Set new cooldown (1 hour from now)
       const nextCooldown = new Date(Date.now() + 60 * 60 * 1000);
       await this.prisma.candidate.update({
         where: { userId },
