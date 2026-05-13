@@ -15,11 +15,11 @@ export function useWalletFlow(
 const wallet = useWallet()
   const [status, setStatus] = useState<'idle' | 'signing' | 'submitting' | 'done' | 'error'>('idle')
 const hasAutoTriggered = useRef(false)
-
+ const pendingIntent = useRef(false) 
 
 useEffect(() => {
   // Wallet was just selected from modal
-  if (wallet.wallet && !wallet.connected && !hasAutoTriggered.current) {
+  if (wallet.wallet && !wallet.connected && !hasAutoTriggered.current && pendingIntent.current) {
     hasAutoTriggered.current = true
     trigger()
   }
@@ -29,8 +29,13 @@ useEffect(() => {
   }
 }, [wallet.wallet])
 
- const trigger = async () => {
-  console.log("TRIGGERR")
+
+ const trigger = async (opts?: { userInitiated?: boolean }) => {
+  console.log("trigger attempt")
+  if (opts?.userInitiated) {
+    pendingIntent.current = true
+  }
+  console.log("trigger contineu")
   const provider = (window as any)?.phantom?.solana
 
   try {

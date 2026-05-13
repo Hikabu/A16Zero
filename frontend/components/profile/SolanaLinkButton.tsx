@@ -54,7 +54,8 @@ export function SolanaLinkButton({
     <Button
       variant={variant}
       size={size}
-      onClick={() => walletFlow.trigger()}
+      onClick={() => walletFlow.trigger({ userInitiated: true })
+}
       disabled={(walletFlow.status !== 'idle' && walletFlow.status !== 'error' )|| disabled}
       className={className}
     >
