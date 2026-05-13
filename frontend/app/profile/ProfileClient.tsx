@@ -170,8 +170,9 @@ const normalizedSyncStatus =
     
 const githubStatusMapped = {
   isLinked: normalizedSyncStatus !== 'NOT_SYNCED',
-  lastSyncedAt: githubStatus?.lastSyncedAt,
+  lastSyncAt: githubStatus?.lastSyncAt,
   syncStatus: normalizedSyncStatus,
+  cooldownUntil: githubStatus?.cooldownUntil,
 }
 
   const walletStatus = {

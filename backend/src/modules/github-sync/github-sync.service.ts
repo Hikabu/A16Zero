@@ -170,16 +170,32 @@ export class GithubSyncService {
 
   // ─── Status ───────────────────────────────────────────────────────
   async getSyncStatus(userId: string) {
-    const profile = await this.prisma.githubProfile.findFirst({
-      where: { devCandidate: { candidate: { userId } } },
-      select: {
-        syncStatus: true,
-        syncProgress: true,
-        lastSyncAt: true,
-        syncError: true,
-        githubUsername: true,
+  const profile = await this.prisma.githubProfile.findFirst({
+  where: {
+    devCandidate: {
+      candidate: {
+        userId,
       },
-    });
+    },
+  },
+  select: {
+    syncStatus: true,
+    syncProgress: true,
+    lastSyncAt: true,
+    syncError: true,
+    githubUsername: true,
+
+    devCandidate: {
+      select: {
+        candidate: {
+          select: {
+            githubCooldownUntil: true,
+          },
+        },
+      },
+    },
+  },
+})
 
     if (!profile) {
 return {
@@ -191,9 +207,12 @@ return {
   isLinked: true,
   syncStatus: profile.syncStatus,
   syncProgress: profile.syncProgress,
+
   lastSyncAt: profile.lastSyncAt,
   error: profile.syncError,
   githubUsername: profile.githubUsername,
+  cooldownUntil:
+    profile.devCandidate?.candidate?.githubCooldownUntil,
 };
   }
 ///ONLY TESTING - DELETE TODO
