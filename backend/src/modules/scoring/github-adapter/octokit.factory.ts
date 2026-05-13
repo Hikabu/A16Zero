@@ -33,10 +33,21 @@ export class OctokitFactory {
 
   async forJob(userId: string | null): Promise<Octokit> {
     if (userId) {
-      const profile = await this.prisma.githubProfile.findUnique({
+      // Navigate through new schema: User -> Candidate -> DeveloperProfile -> GithubProfile
+      const candidate = await this.prisma.candidate.findUnique({
         where: { userId },
-        select: { encryptedToken: true },
+        select: {
+          devProfile: {
+            select: {
+              githubProfile: {
+                select: { encryptedToken: true },
+              },
+            },
+          },
+        },
       });
+
+      const profile = candidate?.devProfile?.githubProfile;
 
       if (profile?.encryptedToken) {
         try {

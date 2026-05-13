@@ -23,7 +23,6 @@ export class GithubSyncProcessor extends WorkerHost {
   async process(
     job: Job<{
       candidateId: string;
-      devCandidateId?: string;
       githubProfileId: string;
       userId?: string | null;
     }>,
@@ -41,17 +40,6 @@ export class GithubSyncProcessor extends WorkerHost {
     // (a) Load GithubProfile
     const profile = await this.prisma.githubProfile.findUnique({
       where: { id: githubProfileId },
-      include: {
-        devCandidate: {
-          select: {
-            candidate: {
-              select: {
-                userId: true,
-              },
-            },
-          },
-        },
-      },
     });
 
     if (!profile) {
@@ -72,10 +60,7 @@ export class GithubSyncProcessor extends WorkerHost {
       });
 
       // (c) Call consolidated fetcher
-      const resolvedUserId =
-        job.data.userId ??
-        profile.userId ??
-        profile.devCandidate.candidate.userId;
+      const resolvedUserId = job.data.userId;
       const octokit = await this.octokitFactory.forJob(resolvedUserId);
       const rawData = await this.githubAdapter.fetchRawData(
         octokit,

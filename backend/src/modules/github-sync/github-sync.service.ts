@@ -76,10 +76,9 @@ export class GithubSyncService {
     const encryptedToken = encrypt(githubData.accessToken, key);
 
     await this.prisma.githubProfile.upsert({
-      where: { devCandidateId: devProfile.id },
+      where: { developerProfileId: devProfile.id },
       create: {
-        devCandidate: { connect: { id: devProfile.id } },
-        user: { connect: { id: userId } },
+        developerProfile: { connect: { id: devProfile.id } },
         githubUsername: githubData.username,
         githubUserId: githubData.githubId,
         encryptedToken,
@@ -89,7 +88,6 @@ export class GithubSyncService {
         // Rotate token on re-connect (expired or user re-authorized)
         githubUsername: githubData.username,
         githubUserId: githubData.githubId,
-        user: { connect: { id: userId } },
         encryptedToken,
         scopes: githubData.scopes,
         syncStatus: SyncStatus.CONNECT_SUCCESS,
@@ -116,21 +114,16 @@ export class GithubSyncService {
       });
     }
 
-    // Rate limit check using Candidate.githubCooldownUntil
-    const candidate = await this.prisma.candidate.findUnique({
-      where: { userId },
-      select: { id: true, githubCooldownUntil: true },
-    });
-
-    if (candidate?.githubCooldownUntil && candidate.githubCooldownUntil > new Date()) {
-      const diffMs = candidate.githubCooldownUntil.getTime() - Date.now();
+    // Rate limit check using DeveloperProfile.githubCooldownUntil
+    if (devProfile?.githubCooldownUntil && devProfile.githubCooldownUntil > new Date()) {
+      const diffMs = devProfile.githubCooldownUntil.getTime() - Date.now();
       const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
 
       throw new HttpException(
         {
           code: 'RATE_LIMITED',
           message: `You can only sync once every 24 hours.`,
-          cooldownUntil: candidate.githubCooldownUntil,
+          cooldownUntil: devProfile.githubCooldownUntil,
           retryAfter: diffHours,
         },
         HttpStatus.TOO_MANY_REQUESTS,
@@ -139,8 +132,8 @@ export class GithubSyncService {
 
     // Set new cooldown (24 hours from now)
     const cooldownUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await this.prisma.candidate.update({
-      where: { userId },
+    await this.prisma.developerProfile.update({
+      where: { id: devProfile.id },
       data: { githubCooldownUntil: cooldownUntil },
     });
 
@@ -157,7 +150,6 @@ export class GithubSyncService {
 
     await this.githubSyncQueue.add('sync-profile', {
       candidateId: devProfile.candidateId,
-      devCandidateId: devProfile.id,
       githubProfileId: githubProfile.id,
       userId,
     });
@@ -170,50 +162,25 @@ export class GithubSyncService {
 
   // ─── Status ───────────────────────────────────────────────────────
   async getSyncStatus(userId: string) {
-  const profile = await this.prisma.githubProfile.findFirst({
-  where: {
-    devCandidate: {
-      candidate: {
-        userId,
-      },
-    },
-  },
-  select: {
-    syncStatus: true,
-    syncProgress: true,
-    lastSyncAt: true,
-    syncError: true,
-    githubUsername: true,
-
-    devCandidate: {
-      select: {
-        candidate: {
-          select: {
-            githubCooldownUntil: true,
-          },
-        },
-      },
-    },
-  },
-})
-
-    if (!profile) {
-return {
-  isLinked: false,
-  syncStatus: "NOT_SYNCED",
-};    }
-
+  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+  
+  if (!devProfile?.githubProfile) {
     return {
-  isLinked: true,
-  syncStatus: profile.syncStatus,
-  syncProgress: profile.syncProgress,
+      isLinked: false,
+      syncStatus: 'NOT_SYNCED',
+    };
+  }
 
-  lastSyncAt: profile.lastSyncAt,
-  error: profile.syncError,
-  githubUsername: profile.githubUsername,
-  cooldownUntil:
-    profile.devCandidate?.candidate?.githubCooldownUntil,
-};
+    const profile = devProfile.githubProfile;
+    return {
+      isLinked: true,
+      syncStatus: profile.syncStatus,
+      syncProgress: profile.syncProgress,
+      lastSyncAt: profile.lastSyncAt,
+      error: profile.syncError,
+      githubUsername: profile.githubUsername,
+      cooldownUntil: devProfile.githubCooldownUntil,
+    };
   }
 ///ONLY TESTING - DELETE TODO
 
@@ -232,8 +199,8 @@ return {
   where: { id: devProfile.githubProfile.id },
 });
 
-await this.prisma.candidate.update({
-  where: { userId },
+await this.prisma.developerProfile.update({
+  where: { id: devProfile.id },
   data: {
     githubCooldownUntil: null,
   },

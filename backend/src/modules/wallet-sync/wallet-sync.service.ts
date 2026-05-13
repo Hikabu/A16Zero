@@ -107,11 +107,10 @@ async linkWallet(
 
   // 5. Upsert wallet
   await this.prisma.web3Profile.upsert({
-    where: { userId },
+    where: { developerProfileId: devProfile.id },
     create: {
-      userId,
+      developerProfileId: devProfile.id,
       solanaAddress: walletAddress,
-      devCandidateId: devProfile.id,
     },
     update: {
       solanaAddress: walletAddress,
@@ -119,8 +118,8 @@ async linkWallet(
   });
 
   // 6. Apply cooldown AFTER successful link (15 min)
-  await this.prisma.candidate.update({
-    where: { userId },
+  await this.prisma.developerProfile.update({
+    where: { id: devProfile.id },
     data: {
       walletCooldownUntil: new Date(Date.now() + 15 * 60 * 1000),
     },
@@ -133,22 +132,20 @@ async linkWallet(
 }
 
 async unsyncWallet(userId: string) {
-  await this.prisma.candidate.update({
-    where: { userId },
+  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+
+  await this.prisma.developerProfile.update({
+    where: { id: devProfile.id },
     data: {
       walletCooldownUntil: null,
     },
   })
 
-  await this.prisma.web3Profile.deleteMany({
-    where: {
-      devCandidate: {
-        candidate: {
-          userId,
-        },
-      },
-    },
-  })
+  if (devProfile?.web3Profile) {
+    await this.prisma.web3Profile.delete({
+      where: { id: devProfile.web3Profile.id },
+    })
+  }
 
   return {
     unlinked: true,

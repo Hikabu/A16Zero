@@ -205,26 +205,30 @@ private async rebuildScorecardFromAnalysis(
       this.mapCapability('devops', real.capabilities.devops),
     ];
 
-      const user = await this.prisma.user.findUnique({
-    where: { id: userId },
+      const candidate = await this.prisma.candidate.findUnique({
+    where: { userId },
     select: {
       id: true,
-      username: true,
-      githubProfile: {
+      devProfile: {
         select: {
-          githubUsername: true,
-          rawDataSnapshot: true,
+          githubProfile: {
+            select: {
+              githubUsername: true,
+              rawDataSnapshot: true,
+            },
+          },
         },
       },
     },
   });
 
-  const githubUsername = user?.githubProfile?.githubUsername;
+  const githubProfile = candidate?.devProfile?.githubProfile;
+  const githubUsername = githubProfile?.githubUsername;
 
     return {
       profile: {
-        username: user?.username ?? githubUsername ?? "unknown",
-    avatarUrl:githubUsername
+        username: githubUsername ?? "unknown",
+    avatarUrl: githubUsername
         ? `https://github.com/${githubUsername}.png`
         : undefined,
         summary: real.summary,

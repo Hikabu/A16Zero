@@ -55,15 +55,25 @@ export class VouchesService {
     const { candidateIdentifier, message, txSignature } = input;
 
     // ── Resolve caller's wallet ───────────────────────────────────────────
-    const web3user = await this.prisma.web3Profile.findUnique({
+    const candidate = await this.prisma.candidate.findUnique({
       where: { userId },
+      select: {
+        devProfile: {
+          select: {
+            web3Profile: {
+              select: { solanaAddress: true },
+            },
+          },
+        },
+      },
     });
-    if (!web3user || !web3user.solanaAddress)
+    const web3Profile = candidate?.devProfile?.web3Profile;
+    if (!web3Profile?.solanaAddress)
       throw new UnauthorizedException(
         'No linked wallet found for this account',
       );
 
-    const voucherWallet: string = web3user.solanaAddress;
+    const voucherWallet: string = web3Profile.solanaAddress;
 
     // ── Idempotency fast-path (before the expensive RPC call) ────────────
     const existing = await this.prisma.vouch.findUnique({

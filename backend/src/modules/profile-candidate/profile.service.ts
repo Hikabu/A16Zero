@@ -108,19 +108,28 @@ async getPublicProfile(username: string) {
           },
 
           select: {
-            user: {
+            developerProfile: {
               select: {
-                username: true,
+                candidate: {
+                  select: {
+                    user: {
+                      select: {
+                        username: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
         });
 
+      const voucherUsername = linkedWallet?.developerProfile?.candidate?.user?.username ?? null;
+
       return {
         ...vouch,
 
-        voucherUser:
-          linkedWallet?.user?.username ?? null,
+        voucherUser: voucherUsername,
       };
     },
   ),

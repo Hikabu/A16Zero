@@ -75,7 +75,7 @@ export class SignalComputeProcessor extends WorkerHost {
       if (mode !== 'wallet-only' && githubUsername) {
         profile = await this.prisma.githubProfile.findUnique({
           where: { githubUsername },
-          include: { devCandidate: true },
+          include: { developerProfile: true },
         });
 
         // If we want to use cache, check if snapshot exists
