@@ -28,6 +28,7 @@ import {
   ApiUnauthorizedResponse,
   ApiNotFoundResponse,
   ApiBearerAuth,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { VouchesService } from './vouches.service';
 import { HeliusWebhookService } from './helius-webhook.service';
@@ -35,6 +36,7 @@ import { ConfirmVouchDto } from './dto/ConfirmVoucher.dto';
 import { RevokeVouchDto } from './dto/RevokeVouch.dto';
 import { VouchResponseDto } from './dto/VouchResponse.dto';
 import { VoucherErrorResponseDto } from './dto/ErrorResponse.dto';
+import { InternalKeyGuard } from '../scorecard/internal-key.guard';
 
 @ApiTags('Vouches')
 @Controller('vouch')
@@ -155,7 +157,12 @@ export class VouchesController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
+  @ApiHeader({
+      name: 'X-Internal-Key',
+      description: 'Internal API key (required)',
+      required: true,
+    })
+  @UseGuards(AuthGuard('jwt'), InternalKeyGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({

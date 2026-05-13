@@ -78,6 +78,7 @@ export interface AnalysisResult {
     ecosystemPRs: number;
     deployedPrograms: DeployedProgram[];
   } | null;
+  schemaVersion: string,
 }
 
 export interface ExtractedSignals {

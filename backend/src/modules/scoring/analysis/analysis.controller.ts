@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -832,5 +833,57 @@ await this.prisma.candidate.update({
   } catch (err) {
     console.error('Failed to sync cached scorecard:', err);
   }
+}
+
+@Delete('reset')
+@ApiHeader({
+    name: 'X-Internal-Key',
+    description: 'Internal API key (required)',
+    required: true,
+  })
+  @UseGuards(InternalKeyGuard, OptionalJwtAuthGuard)
+async resetAnalysis(@Req() req: any) {
+  const candidate = await this.prisma.candidate.findUnique({
+    where: { userId: req.user.id },
+    include: { devProfile: { include: { githubProfile: true, web3Profile: true } } },
+  });
+
+  if (!candidate) throw new NotFoundException();
+
+  const githubUsername = candidate.devProfile?.githubProfile?.githubUsername;
+  const walletAddress = candidate.devProfile?.web3Profile?.solanaAddress;
+
+  // 1. reset jobs
+  await this.prisma.analysisJob.updateMany({
+    where: { candidateId: candidate.id },
+    data: {
+      status: 'pending',
+      progress: 0,
+      result: Prisma.DbNull,
+      error: null,
+    },
+  });
+
+  // 2. clear scorecard
+  await this.prisma.candidate.update({
+    where: { id: candidate.id },
+    data: { 
+      scorecard: Prisma.DbNull,
+      generateCooldownUntil: null
+     },
+  });
+
+  console.log("githubusername: ", githubUsername);
+  console.log("wallet address:", walletAddress);
+  // 3. clear cache
+  const keys = [
+    this.cacheService.buildCacheKey(githubUsername ?? undefined, walletAddress ?? undefined),
+    this.cacheService.buildCacheKey(githubUsername ?? undefined, undefined),
+    this.cacheService.buildCacheKey(undefined, walletAddress ?? undefined),
+  ];
+
+  await Promise.all(keys.map(k => this.cacheService.del(k)));
+
+  return { ok: true };
 }
 }

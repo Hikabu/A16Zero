@@ -13,6 +13,7 @@ import { SignalExtractorService } from '../signal-extractor/signal-extractor.ser
 import { OrgAnalyserService } from '../signal-extractor/org-analyser.service';
 import { SummaryGeneratorService } from '../summary-generator/summary-generator.service';
 import { LANGUAGE_CAPABILITY_WEIGHTS } from './language-weights';
+import { SCORING_SCHEMA_VERSION } from '../constants';
 
 @Injectable()
 export class ScoringService {
@@ -87,6 +88,7 @@ export class ScoringService {
       stack: { languages: signals.stackIdentity, tools },
       reputation: null,
       web3: null,
+      schemaVersion: SCORING_SCHEMA_VERSION,
     };
 
     if (s9Ecosystem || walletAddress) {

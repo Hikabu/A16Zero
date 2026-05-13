@@ -2,6 +2,7 @@ import { Controller, Get, Header, Res, HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AnalysisResult } from '../../../modules/scoring/types/result.types';
+import { SCORING_SCHEMA_VERSION } from 'src/modules/scoring/constants';
 
 /** ─────────────────────────────────────────────────────────────
  *  Static fixture: GitHub-only developer (no wallet)
@@ -33,6 +34,7 @@ const MOCK_GITHUB_ONLY: AnalysisResult = {
     tools: ['Docker', 'Anchor', 'Prisma', 'Redis'],
   },
   web3: null,
+  schemaVersion: SCORING_SCHEMA_VERSION
 };
 
 /** ─────────────────────────────────────────────────────────────
@@ -91,6 +93,7 @@ const MOCK_WALLET: AnalysisResult = {
       },
     ],
   },
+  schemaVersion: SCORING_SCHEMA_VERSION
 };
 
 /** ─────────────────────────────────────────────────────────────
@@ -135,6 +138,7 @@ const MOCK_WALLET_ONLY: AnalysisResult = {
       },
     ],
   },
+  schemaVersion: SCORING_SCHEMA_VERSION,
 };
 
 @ApiTags('Mock / Dev Reference')

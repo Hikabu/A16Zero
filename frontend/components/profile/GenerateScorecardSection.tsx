@@ -349,7 +349,10 @@ className={`h-4 w-4 shrink-0 ${
               id="generate-scorecard-btn"
               variant="default"
               size="default"
-              onClick={onGenerate}
+              onClick={()=>{
+                console.log("analyze & generate")
+                onGenerate();
+              }}
               disabled={generateDisabled}
               className="w-full cursor-pointer"
             >

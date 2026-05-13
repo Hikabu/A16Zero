@@ -52,6 +52,7 @@ export const RawScorecardSchema = z.object({
     })
     .optional(),
   web3: z.any().nullable().optional(),
+  schemaVersion: z.string()
 });
 
 export type RawScorecard = z.infer<typeof RawScorecardSchema>;

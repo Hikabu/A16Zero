@@ -2615,8 +2615,20 @@ export const updateCandidateProfile = (body: any) => ProfileController_updateCan
 
 export const getAnalysisStatus = (jobId: string) => AnalysisController_getStatus({ path: { jobId } });
 export const getAnalysisResult = (jobId: string) => AnalysisController_getResult({ path: { jobId } });
-export const getMyScorecard = () => ScorecardController_getMyScorecard();
+// export const getMyScorecard = () => ScorecardController_getMyScorecard();
 export const getMyRawScorecard = () => ScorecardController_getMyScorecardRaw();
+export const getMyScorecard = async () => {
+  console.log("fetching");
+  try {
+    return await ScorecardController_getMyScorecard();
+  } catch (err: any) {
+    if (err?.status === 404) {
+      console.log("got a 404")
+      return null; // THIS IS KEY
+    }
+    throw err;
+  }
+};
 
 export const getGithubConnectUrl = () => AuthCandidateController_linkGithub();
 export const getGithubSyncStatus = () => GithubSyncController_getSyncStatus();

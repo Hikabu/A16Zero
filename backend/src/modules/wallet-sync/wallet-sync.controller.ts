@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Req, Delete } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiTags,
@@ -10,6 +10,7 @@ import {
   ApiUnauthorizedResponse,
   ApiNotFoundResponse,
   ApiBody,
+  ApiHeader,
 } from '@nestjs/swagger';
 
 import { WalletSyncService } from './wallet-sync.service';
@@ -19,6 +20,7 @@ import {
   LinkWalletResponseDto,
   WalletSyncErrorResponseDto,
 } from './dto/wallet-sync.dto';
+import { InternalKeyGuard } from '../scorecard/internal-key.guard';
 
 @ApiTags('Wallet Sync')
 @ApiBearerAuth()
@@ -134,10 +136,16 @@ export class WalletSyncController {
     );
   }
 
-  @Post('unsync')
+  @Delete('unsync')
 @ApiOperation({
   summary: 'DEV ONLY - unlink wallet',
 })
+@ApiHeader({
+      name: 'X-Internal-Key',
+      description: 'Internal API key (required)',
+      required: true,
+    })
+  @UseGuards(InternalKeyGuard)
 async unsyncWallet(@Req() req: any) {
   return this.walletSyncService.unsyncWallet(req.user.id)
 }

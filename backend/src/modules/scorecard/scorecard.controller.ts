@@ -65,11 +65,7 @@ export class ScorecardController {
     description:
       'Generates a mock scorecard for a given GitHub username and returns a frontend-ready UI model. Requires internal API key.',
   })
-  @ApiHeader({
-    name: 'X-Internal-Key',
-    description: 'Internal API key (required)',
-    required: true,
-  })
+  
   @ApiBody({
     type: PreviewScorecardRequestDto,
     examples: {
@@ -88,6 +84,11 @@ export class ScorecardController {
   @ApiUnauthorizedResponse({
     description: 'Missing or invalid internal API key',
     type: ScorecardErrorResponseDto,
+  })
+  @ApiHeader({
+    name: 'X-Internal-Key',
+    description: 'Internal API key (required)',
+    required: true,
   })
   @UseGuards(InternalKeyGuard)
   @HttpCode(HttpStatus.OK)
@@ -159,6 +160,7 @@ export class ScorecardController {
       req.user.id,
     );
 
+    console.log("scorecard? ", scorecard!!);
     if (!scorecard) {
       throw new NotFoundException(
         'No scorecard found. Trigger a sync first via POST /me/github/sync',

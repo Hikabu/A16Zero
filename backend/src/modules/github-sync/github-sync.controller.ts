@@ -19,10 +19,12 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiQuery,
+  ApiHeader,
 } from '@nestjs/swagger';
 
 import { GithubSyncService } from './github-sync.service';
 import { GithubSyncConnectGuard } from '../auth-candidate/guards/github.sync.connect.guard';
+import { InternalKeyGuard } from '../scorecard/internal-key.guard';
 
 
 @ApiTags('GitHub Sync')
@@ -131,7 +133,12 @@ return res.redirect(`${process.env.FRONTEND_URL}/sync/github/callback`);
 
 ///ONLY TESTING - DELETE TODO
   @Delete('dev/unsync')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), InternalKeyGuard)
+@ApiHeader({
+    name: 'X-Internal-Key',
+    description: 'Internal API key (required)',
+    required: true,
+  })
 async unsyncGithub(@Req() req: any) {
   
   return this.githubSyncService.unsyncGithub(req.user.id);

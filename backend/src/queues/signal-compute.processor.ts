@@ -11,6 +11,7 @@ import { CacheService } from '../modules/scoring/cache/cache.service';
 import { SolanaAdapterService } from '../modules/scoring/web3-adapter/solana-adapter.service';
 import { Web3MergeService } from '../modules/scoring/web3-merge/web3-merge.service';
 import { OctokitFactory } from '../modules/scoring/github-adapter/octokit.factory';
+import { SCORING_SCHEMA_VERSION } from '../modules/scoring/constants';
 
 @Processor('signal-compute', {
   concurrency: process.env.NODE_ENV === 'test' ? 1 : 10,
@@ -115,7 +116,7 @@ export class SignalComputeProcessor extends WorkerHost {
           summary:
             'On-chain developer profile. Insufficient public GitHub data to assess software capabilities.',
           web3: web3Data,
-        };
+  schemaVersion: SCORING_SCHEMA_VERSION,        };
 
         if (web3Data && web3Data.deployedPrograms) {
           result = this.web3MergeService.applyWalletUpgrades(
@@ -141,6 +142,8 @@ export class SignalComputeProcessor extends WorkerHost {
           walletAddress,
         });
 
+        await this.persistScorecard(userId ?? null, result);
+
         // Update AnalysisJob status to completed
         await this.prisma.analysisJob.update({
           where: { id: recordId },
@@ -149,7 +152,6 @@ export class SignalComputeProcessor extends WorkerHost {
             result: result as any,
           },
         });
-      await this.persistScorecard(userId ?? null, result);
 
         // console.log("result: ", result);
 
@@ -237,8 +239,10 @@ export class SignalComputeProcessor extends WorkerHost {
       await this.updateProgress(recordId, 75);
 
       // Score
-      let result = this.scoringService.score(rawData, walletAddress);
-
+let result: AnalysisResult = {
+  ...this.scoringService.score(rawData, walletAddress),
+  schemaVersion: "v.0.0.1",
+};
       // Inject web3 data if present
       if (web3Data) {
         result = this.web3MergeService.applyWalletUpgrades(
@@ -264,8 +268,10 @@ export class SignalComputeProcessor extends WorkerHost {
         walletAddress,
       });
 
-      // Update progress: complete (100%)
-      await this.updateProgress(recordId, 100);
+      // // Update progress: complete (100%)
+      // await this.updateProgress(recordId, 100);
+
+      await this.persistScorecard(userId ?? null, result);
 
       // Update AnalysisJob
       await this.prisma.analysisJob.update({
@@ -277,7 +283,6 @@ export class SignalComputeProcessor extends WorkerHost {
           result: result as any,
         },
       });
-      await this.persistScorecard(userId ?? null, result);
 
 
       this.logger.log(

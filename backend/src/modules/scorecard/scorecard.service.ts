@@ -9,6 +9,7 @@ import { AnalysisResult } from '../scoring/types/result.types';
 import { CacheService } from '../scoring/cache/cache.service';
 import { RawScorecard } from './contract/scorecard.schema';
 import { User } from '@privy-io/node/resources/index';
+import { SCORING_SCHEMA_VERSION } from '../scoring/constants';
 
 @Injectable()
 export class ScorecardService {
@@ -386,6 +387,7 @@ private async rebuildScorecardFromAnalysis(
       interactionProfile: null,
       stack: { languages: [], tools: [] },
       web3: null,
+      schemaVersion: SCORING_SCHEMA_VERSION
     };
   }
 }

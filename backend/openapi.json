@@ -1306,6 +1306,30 @@
         ]
       }
     },
+    "/api/analysis/reset": {
+      "delete": {
+        "operationId": "AnalysisController_resetAnalysis",
+        "parameters": [
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Proof Of Talent"
+        ]
+      }
+    },
     "/sync/github/connect": {
       "get": {
         "description": "Generates a GitHub OAuth URL for the authenticated user and redirects them to GitHub authorization.",
@@ -1408,7 +1432,17 @@
     "/sync/github/dev/unsync": {
       "delete": {
         "operationId": "GithubSyncController_unsyncGithub",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -3212,6 +3246,15 @@
               "example": "vouch_123",
               "type": "string"
             }
+          },
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -3559,11 +3602,21 @@
       }
     },
     "/sync/wallet/unsync": {
-      "post": {
+      "delete": {
         "operationId": "WalletSyncController_unsyncWallet",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
