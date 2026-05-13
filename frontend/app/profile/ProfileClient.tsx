@@ -106,19 +106,42 @@ console.log('GITHUB STATUS DATA', githubStatus)
     staleTime: 30_000,
   })
 
+  const [githubUiSyncing, setGithubUiSyncing] = useState(false)
 
 const handleSyncGithub = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
-  
 
+  setGithubUiSyncing(true)
 
   window.open(
     `${apiUrl}/sync/github/connect`,
     'github_oauth',
     'width=600,height=700'
   )
-}
 
+  const interval = setInterval(async () => {
+    const result = await queryClient.fetchQuery({
+      queryKey: ['githubStatus'],
+      queryFn: fetchGithubStatus,
+    })
+
+    console.log('POLL RESULT', result)
+
+    if (
+      result?.syncStatus === 'SYNC_SUCCESS' ||
+      result?.syncStatus === 'SYNC_FAILED' ||
+      result?.syncStatus === 'CONNECT_SUCCESS'
+    ) {
+      clearInterval(interval)
+      setGithubUiSyncing(false)
+    }
+  }, 2000)
+
+  setTimeout(() => {
+    clearInterval(interval)
+    setGithubUiSyncing(false)
+  }, 60000)
+}
 
   // 3. Wallet Status
   const { data: walletData } = useQuery({
@@ -140,9 +163,11 @@ const handleSyncGithub = () => {
   })
 
 
-const normalizedSyncStatus= 
-  githubStatus?.syncStatus ?? 'NOT_SYNCED'
-
+const normalizedSyncStatus =
+  githubUiSyncing
+    ? 'SYNC_REQUEST'
+    : (githubStatus?.syncStatus ?? 'NOT_SYNCED')
+    
 const githubStatusMapped = {
   isLinked: normalizedSyncStatus !== 'NOT_SYNCED',
   lastSyncedAt: githubStatus?.lastSyncedAt,

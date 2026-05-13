@@ -123,25 +123,22 @@ export function GenerateScorecardSection({
   const syncStatus = githubStatus.syncStatus
 
 const githubConnected =
-  syncStatus === 'CONNECT_SUCCESS' ||
-  syncStatus === 'SYNC_REQUEST' ||
-  syncStatus === 'SYNC_FETCH_REQUEST' ||
-  syncStatus === 'SYNC_FETCH_SUCCESS' ||
-  syncStatus === 'SYNC_SUCCESS' ||
-  syncStatus === 'SYNC_FAILED'
+  syncStatus !== 'NOT_SYNCED'
 
 const githubSyncing =
   syncStatus === 'CONNECT_REQUEST' ||
-  syncStatus === 'CONNECT_SUCCESS' ||
   syncStatus === 'SYNC_REQUEST' ||
   syncStatus === 'SYNC_FETCH_REQUEST' ||
   syncStatus === 'SYNC_FETCH_SUCCESS'
 
-const githubFailed =
-  syncStatus?.includes('FAILED')
-
 const githubHasSynced =
   syncStatus === 'SYNC_SUCCESS'
+
+const githubFailed =
+  syncStatus === 'SYNC_FAILED'
+
+const githubJustConnected =
+  syncStatus === 'CONNECT_SUCCESS'
 
 
   const walletSyncOnCooldown =
