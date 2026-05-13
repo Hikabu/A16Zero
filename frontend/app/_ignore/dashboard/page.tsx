@@ -31,6 +31,9 @@ import {
   ApplicantsController_getGapPreview
 } from "@/lib/api";
 
+//use HR : IGNORE
+
+
 // ============ TYPES ============
 interface Candidate {
   id: string | number;

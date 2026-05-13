@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { JobsController_getMyJobs } from "@/lib/api";
 
+//use HR : IGNORE
+
 function PipelineSkeleton() {
   return (
     <div className="flex flex-col gap-8 w-full pb-10">

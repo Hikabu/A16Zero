@@ -297,10 +297,21 @@ export class EscrowService {
     const profile = await this.prisma.web3Profile.findFirst({
       where: {
         solanaAddress: candidateWallet,
-        user: { role: UserRole.CANDIDATE },
-        devCandidate: { candidate: { is: {} } },
+        developerProfile: {
+          candidate: {
+            user: { role: UserRole.CANDIDATE },
+          },
+        },
       },
-      select: { userId: true },
+      select: {
+        developerProfile: {
+          select: {
+            candidate: {
+              select: { userId: true },
+            },
+          },
+        },
+      },
     });
 
     if (!profile) {

@@ -13,24 +13,10 @@ export function useWalletFlow(
 ) {
 
 const wallet = useWallet()
-const { setVisible } = useWalletModal()
   const [status, setStatus] = useState<'idle' | 'signing' | 'submitting' | 'done' | 'error'>('idle')
 const hasAutoTriggered = useRef(false)
 
-const wait = (ms: number) => new Promise(res => setTimeout(res, ms))
 
-async function waitForWalletReady(timeout = 3000) {
-  const start = Date.now()
-
-  while (Date.now() - start < timeout) {
-    if (wallet.publicKey && typeof wallet.signMessage === 'function') {
-      return true
-    }
-    await new Promise(r => setTimeout(r, 100))
-  }
-
-  return false
-}
 useEffect(() => {
   // Wallet was just selected from modal
   if (wallet.wallet && !wallet.connected && !hasAutoTriggered.current) {
@@ -44,6 +30,7 @@ useEffect(() => {
 }, [wallet.wallet])
 
  const trigger = async () => {
+  console.log("TRIGGERR")
   const provider = (window as any)?.phantom?.solana
 
   try {

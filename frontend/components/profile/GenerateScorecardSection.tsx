@@ -117,7 +117,7 @@ export function GenerateScorecardSection({
   onGenerate,
   isGenerating,
 }: GenerateScorecardSectionProps) {
-  console.log('githubStatus', githubStatus)
+  // console.log('githubStatus', githubStatus)
   // console.log('walletStatus:', walletStatus);
   // Cooldown derivations
   const syncStatus = githubStatus.syncStatus

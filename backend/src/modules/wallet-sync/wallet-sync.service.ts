@@ -104,6 +104,7 @@ async linkWallet(
 
   // 4. Ensure dev profile exists
   const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+  if (!devProfile) throw new Error('Developer profile not found');
 
   // 5. Upsert wallet
   await this.prisma.web3Profile.upsert({
@@ -133,6 +134,7 @@ async linkWallet(
 
 async unsyncWallet(userId: string) {
   const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+  if (!devProfile) throw new Error('Developer profile not found');
 
   await this.prisma.developerProfile.update({
     where: { id: devProfile.id },

@@ -8,6 +8,8 @@ import { ArrowRight, Check, Shield, Eye, Zap, Github } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
+//use: ALL 
+
 
 // Premium easing
 const ease = [0.16, 1, 0.3, 1] as const;

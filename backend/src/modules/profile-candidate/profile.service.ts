@@ -200,15 +200,19 @@ async getPublicProfile(username: string) {
     const candidate = await this.prisma.candidate.findUnique({
       where: { userId },
       select: {
-        githubCooldownUntil: true,
-        walletCooldownUntil: true,
         generateCooldownUntil: true,
+        devProfile: {
+          select: {
+            githubCooldownUntil: true,
+            walletCooldownUntil: true,
+          },
+        },
       },
     });
 
     return {
-      github: { cooldownUntil: candidate?.githubCooldownUntil ?? null },
-      wallet: { cooldownUntil: candidate?.walletCooldownUntil ?? null },
+      github: { cooldownUntil: candidate?.devProfile?.githubCooldownUntil ?? null },
+      wallet: { cooldownUntil: candidate?.devProfile?.walletCooldownUntil ?? null },
       generate: { cooldownUntil: candidate?.generateCooldownUntil ?? null },
     };
   }

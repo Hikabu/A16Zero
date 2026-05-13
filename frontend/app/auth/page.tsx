@@ -29,6 +29,11 @@ import {
 } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 
+//use: ALL
+//(only cnadidate login @first)
+//TODO: conditional non rendering of hr login
+
+
 type Mode = "candidate" | "employer";
 type PasswordResetStep = 1 | 2 | null;
 

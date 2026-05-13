@@ -25,6 +25,8 @@ import {
   getPublicScorecard,
 } from '@/lib/api'
 
+//use : CANDIDATES
+//TODO: UPDATE
 import ShareButton from './ShareButton'
 
 export const revalidate = 60
@@ -119,10 +121,10 @@ export default async function PublicProfilePage({
 }) {
   const { username } = await params
 
-  console.log(
-    '📄 Generating profile page for:',
-    username,
-  )
+  // console.log(
+  //   '📄 Generating profile page for:',
+  //   username,
+  // )
 
   // -----------------------------------------------------------------------
   // Public profile = source of truth

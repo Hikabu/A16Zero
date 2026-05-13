@@ -236,7 +236,7 @@ export function ScorecardView({
   ]
 
   const achievements = web3?.achievements ?? []
-  console.log("profile: ", profile);
+  // console.log("profile: ", profile);
   return (
     <Card className="w-full overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm">
       {/* ── HEADER: Identity & Composite Score ──────────────── */}

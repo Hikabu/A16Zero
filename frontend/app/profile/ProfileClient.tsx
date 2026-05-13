@@ -35,17 +35,17 @@ const GITHUB_LINKED_STATUSES = new Set([
   'SYNC_SUCCESS',
 ])
 export default function ProfileClient() {
-  console.log('PROFILE CLIENT RENDER')
+  // console.log('PROFILE CLIENT RENDER')
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
 
   const fetchGithubStatus = async () => {
-  console.log('FETCH GITHUB STATUS CALLED')
+  // console.log('FETCH GITHUB STATUS CALLED')
 
   const data = await apiFetch('/sync/github/status')
 
-  console.log('GITHUB STATUS RESPONSE', data)
+  // console.log('GITHUB STATUS RESPONSE', data)
 
   return data
 }
@@ -68,11 +68,11 @@ const {
   },
   
 })
-console.log('QUERY STATUS', status)
-console.log('QUERY LOADING', isLoading)
-console.log('QUERY ERROR', error)
-console.log('IS ERROR', isError)
-console.log('GITHUB STATUS DATA', githubStatus)
+// console.log('QUERY STATUS', status)
+// console.log('QUERY LOADING', isLoading)
+// console.log('QUERY ERROR', error)
+// console.log('IS ERROR', isError)
+// console.log('GITHUB STATUS DATA', githubStatus)
 
   const { data: user } = useQuery({ queryKey: ['me'], queryFn: getMe })
   const { data: candidate } = useQuery({ queryKey: ['candidate'], queryFn: getCandidateProfile })
@@ -124,8 +124,8 @@ const handleSyncGithub = () => {
       queryKey: ['githubStatus'],
       queryFn: fetchGithubStatus,
     })
-
-    console.log('POLL RESULT', result)
+// 
+   // console.log('POLL RESULT', result)
 
     if (
       result?.syncStatus === 'SYNC_SUCCESS' ||

@@ -17,7 +17,7 @@ function normalizeScore(v: any): number {
 
 export function normalizeScorecard(raw: any) {
 
-    console.log("raw profile: ", raw.profile);
+    // console.log("raw profile: ", raw.profile);
     return {
     ...raw,
 

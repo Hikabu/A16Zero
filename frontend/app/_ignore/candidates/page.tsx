@@ -7,6 +7,9 @@ import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { JobsController_getMyJobs, getEmployerCandidateCount } from "@/lib/api";
 
+
+//use HR : IGNORE
+
 function CandidatesPageSkeleton() {
   return (
     <div className="flex flex-col gap-8 w-full pb-10">

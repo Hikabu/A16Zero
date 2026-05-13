@@ -52,16 +52,13 @@ export class GithubSyncProcessor extends WorkerHost {
         where: { id: githubProfileId },
         data: {
           syncStatus: SyncStatus.SYNC_REQUEST,
-          syncProgress: JSON.stringify({
-            stage: 'fetching_repos',
-            percent: 20,
-          }),
+          syncProgress: 20,
         },
       });
 
       // (c) Call consolidated fetcher
       const resolvedUserId = job.data.userId;
-      const octokit = await this.octokitFactory.forJob(resolvedUserId);
+      const octokit = await this.octokitFactory.forJob(resolvedUserId ?? null);
       const rawData = await this.githubAdapter.fetchRawData(
         octokit,
         profile.githubUsername,
@@ -73,10 +70,7 @@ export class GithubSyncProcessor extends WorkerHost {
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          syncProgress: JSON.stringify({
-            stage: 'analyzing_projects',
-            percent: 40,
-          }),
+          syncProgress: 40,
         },
       });
 
@@ -87,7 +81,7 @@ export class GithubSyncProcessor extends WorkerHost {
       //   JSON.stringify(rawData, null, 2),
       // );
 
-      // (e) Save raw data, keep status = IN_PROGRESS, lastSyncAt
+      // (e) Save raw data, set status = SYNC_SUCCESS, syncProgress = 100
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
@@ -95,6 +89,7 @@ export class GithubSyncProcessor extends WorkerHost {
           lastSyncAt: new Date(),
           syncError: null,
           syncStatus: SyncStatus.SYNC_SUCCESS,
+          syncProgress: 100,
         },
       });
 
@@ -121,11 +116,12 @@ export class GithubSyncProcessor extends WorkerHost {
         `GitHub sync failed for profile ${githubProfileId}: ${error.message}`,
       );
 
-      // (g) On error: set status = FAILED, syncError = error.message
+      // (g) On error: set status = FAILED, syncProgress = 0, syncError = error.message
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
           syncStatus: SyncStatus.SYNC_FAILED,
+          syncProgress: 0,
           syncError: error.message,
         },
       });

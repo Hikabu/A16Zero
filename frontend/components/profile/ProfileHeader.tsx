@@ -213,7 +213,7 @@ const handleAvatarChange = async (e) => {
 
   try {
     const res = await uploadAvatar(file)
-    console.log("res:", res);
+    // console.log("res:", res);
     setAvatarUrl(res.url)
   } finally {
     setUploadingAvatar(false)

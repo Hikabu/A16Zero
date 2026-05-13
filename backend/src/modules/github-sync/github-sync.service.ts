@@ -91,7 +91,7 @@ export class GithubSyncService {
         encryptedToken,
         scopes: githubData.scopes,
         syncStatus: SyncStatus.CONNECT_SUCCESS,
-        syncProgress: '0',
+        syncProgress: 0,
         syncError: null,
       },
     });
@@ -141,7 +141,7 @@ export class GithubSyncService {
       where: { id: githubProfile.id },
       data: {
         syncStatus: SyncStatus.SYNC_REQUEST,
-        syncProgress: '0',
+        syncProgress: 0,
         syncError: null,
       },
     });

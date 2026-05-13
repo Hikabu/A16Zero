@@ -15,25 +15,25 @@ datasource db {
 // ─── COMPANY ──────────────────────────────────────────────────────────────────
 
 model Company {
-  id                 String    @id @default(uuid())
+  id                 String  @id @default(uuid())
   name               String
-  legalName          String?   // exact registered business name
+  legalName          String? // exact registered business name
   logoUrl            String?
   website            String?
   description        String?
-  registrationNumber String?   @unique
+  registrationNumber String? @unique
   country            String
 
   // Trust & verification
-  isVerified         Boolean   @default(false)
-  verifiedAt         DateTime?
-  isVerifiedPayer    Boolean   @default(false)
-  trustScore         Int       @default(0) // 0–100, application-maintained derived value
+  isVerified      Boolean   @default(false)
+  verifiedAt      DateTime?
+  isVerifiedPayer Boolean   @default(false)
+  trustScore      Int       @default(0) // 0–100, application-maintained derived value
 
   // Denormalised counters — incremented by application logic, never by DB triggers
-  totalJobsPosted      Int     @default(0)
-  totalEscrowsFunded   Int     @default(0)
-  totalEscrowsReleased Int     @default(0)
+  totalJobsPosted      Int @default(0)
+  totalEscrowsFunded   Int @default(0)
+  totalEscrowsReleased Int @default(0)
 
   // Identity / auth
   email               String? @unique
@@ -53,10 +53,10 @@ model Company {
 
 enum JobStatus {
   DRAFT
-  PENDING_PAYMENT   // created, escrow not yet funded
-  ACTIVE            // funded and live
-  CLOSED_PENDING    // payment done but not yet published
-  CLOSED            // finished, no longer accepting applications
+  PENDING_PAYMENT // created, escrow not yet funded
+  ACTIVE // funded and live
+  CLOSED_PENDING // payment done but not yet published
+  CLOSED // finished, no longer accepting applications
 }
 
 enum Seniority {
@@ -95,7 +95,7 @@ model JobPost {
   title          String
   description    String
   location       String?
-  employmentType String?    // "full-time" | "part-time" | "contract"
+  employmentType String? // "full-time" | "part-time" | "contract"
   bonusAmount    Decimal    @db.Decimal(10, 2)
   currency       String     @default("USD")
   status         JobStatus  @default(DRAFT)
@@ -106,7 +106,7 @@ model JobPost {
   // Skills & requirements (structured at confirm-requirements time)
   requiredSkills          String[]  @default([])
   parsedRequirements      Json?
-  dynamicWeights          Json?     // { collaborationWeight, ownershipWeight, innovationWeight }
+  dynamicWeights          Json? // { collaborationWeight, ownershipWeight, innovationWeight }
   requirementsConfirmedAt DateTime?
 
   // Escrow
@@ -201,14 +201,14 @@ model Shortlist {
   fitTier         FitTier          @default(PASS)
 
   // Frozen snapshots — captured at apply-time, never mutated
-  frozenScorecard    Json? // Full AnalysisResult snapshot
-  decisionCard       Json? // { verdict, strengths[], risks[], reputationNote }
-  gapReport          Json? // GapReport object
+  frozenScorecard Json? // Full AnalysisResult snapshot
+  decisionCard    Json? // { verdict, strengths[], risks[], reputationNote }
+  gapReport       Json? // GapReport object
 
   // Pipeline tracking
   pipelineStage        PipelineStage @default(APPLIED)
-  pipelineStageHistory Json?         // append-only log: [{ stage, changedAt, changedBy }]
-  interviewQuestions   Json?         // InterviewQuestionSet[]
+  pipelineStageHistory Json? // append-only log: [{ stage, changedAt, changedBy }]
+  interviewQuestions   Json? // InterviewQuestionSet[]
 
   // Notes
   candidateNote String? @db.VarChar(280)
@@ -256,7 +256,7 @@ model User {
   // Auth & security
   isEmailVerified Boolean  @default(false)
   mfaEnabled      Boolean  @default(false)
-  mfaSecret       String?  // encrypted at rest (AES-256-GCM)
+  mfaSecret       String? // encrypted at rest (AES-256-GCM)
   mfaBackupCodes  String[] @default([])
 
   createdAt DateTime @default(now())
@@ -353,7 +353,7 @@ model DeveloperProfile {
 
 enum SyncStatus {
   NOT_SYNCED
-  CONNECT_REQUEST   // OAuth flow initiated
+  CONNECT_REQUEST // OAuth flow initiated
   CONNECT_SUCCESS
   SYNC_REQUEST
   SYNC_FETCH_REQUEST
@@ -363,19 +363,19 @@ enum SyncStatus {
 }
 
 model GithubProfile {
-  id                String           @id @default(uuid())
-  developerProfileId String          @unique
-  developerProfile  DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(uuid())
+  developerProfileId String           @unique
+  developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
 
-  githubUsername  String     @unique
-  githubUserId    String     @unique
-  encryptedToken  String     // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
-  scopes          String[]   @default([])
+  githubUsername String   @unique
+  githubUserId   String   @unique
+  encryptedToken String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
+  scopes         String[] @default([])
 
-  syncStatus      SyncStatus @default(NOT_SYNCED)
-  syncProgress    String     @default("0")
-  syncError       String?
-  lastSyncAt      DateTime?
+  syncStatus   SyncStatus @default(NOT_SYNCED)
+  syncProgress Int        @default(0)
+  syncError    String?
+  lastSyncAt   DateTime?
 
   rawDataSnapshot Json?
 
@@ -394,7 +394,7 @@ model Web3Profile {
   developerProfileId String           @unique
   developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
 
-  solanaAddress String?
+  solanaAddress     String?
   // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
   verifiedContracts Json?
   onChainMetrics    Json?
@@ -438,14 +438,15 @@ model Vouch {
 // Tracks async analysis tasks. Linked to Candidate by candidateId (Candidate.id).
 
 model AnalysisJob {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   candidateId String?
   candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
 
-  status    String  @default("pending") // "pending" | "running" | "done" | "failed"
-  input     Json    // { githubUsername, walletAddress, mode, useGithubCache }
-  result    Json?
-  error     String?
+  status   String  @default("pending") // "pending" | "processing" | "completed" | "failed"
+  progress Int     @default(0)
+  input    Json // { githubUsername, walletAddress, mode, useGithubCache }
+  result   Json?
+  error    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

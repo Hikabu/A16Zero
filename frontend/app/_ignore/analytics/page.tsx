@@ -6,6 +6,8 @@ import { BarChart3 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { JobsController_getMyJobs } from "@/lib/api";
 
+//use: HR
+
 export default function AnalyticsPage() {
   const { data: jobsResponse, isLoading } = useQuery({
     queryKey: ["jobs", "me"],

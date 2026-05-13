@@ -176,7 +176,7 @@ Optional if authenticated.
       data: {
         status: 'pending',
         input: { githubUsername, walletAddress, mode, useGithubCache } as any,
-        userId: req.user?.id ?? null,
+        candidateId: req.user?.id ? (await this.prisma.candidate.findUnique({ where: { userId: req.user.id } }))?.id ?? null : null,
       },
     });
 
@@ -280,7 +280,7 @@ Use this for admin/system reprocessing.
           mode: input.mode,
           useGithubCache: input.useGithubCache ?? false,
         } as any,
-        userId, // ✅ ALWAYS SET
+        candidateId: (await this.prisma.candidate.findUnique({ where: { userId } }))?.id ?? null,
       },
     });
 
@@ -717,7 +717,7 @@ Use this for admin/system reprocessing.
 
     if (job.status === 'processing') {
       stage = 'analyzing_projects'; // you can refine later
-      progress = 50; // placeholder unless you persist progress
+      progress = job.progress > 0 ? job.progress : 50; // Use persisted progress
     }
 
     if (job.status === 'completed') {

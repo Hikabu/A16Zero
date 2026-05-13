@@ -192,9 +192,8 @@ describe('GithubSync (e2e)', () => {
     expect(updatedProfile?.syncStatus).toBe(SyncStatus.IN_PROGRESS);
 
     // Check JSON-encoded progress
-    const progress = JSON.parse(updatedProfile?.syncProgress || '{}');
-    expect(progress).toHaveProperty('stage', 'analyzing_projects');
-    expect(progress).toHaveProperty('percent', 40);
+    const progress = updatedProfile?.syncProgress;
+    expect(progress).toBe(40);
 
     expect(updatedProfile?.rawDataSnapshot).toBeDefined();
 
@@ -229,7 +228,7 @@ describe('GithubSync (e2e)', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.syncStatus).toBe('IN_PROGRESS');
-    const progress = JSON.parse(response.body.syncProgress || '{}');
-    expect(progress.stage).toBe('analyzing_projects');
+    const progress = updatedProfile?.syncProgress;
+    expect(progress).toBe(50);
   });
 });

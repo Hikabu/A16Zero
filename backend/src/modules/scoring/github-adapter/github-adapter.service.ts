@@ -41,55 +41,6 @@ export class GithubAdapterService {
     @Inject('REDIS') private readonly redis: Redis,
   ) {}
 
-  /**
-   * Main entry point to fetch and sync all GitHub data for a profile.
-   */
-  async syncProfile(githubProfileId: string): Promise<void> {
-    const profile = await this.prisma.githubProfile.findUnique({
-      where: { id: githubProfileId },
-    });
-
-    if (!profile) {
-      throw new Error(`GithubProfile ${githubProfileId} not found`);
-    }
-
-    await this.prisma.githubProfile.update({
-      where: { id: githubProfileId },
-      data: { syncStatus: SyncStatus.SYNC_FETCH_REQUEST },
-    });
-
-    try {
-      const token = this.decryptToken(profile.encryptedToken);
-      const octokit = new Octokit({
-        request: {
-          headers: {
-            authorization: `token ${token}`,
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-        },
-      });
-      const rawData = await this.fetchRawData(octokit, profile.githubUsername);
-
-      await this.prisma.githubProfile.update({
-        where: { id: githubProfileId },
-        data: {
-          rawDataSnapshot: rawData as any,
-          syncStatus: SyncStatus.SYNC_FETCH_SUCCESS,
-          syncProgress: 'COMPLETE',
-          lastSyncAt: new Date(),
-        },
-      });
-    } catch (error) {
-      this.logger.error(
-        `Sync failed for profile ${githubProfileId}: ${error.message}`,
-      );
-      await this.prisma.githubProfile.update({
-        where: { id: githubProfileId },
-        data: { syncStatus: SyncStatus.SYNC_FAILED },
-      });
-      throw error;
-    }
-  }
 
   /**
    * Fetches the minimal audited data required for scoring.
