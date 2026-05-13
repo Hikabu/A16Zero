@@ -26,14 +26,13 @@ import {
   TooltipContent,
 } from '@/components/ui/tooltip'
 import { SolanaLinkButton } from './SolanaLinkButton'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface GithubStatus {
-  isLinked: boolean
-  lastSyncedAt?: string
+  syncStatus?: string
+  lastSyncAt?: string
   cooldownUntil?: string
 }
 
@@ -46,14 +45,11 @@ export interface WalletStatus {
 export interface GenerateScorecardSectionProps {
   githubStatus: GithubStatus
   walletStatus: WalletStatus
-  /** ISO timestamp; undefined / null means available now */
   generateCooldownUntil?: string
   onSyncGithub: () => void
   onGenerate: () => void
-  isSyncing: boolean
   isGenerating: boolean
 }
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -119,14 +115,34 @@ export function GenerateScorecardSection({
   generateCooldownUntil,
   onSyncGithub,
   onGenerate,
-  isSyncing,
   isGenerating,
 }: GenerateScorecardSectionProps) {
-  console.log('walletStatus:', walletStatus);
+  console.log('githubStatus', githubStatus)
+  // console.log('walletStatus:', walletStatus);
   // Cooldown derivations
-  const githubOnCooldown =
-    !!githubStatus.cooldownUntil &&
-    Date.now() < new Date(githubStatus.cooldownUntil).getTime()
+  const syncStatus = githubStatus.syncStatus
+
+const githubConnected =
+  syncStatus === 'CONNECT_SUCCESS' ||
+  syncStatus === 'SYNC_REQUEST' ||
+  syncStatus === 'SYNC_FETCH_REQUEST' ||
+  syncStatus === 'SYNC_FETCH_SUCCESS' ||
+  syncStatus === 'SYNC_SUCCESS' ||
+  syncStatus === 'SYNC_FAILED'
+
+const githubSyncing =
+  syncStatus === 'CONNECT_REQUEST' ||
+  syncStatus === 'CONNECT_SUCCESS' ||
+  syncStatus === 'SYNC_REQUEST' ||
+  syncStatus === 'SYNC_FETCH_REQUEST' ||
+  syncStatus === 'SYNC_FETCH_SUCCESS'
+
+const githubFailed =
+  syncStatus?.includes('FAILED')
+
+const githubHasSynced =
+  syncStatus === 'SYNC_SUCCESS'
+
 
   const walletSyncOnCooldown =
   !!walletStatus.cooldownUntil &&
@@ -136,7 +152,7 @@ export function GenerateScorecardSection({
     !!generateCooldownUntil &&
     Date.now() < new Date(generateCooldownUntil).getTime()
 
-  const noSourceLinked = !githubStatus.isLinked && !walletStatus.isLinked
+  const noSourceLinked = !githubConnected && !walletStatus.isLinked
 
   const generateDisabled =
     noSourceLinked || generateOnCooldown || isGenerating
@@ -146,6 +162,10 @@ export function GenerateScorecardSection({
     : generateOnCooldown
       ? `Available in ${formatCountdown(generateCooldownUntil) ?? ''}`
       : undefined
+
+const githubOnCooldown =
+  !!githubStatus.cooldownUntil &&
+  Date.now() < new Date(githubStatus.cooldownUntil).getTime()
 
   return (
     <Card className="w-full overflow-hidden border-l-2 border-l-[hsl(var(--accent))] rounded-xl">
@@ -168,57 +188,73 @@ export function GenerateScorecardSection({
             {/* Left: icon + label + status chip */}
             <div className="flex items-center gap-2.5 min-w-0">
               <Github
-                className={`h-4 w-4 shrink-0 ${githubStatus.isLinked ? 'text-emerald-400' : 'text-muted-foreground'}`}
+                className={`h-4 w-4 shrink-0 ${githubConnected ? 'text-emerald-400' : 'text-muted-foreground'}`}
               />
               <span className="text-sm font-medium text-foreground whitespace-nowrap">
                 GitHub
               </span>
-              {githubStatus.isLinked ? (
-                <Badge
-                  variant="outline"
-                  className="text-[11px] border-emerald-500/30 bg-emerald-500/10 text-emerald-400 px-1.5 py-0 font-normal"
-                >
-                  <CheckCircle2 className="mr-1 h-2.5 w-2.5" />
-                  {githubStatus.lastSyncedAt
-                    ? `Synced ${formatRelativeTime(githubStatus.lastSyncedAt)}`
-                    : 'Synced'}
-                </Badge>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="text-[11px] border-border bg-transparent text-muted-foreground px-1.5 py-0 font-normal"
-                >
-                  <Circle className="mr-1 h-2.5 w-2.5" />
-                  Not connected
-                </Badge>
-              )}
+             {githubSyncing ? (
+  <Badge
+    variant="outline"
+    className="text-[11px] border-amber-500/30 bg-amber-500/10 text-amber-400 px-1.5 py-0 font-normal"
+  >
+    <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" />
+    Syncing
+  </Badge>
+) : githubFailed ? (
+  <Badge
+    variant="outline"
+    className="text-[11px] border-red-500/30 bg-red-500/10 text-red-400 px-1.5 py-0 font-normal"
+  >
+    Failed
+  </Badge>
+) : githubHasSynced ? (
+  <Badge
+    variant="outline"
+    className="text-[11px] border-emerald-500/30 bg-emerald-500/10 text-emerald-400 px-1.5 py-0 font-normal"
+  >
+    <CheckCircle2 className="mr-1 h-2.5 w-2.5" />
+    Synced {githubStatus.lastSyncAt
+      ? formatRelativeTime(githubStatus.lastSyncAt)
+      : ''}
+  </Badge>
+) : githubConnected ? (
+  <Badge
+    variant="outline"
+    className="text-[11px] border-yellow-500/30 bg-yellow-500/10 text-yellow-400 px-1.5 py-0 font-normal"
+  >
+    Connected
+  </Badge>
+) : (
+  <Badge
+    variant="outline"
+    className="text-[11px] border-border bg-transparent text-muted-foreground px-1.5 py-0 font-normal"
+  >
+    <Circle className="mr-1 h-2.5 w-2.5" />
+    Not connected
+  </Badge>
+)}
             </div>
 
             {/* Right: action */}
             <Button
-              variant="outline"
-              size="sm"
-              onClick={onSyncGithub}
-              disabled={(githubStatus.isLinked && githubOnCooldown) || isSyncing}
-              className="h-7 px-2.5 text-xs shrink-0 cursor-pointer"
-            >
-              {isSyncing ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                  Syncing…
-                </>
-              ) : githubStatus.isLinked ? (
-                <>
-                  <RefreshCw className="mr-1.5 h-3 w-3" />
-                  Sync now
-                </>
-              ) : (
-                <>
-                  <Github className="mr-1.5 h-3 w-3" />
-                  Connect GitHub
-                </>
-              )}
-            </Button>
+  variant="outline"
+  size="sm"
+  onClick={onSyncGithub}
+  disabled={githubSyncing || githubOnCooldown}
+  className="h-7 px-2.5 text-xs shrink-0 cursor-pointer"
+>
+  {githubSyncing ? (
+    <>
+      <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+      Syncing…
+    </>
+  ) : githubConnected ? (
+    'Sync now'
+  ) : (
+    'Connect GitHub'
+  )}
+</Button>
           </div>
 
           {/* Cooldown chip */}
@@ -232,9 +268,7 @@ export function GenerateScorecardSection({
         <RowSeparator />
 
         {/* ── ROW: Wallet ── */}
-        {/* <div className="flex justify-end mb-3">
-  <WalletMultiButton />
-</div> */}
+
         <div className="flex flex-col gap-1 py-3">
           <div className="flex items-center justify-between gap-3">
             {/* Left: icon + label + status chip */}

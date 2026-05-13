@@ -55,7 +55,7 @@ export class GithubAdapterService {
 
     await this.prisma.githubProfile.update({
       where: { id: githubProfileId },
-      data: { syncStatus: SyncStatus.RUNNING },
+      data: { syncStatus: SyncStatus.SYNC_FETCH_REQUEST },
     });
 
     try {
@@ -74,7 +74,7 @@ export class GithubAdapterService {
         where: { id: githubProfileId },
         data: {
           rawDataSnapshot: rawData as any,
-          syncStatus: SyncStatus.DONE,
+          syncStatus: SyncStatus.SYNC_FETCH_SUCCESS,
           syncProgress: 'COMPLETE',
           lastSyncAt: new Date(),
         },
@@ -85,7 +85,7 @@ export class GithubAdapterService {
       );
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
-        data: { syncStatus: SyncStatus.FAILED },
+        data: { syncStatus: SyncStatus.SYNC_FAILED },
       });
       throw error;
     }

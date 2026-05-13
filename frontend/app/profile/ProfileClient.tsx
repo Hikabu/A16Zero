@@ -1,19 +1,17 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getLinkedGithub,
   getLinkedWallet,
-  triggerGithubSync,
   startAnalysis,
   getAnalysisCooldown,
   getMe,
   getCandidateProfile,
   updateUser,
   updateCandidateProfile,
+  apiFetch
 } from '@/lib/api'
 import { useToast } from '@/components/ui/use-toast'
 import { GenerateScorecardSection } from '@/components/profile/GenerateScorecardSection'
@@ -21,26 +19,61 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { ScorecardSection } from '@/components/profile/ScorecardSection'
 import { SettingsAccordion } from '@/components/profile/SettingsAccordion'
 
+const SYNC_PERIOD = new Set([
+  'CONNECT_REQUEST',
+  'CONNECT_SUCCESS',
+  'SYNC_REQUEST',
+  'SYNC_FETCH_REQUEST',
+  'SYNC_FETCH_SUCCESS',
+])
+
+const GITHUB_LINKED_STATUSES = new Set([
+  'CONNECT_SUCCESS',
+  'SYNC_REQUEST',
+  'SYNC_FETCH_REQUEST',
+  'SYNC_FETCH_SUCCESS',
+  'SYNC_SUCCESS',
+])
 export default function ProfileClient() {
+  console.log('PROFILE CLIENT RENDER')
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
-  const searchParams = useSearchParams()
-  const router = useRouter()
 
-  // Handle GitHub connection callback
-  useEffect(() => {
-    if (searchParams.get('github_connected') === 'true') {
-      toast({ title: "GitHub connected successfully!" })
-      queryClient.invalidateQueries({ queryKey: ['github'] })
-      queryClient.invalidateQueries({ queryKey: ['analysisCooldown'] })
-      // Clear the query param from URL without refreshing
-      router.replace('/profile')
-    }
-  }, [searchParams, queryClient, router, toast])
+  const fetchGithubStatus = async () => {
+  console.log('FETCH GITHUB STATUS CALLED')
 
+  const data = await apiFetch('/sync/github/status')
 
-  // 0. Profile Queries & Mutations
+  console.log('GITHUB STATUS RESPONSE', data)
+
+  return data
+}
+// const { data: githubStatus } = useQuery({
+const {
+  data: githubStatus,
+  error,
+  isError,
+  isLoading,
+  status,
+} = useQuery({
+  queryKey: ['githubStatus'],
+  queryFn: fetchGithubStatus,
+  refetchInterval: (query) => {
+    const status = query.state.data?.syncStatus
+
+    const syncing = SYNC_PERIOD.has(status)
+
+    return syncing ? 2000 : false
+  },
+  
+})
+console.log('QUERY STATUS', status)
+console.log('QUERY LOADING', isLoading)
+console.log('QUERY ERROR', error)
+console.log('IS ERROR', isError)
+console.log('GITHUB STATUS DATA', githubStatus)
+
   const { data: user } = useQuery({ queryKey: ['me'], queryFn: getMe })
   const { data: candidate } = useQuery({ queryKey: ['candidate'], queryFn: getCandidateProfile })
 
@@ -73,43 +106,19 @@ export default function ProfileClient() {
     staleTime: 30_000,
   })
 
-  // 2. GitHub Status
-  const { data: githubData } = useQuery({
-    queryKey: ['github'],
-    queryFn: getLinkedGithub,
-  })
-  
-  const handleSyncGithub = async () => {
-    try {
-      await syncMut.mutateAsync()
-    } catch (error: any) {
-      // 409 Conflict means GitHub is not connected yet
-      if (error?.status === 409) {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
-        if (apiUrl) {
-          // Full browser  to the OAuth entry point
-          window.location.href = `${apiUrl}/sync/github/connect`
-        } else {
-          toast({ title: "API URL not configured", variant: "destructive" })
-        }
-      } else {
-        toast({
-          title: "Sync failed",
-          description: error?.message || "Please try again later",
-          variant: "destructive"
-        })
-      }
-    }
-  }
 
-  const syncMut = useMutation({
-    mutationFn: triggerGithubSync,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['github'] })
-      queryClient.invalidateQueries({ queryKey: ['analysisCooldown'] })
-      toast({ title: "GitHub sync started" })
-    },
-  })
+const handleSyncGithub = () => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  
+
+
+  window.open(
+    `${apiUrl}/sync/github/connect`,
+    'github_oauth',
+    'width=600,height=700'
+  )
+}
+
 
   // 3. Wallet Status
   const { data: walletData } = useQuery({
@@ -130,22 +139,15 @@ export default function ProfileClient() {
     },
   })
 
-  // Gate Logic (Derived state for UI purposes, although GenerateScorecardSection
-  // does its own internal logic if cooldownUntil is passed)
-  const now = new Date()
-  const isGithubOnCooldown = cooldown?.github?.cooldownUntil
-    ? new Date(cooldown.github.cooldownUntil) > now
-    : false
-  const isGenerateOnCooldown = cooldown?.generate?.cooldownUntil
-    ? new Date(cooldown.generate.cooldownUntil) > now
-    : false
 
-  const hasAnySource = githubData?.connected || walletData?.connected
+const normalizedSyncStatus= 
+  githubStatus?.syncStatus ?? 'NOT_SYNCED'
 
-  const githubStatus = {
-    isLinked: !!githubData?.connected,
-    cooldownUntil: cooldown?.github?.cooldownUntil ?? undefined,
-  }
+const githubStatusMapped = {
+  isLinked: normalizedSyncStatus !== 'NOT_SYNCED',
+  lastSyncedAt: githubStatus?.lastSyncedAt,
+  syncStatus: normalizedSyncStatus,
+}
 
   const walletStatus = {
   isLinked: walletData?.connected ?? false,
@@ -177,14 +179,13 @@ export default function ProfileClient() {
 
       {/* S1b: Generate Scorecard Section */}
       <GenerateScorecardSection
-        githubStatus={githubStatus}
-        walletStatus={walletStatus}
-        generateCooldownUntil={cooldown?.generate?.cooldownUntil ?? undefined}
-        onSyncGithub={handleSyncGithub}
-        onGenerate={() => generateMut.mutate()}
-        isSyncing={syncMut.isPending}
-        isGenerating={generateMut.isPending}
-      />
+  githubStatus={githubStatusMapped}
+  walletStatus={walletStatus}
+  generateCooldownUntil={cooldown?.generate?.cooldownUntil ?? undefined}
+  onSyncGithub={handleSyncGithub}
+  onGenerate={() => generateMut.mutate()}
+  isGenerating={generateMut.isPending}
+/>
 
       {/* S2: Scorecard Section */}
       <ScorecardSection />

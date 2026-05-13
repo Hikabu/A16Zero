@@ -63,7 +63,7 @@ export class GithubSyncProcessor extends WorkerHost {
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          syncStatus: SyncStatus.IN_PROGRESS,
+          syncStatus: SyncStatus.SYNC_REQUEST,
           syncProgress: JSON.stringify({
             stage: 'fetching_repos',
             percent: 20,
@@ -109,6 +109,7 @@ export class GithubSyncProcessor extends WorkerHost {
           rawDataSnapshot: rawData as any,
           lastSyncAt: new Date(),
           syncError: null,
+          syncStatus: SyncStatus.SYNC_SUCCESS,
         },
       });
 
@@ -139,7 +140,7 @@ export class GithubSyncProcessor extends WorkerHost {
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          syncStatus: SyncStatus.FAILED,
+          syncStatus: SyncStatus.SYNC_FAILED,
           syncError: error.message,
         },
       });

@@ -37,7 +37,7 @@ export class GithubSyncService {
     const callbackUrl = `${this.config.get('app.url')}${this.config.get('auth.githubSyncConnectCallback')}`;
     // console.log('callback url: ', callbackUrl);
     const scopes = encodeURIComponent('read:user repo');
-
+    //TODO >>> START CONNECT 
     return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scopes}&state=${state}`;
   }
 
@@ -92,7 +92,7 @@ export class GithubSyncService {
         user: { connect: { id: userId } },
         encryptedToken,
         scopes: githubData.scopes,
-        syncStatus: SyncStatus.PENDING,
+        syncStatus: SyncStatus.CONNECT_SUCCESS,
         syncProgress: '0',
         syncError: null,
       },
@@ -147,7 +147,7 @@ export class GithubSyncService {
     const updated = await this.prisma.githubProfile.update({
       where: { id: githubProfile.id },
       data: {
-        syncStatus: SyncStatus.PENDING,
+        syncStatus: SyncStatus.SYNC_REQUEST,
         syncProgress: '0',
         syncError: null,
       },
@@ -182,9 +182,47 @@ export class GithubSyncService {
     });
 
     if (!profile) {
-      return { syncStatus: null, code: 'GITHUB_NOT_CONNECTED' };
-    }
+return {
+  isLinked: false,
+  syncStatus: "NOT_SYNCED",
+};    }
 
-    return profile;
+    return {
+  isLinked: true,
+  syncStatus: profile.syncStatus,
+  syncProgress: profile.syncProgress,
+  lastSyncAt: profile.lastSyncAt,
+  error: profile.syncError,
+  githubUsername: profile.githubUsername,
+};
   }
+///ONLY TESTING - DELETE TODO
+
+  async unsyncGithub(userId: string) {
+  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+
+  if (!devProfile?.githubProfile) {
+    return {
+      ok: true,
+      message: 'Already unsynced',
+    };
+  }
+
+  // reset github profile
+ await this.prisma.githubProfile.delete({
+  where: { id: devProfile.githubProfile.id },
+});
+
+await this.prisma.candidate.update({
+  where: { userId },
+  data: {
+    githubCooldownUntil: null,
+  },
+});
+
+  return {
+    ok: true,
+    message: 'GitHub unsynced successfully',
+  };
+}
 }

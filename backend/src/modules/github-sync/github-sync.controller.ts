@@ -6,6 +6,7 @@ import {
   Res,
   UseGuards,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
@@ -22,6 +23,7 @@ import {
 
 import { GithubSyncService } from './github-sync.service';
 import { GithubSyncConnectGuard } from '../auth-candidate/guards/github.sync.connect.guard';
+
 
 @ApiTags('GitHub Sync')
 @Controller('sync/github')
@@ -77,9 +79,8 @@ export class GithubSyncController {
     @Query('state') state: string,
   ) {
     await this.githubSyncService.connectGithub(req.user, state);
-
-    return res.redirect(`${process.env.FRONTEND_URL}/profile?github_connected=true`);
-  }
+return res.redirect(`${process.env.FRONTEND_URL}/sync/github/callback`);
+ }
 
   // ─────────────────────────────────────────────
   // TRIGGER SYNC
@@ -123,6 +124,16 @@ export class GithubSyncController {
     description: 'Current sync status retrieved successfully',
   })
   async getSyncStatus(@Req() req: any) {
+
     return this.githubSyncService.getSyncStatus(req.user.id);
   }
+
+
+///ONLY TESTING - DELETE TODO
+  @Delete('dev/unsync')
+@UseGuards(AuthGuard('jwt'))
+async unsyncGithub(@Req() req: any) {
+  
+  return this.githubSyncService.unsyncGithub(req.user.id);
+}
 }

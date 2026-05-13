@@ -1405,6 +1405,20 @@
         ]
       }
     },
+    "/sync/github/dev/unsync": {
+      "delete": {
+        "operationId": "GithubSyncController_unsyncGithub",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "GitHub Sync"
+        ]
+      }
+    },
     "/jobs": {
       "get": {
         "description": "Returns a list of published jobs with filtering and pagination.",

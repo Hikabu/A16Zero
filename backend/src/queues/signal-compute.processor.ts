@@ -284,7 +284,7 @@ export class SignalComputeProcessor extends WorkerHost {
         await this.prisma.githubProfile.update({
           where: { id: profile.id },
           data: {
-            syncStatus: SyncStatus.DONE,
+            syncStatus: SyncStatus.SYNC_SUCCESS,
             syncProgress: JSON.stringify({ stage: 'complete', percent: 100 }),
           },
         });
@@ -323,7 +323,7 @@ export class SignalComputeProcessor extends WorkerHost {
           await this.prisma.githubProfile.update({
             where: { id: profile.id },
             data: {
-              syncStatus: SyncStatus.FAILED,
+              syncStatus: SyncStatus.SYNC_FAILED,
               syncProgress: JSON.stringify({
                 stage: 'failed',
                 percent: 0,

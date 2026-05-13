@@ -316,11 +316,14 @@ model DeveloperCandidate {
 
 // ─── GitHub Profile ──────────────────────────────────────────
 enum SyncStatus {
-  PENDING
-  IN_PROGRESS
-  RUNNING
-  DONE
-  FAILED
+  NOT_SYNCED
+  CONNECT_REQUEST         //CONNECT GITHUB
+  CONNECT_SUCCESS
+  SYNC_REQUEST
+  SYNC_FETCH_REQUEST
+  SYNC_FETCH_SUCCESS
+  SYNC_SUCCESS
+  SYNC_FAILED
 }
 
 model GithubProfile {
@@ -336,7 +339,7 @@ model GithubProfile {
   encryptedToken  String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
   scopes          String[]
   lastSyncAt      DateTime?
-  syncStatus      SyncStatus @default(PENDING)
+  syncStatus      SyncStatus @default(NOT_SYNCED)
   syncProgress    String     @default("0")
   syncError       String?
   rawDataSnapshot Json?
