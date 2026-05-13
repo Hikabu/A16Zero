@@ -2,46 +2,115 @@ import { useState } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import bs58 from 'bs58'
 import { getWalletChallenge } from '../api'
+import { useWalletModal } from '@solana/wallet-adapter-react-ui'
+
+import { useEffect, useRef } from 'react'
+
 
 export function useWalletFlow(
   submitFn: (data: { signature: string, publicKey: string, message: string }) => Promise<any>,
   userId?: string
 ) {
-  const wallet = useWallet()
-  const [status, setStatus] = useState<'idle' | 'signing' | 'submitting' | 'done' | 'error'>('idle')
 
-  const trigger = async () => {
+const wallet = useWallet()
+const { setVisible } = useWalletModal()
+  const [status, setStatus] = useState<'idle' | 'signing' | 'submitting' | 'done' | 'error'>('idle')
+const hasAutoTriggered = useRef(false)
+
+const wait = (ms: number) => new Promise(res => setTimeout(res, ms))
+
+async function waitForWalletReady(timeout = 3000) {
+  const start = Date.now()
+
+  while (Date.now() - start < timeout) {
+    if (wallet.publicKey && typeof wallet.signMessage === 'function') {
+      return true
+    }
+    await new Promise(r => setTimeout(r, 100))
+  }
+
+  return false
+}
+useEffect(() => {
+  // Wallet was just selected from modal
+  if (wallet.wallet && !wallet.connected && !hasAutoTriggered.current) {
+    hasAutoTriggered.current = true
+    trigger()
+  }
+
+  if (!wallet.wallet) {
+    hasAutoTriggered.current = false
+  }
+}, [wallet.wallet])
+
+ const trigger = async () => {
+  const provider = (window as any)?.phantom?.solana
+
   try {
     setStatus('signing')
 
-    // 1. Ensure connected FIRST
-    
-    if (!wallet.publicKey || !wallet.signMessage) {
-      throw new Error("Wallet does not support signing")
+    if (!provider) {
+      throw new Error('Phantom wallet not found')
     }
 
-    const { challenge } = await getWalletChallenge();
-    console.log("received challenge:", challenge);
-    
-    const sig = await wallet.signMessage(
-      new TextEncoder().encode(challenge)
-    )
+    // ensure connected
+    if (!provider.isConnected) {
+      await provider.connect()
+    }
+
+    const { challenge } = await getWalletChallenge()
+    console.log("received challenge:", challenge)
+
+    const encoded = new TextEncoder().encode(challenge)
+
+    let result: any
+
+    try {
+      result = await provider.signMessage(encoded)
+    } catch (e: any) {
+      console.log('SIGN ERROR:', e)
+
+      if (e?.message?.toLowerCase?.().includes('rejected')) {
+        setStatus('idle')
+        return
+      }
+
+      throw e
+    }
+
+    // ✅ normalize signature (THIS FIXES YOUR bs58 ERROR)
+    const rawSig =
+      result instanceof Uint8Array
+        ? result
+        : result?.signature
+          ? result.signature
+          : result
+
+    const signature = bs58.encode(rawSig)
 
     setStatus('submitting')
 
     await submitFn({
-      signature: bs58.encode(sig),
-      publicKey: wallet.publicKey.toBase58(),
-      message: challenge
+      signature,
+      publicKey: provider.publicKey.toBase58(),
+      message: challenge,
     })
 
     setStatus('done')
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
+
+    if (
+      e?.name === 'WalletSignMessageError' ||
+      e?.message?.toLowerCase?.().includes('rejected')
+    ) {
+      setStatus('idle')
+      return
+    }
+
     setStatus('error')
     setTimeout(() => setStatus('idle'), 3000)
   }
 }
-
   return { trigger, status }
 }

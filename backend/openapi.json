@@ -3558,6 +3558,26 @@
         ]
       }
     },
+    "/sync/wallet/unsync": {
+      "post": {
+        "operationId": "WalletSyncController_unsyncWallet",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "DEV ONLY - unlink wallet",
+        "tags": [
+          "Wallet Sync"
+        ]
+      }
+    },
     "/escrow/init-params/{jobPostId}": {
       "get": {
         "description": "Employer-only endpoint called before creating escrow on-chain. The backend derives the deterministic escrow id from the job UUID, derives the PDA from the authenticated employer wallet, and returns the exact USDT amount in 6-decimal base units.",

@@ -133,4 +133,12 @@ export class WalletSyncController {
       body.message,
     );
   }
+
+  @Post('unsync')
+@ApiOperation({
+  summary: 'DEV ONLY - unlink wallet',
+})
+async unsyncWallet(@Req() req: any) {
+  return this.walletSyncService.unsyncWallet(req.user.id)
+}
 }

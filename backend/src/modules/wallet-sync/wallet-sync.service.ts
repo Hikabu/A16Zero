@@ -131,4 +131,27 @@ async linkWallet(
     solanaAddress: walletAddress,
   };
 }
+
+async unsyncWallet(userId: string) {
+  await this.prisma.candidate.update({
+    where: { userId },
+    data: {
+      walletCooldownUntil: null,
+    },
+  })
+
+  await this.prisma.web3Profile.deleteMany({
+    where: {
+      devCandidate: {
+        candidate: {
+          userId,
+        },
+      },
+    },
+  })
+
+  return {
+    unlinked: true,
+  }
+}
 }
