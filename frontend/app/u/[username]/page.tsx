@@ -28,6 +28,7 @@ import {
 //use : CANDIDATES
 //TODO: UPDATE
 import ShareButton from './ShareButton'
+import { normalizeScorecard } from '@/lib/scorecard/normalizeScorecard'
 
 export const revalidate = 60
 
@@ -217,7 +218,7 @@ export default async function PublicProfilePage({
           {scorecard ? (
             <ScorecardView
               scorecard={
-                scorecard as ScorecardData
+                normalizeScorecard(scorecard) as ScorecardData
               }
               isPublic={true}
             />

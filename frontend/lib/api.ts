@@ -974,6 +974,7 @@ export async function ScorecardController_getMyScorecard(
   );
 }
 
+
 type ScorecardController_getPublicScorecardOperation = ApiOperation<
   "/api/scorecard/{username}",
   "get"
