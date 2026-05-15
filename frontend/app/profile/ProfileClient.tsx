@@ -39,6 +39,9 @@ export default function ProfileClient() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
+  // Controls whether GenerateScorecardSection is expanded.
+  // Starts open; auto-collapses when analysis is triggered.
+  const [generateOpen, setGenerateOpen] = useState(true)
 
   const fetchGithubStatus = async () => {
   // console.log('FETCH GITHUB STATUS CALLED')
@@ -155,7 +158,7 @@ const handleSyncGithub = () => {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['analysisCooldown'] })
       toast({ title: "Analysis started" })
-      // Dispatch event to transition ScorecardSection into loading state
+      setGenerateOpen(false) // collapse when analysis kicks off
       if (typeof window !== 'undefined' && data?.jobId) {
         window.dispatchEvent(new CustomEvent('startAnalysis', { detail: { jobId: data.jobId } }))
       }
@@ -205,13 +208,15 @@ const githubStatusMapped = {
 
       {/* S1b: Generate Scorecard Section */}
       <GenerateScorecardSection
-  githubStatus={githubStatusMapped}
-  walletStatus={walletStatus}
-  generateCooldownUntil={cooldown?.generate?.cooldownUntil ?? undefined}
-  onSyncGithub={handleSyncGithub}
-  onGenerate={() => generateMut.mutate()}
-  isGenerating={generateMut.isPending}
-/>
+        githubStatus={githubStatusMapped}
+        walletStatus={walletStatus}
+        generateCooldownUntil={cooldown?.generate?.cooldownUntil ?? undefined}
+        onSyncGithub={handleSyncGithub}
+        onGenerate={() => generateMut.mutate()}
+        isGenerating={generateMut.isPending}
+        isOpen={generateOpen}
+        onToggle={() => setGenerateOpen(o => !o)}
+      />
 
       {/* S2: Scorecard Section */}
       <ScorecardSection />
