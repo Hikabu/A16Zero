@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export interface AnalysisPollerProps {
   jobId: string
-  onComplete: (result: any) => void
+  onComplete: () => void
 }
 
 export function AnalysisPoller({ jobId, onComplete }: AnalysisPollerProps) {
@@ -25,14 +25,12 @@ export function AnalysisPoller({ jobId, onComplete }: AnalysisPollerProps) {
 
     async function handleComplete() {
       try {
-        const result = await getAnalysisResult(jobId)
+        await getAnalysisResult(jobId)
         if (!mounted) return
-        
-        queryClient.setQueryData(['scorecard'], result)
         sessionStorage.removeItem('analysis_job_id')
-        onComplete(result)
+        onComplete()
       } catch (err) {
-        console.error("Failed to fetch analysis result:", err)
+        console.error('Failed to fetch analysis result:', err)
       }
     }
 
@@ -45,11 +43,10 @@ export function AnalysisPoller({ jobId, onComplete }: AnalysisPollerProps) {
 
   return (
     <Card className="border-muted bg-muted/50 overflow-hidden relative">
-      {/* Optional progress bar across the top if progress is provided */}
       {typeof (data as any)?.progress === 'number' && (
-        <div 
-          className="absolute top-0 left-0 h-1 bg-primary transition-all duration-500" 
-          style={{ width: `${(data as any).progress}%` }} 
+        <div
+          className="absolute top-0 left-0 h-1 bg-primary transition-all duration-500"
+          style={{ width: `${(data as any).progress}%` }}
         />
       )}
       <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -57,7 +54,9 @@ export function AnalysisPoller({ jobId, onComplete }: AnalysisPollerProps) {
         <div className="text-center space-y-1">
           <h3 className="font-medium text-lg">Analyzing Data...</h3>
           <p className="text-sm text-muted-foreground">
-            {(data as any)?.progress ? `Progress: ${(data as any).progress}%` : "We are compiling your signals and computing your scorecard."}
+            {(data as any)?.progress
+              ? `Progress: ${(data as any).progress}%`
+              : 'We are compiling your signals and computing your scorecard.'}
           </p>
         </div>
       </CardContent>

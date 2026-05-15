@@ -104,7 +104,7 @@ function NoScorecardState({
       />
 
       <p className="text-sm text-muted-foreground">
-        {name} hasn&apos;t generated a scorecard yet.
+        No scorecard yet.
       </p>
     </Card>
   )
