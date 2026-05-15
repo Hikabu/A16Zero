@@ -91,7 +91,7 @@ export class ProfileController {
   })
   @ApiOkResponse({ type: SimpleMessageResponseDto })
   deactivateAccount(@Req() req: any) {
-    return this.profileService.deactivateAccount(req.user.id);
+    return this.profileService.deleteAccount(req.user.id);
   }
 
   // ───────────────── CANDIDATE PROFILE ─────────────────

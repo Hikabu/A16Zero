@@ -16,6 +16,10 @@ import { LoadingSkeleton } from '../LoadingSkeleton'
  * 'idle'      – not yet hydrated from sessionStorage (SSR guard)
  * 'analyzing' – an analysis job is running; scorecard fetch is suppressed
  * 'done'      – analysis finished (or none in progress); scorecard fetch is active
+ *
+ * The critical distinction for 404 handling:
+ *   - 'done' reached via analysisJobId completing → 404 means "DB mid-write", retry
+ *   - 'done' reached on fresh page load with no job → 404 means "never generated", return null
  */
 type ScorecardState = 'idle' | 'analyzing' | 'done'
 
@@ -46,6 +50,9 @@ export function ScorecardSection() {
   // ------------------------------------------------------------------
   const [scorecardState, setScorecardState] = useState<ScorecardState>('idle')
   const [analysisJobId, setAnalysisJobId] = useState<string | null>(null)
+  // True only when 'done' was reached by a completing analysis job (not a fresh page load).
+  // Tells the query: a 404 here means "DB mid-write", not "never generated".
+  const [justFinishedAnalysis, setJustFinishedAnalysis] = useState(false)
 
   useEffect(() => {
     const storedJobId = typeof window !== 'undefined'
@@ -67,16 +74,18 @@ export function ScorecardSection() {
   const {
     data: scorecardData,
     isLoading: isScorecardLoading,
+    isError: isScorecardError,
+    error: scorecardError,
   } = useQuery({
     queryKey: ['scorecard'],
     queryFn: getMyScorecard,
-    // KEY FIX: never fire while analysis is running or before we've hydrated
+    // Never fire while analysis is running or before sessionStorage is hydrated
     enabled: scorecardState === 'done',
-    // Don't treat a stale cache hit as fresh – always revalidate when enabled
     staleTime: 0,
-    // If the API returns 404 (record not written yet) keep retrying
+    // Only retry 404s when we know the analysis job just finished (DB mid-write).
+    // On a fresh page load with no job, a 404 simply means "never generated" — don't retry.
     retry: (failureCount, error: any) => {
-      if (error?.status === 404) return failureCount < 10
+      if (error?.status === 404) return justFinishedAnalysis && failureCount < 10
       return failureCount < 3
     },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
@@ -139,8 +148,7 @@ export function ScorecardSection() {
       sessionStorage.removeItem('analysis_job_id')
     }
     setAnalysisJobId(null)
-    // Transition to 'done' FIRST → this enables the query → fetch runs
-    // after the DB write is guaranteed complete (job finished = written).
+    setJustFinishedAnalysis(true)   // next 404 = DB mid-write, not "never generated"
     setScorecardState('done')
     queryClient.invalidateQueries({ queryKey: ['analysisCooldown'] })
   }, [queryClient])
@@ -148,10 +156,11 @@ export function ScorecardSection() {
   // ------------------------------------------------------------------
   // Render
   // ------------------------------------------------------------------
-
-  // Still resolving sessionStorage on the client
+  // Still resolving sessionStorage on the client — render nothing until we know
+  // whether an analysis job exists. Showing a skeleton here would be misleading
+  // because there may be no scorecard at all.
   if (scorecardState === 'idle') {
-    return <LoadingSkeleton />
+    return null
   }
 
   // Analysis in progress – show the poller, not a broken scorecard
@@ -164,18 +173,26 @@ export function ScorecardSection() {
     )
   }
 
-  // Waiting for the scorecard fetch to complete
+  // Scorecard has never been generated (404 on a fresh page load with no job).
+  // Return null so GenerateScorecardSection renders the CTA instead.
+  const isNeverGenerated =
+    isScorecardError && (scorecardError as any)?.status === 404 && !justFinishedAnalysis
+  if (isNeverGenerated) {
+    return null
+  }
+
+  // Waiting for the scorecard fetch to complete (post-analysis retries only).
+  // On a fresh page load with no job, an absence of data means "never generated" —
+  // return null so GenerateScorecardSection renders the CTA instead.
   if (isScorecardLoading || !scorecardData) {
-    return <LoadingSkeleton />
+    return justFinishedAnalysis ? <LoadingSkeleton /> : null
   }
 
   // Normalize once
   const normalized = normalizeScorecard(scorecardData)
 
   // Guard: don't render until the scorecard is structurally populated.
-  // This is the race-condition safety net: if the DB returns an empty/
-  // partial record React Query will retry (see retryDelay above) until
-  // the record is fully written.
+  // If the DB returned a partial record, React Query will retry until it's ready.
   if (!isScorecardReady(normalized)) {
     return <LoadingSkeleton />
   }

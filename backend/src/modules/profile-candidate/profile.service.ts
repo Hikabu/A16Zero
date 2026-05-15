@@ -15,10 +15,14 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import cloudinary from '../../cloudinary/cloudinary.config';
+import { CacheService } from '../scoring/cache/cache.service';
 
 @Injectable()
 export class ProfileService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService
+  ) {}
 
   // ─── User Profile ─────────────────────────────────────────────────────────
 
@@ -186,6 +190,71 @@ async getPublicProfile(username: string) {
       },
     });
   }
+async deleteAccount(userId: string) {
+  // Optional: suspend immediately so sessions/UI lock instantly
+  await this.deactivateAccount(userId);
+
+  // Fetch candidate profile BEFORE deletion
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      candidate: {
+        include: {
+          devProfile: {
+            include: {
+              githubProfile: true,
+              web3Profile: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const githubUsername =
+    user?.candidate?.devProfile?.githubProfile?.githubUsername;
+
+  const walletAddress =
+    user?.candidate?.devProfile?.web3Profile?.solanaAddress;
+
+  // Build all possible cache keys
+  const cacheKeys = [
+    githubUsername
+      ? this.cacheService.buildCacheKey(githubUsername, undefined)
+      : null,
+
+    walletAddress
+      ? this.cacheService.buildCacheKey(undefined, walletAddress)
+      : null,
+
+    githubUsername && walletAddress
+      ? this.cacheService.buildCacheKey(
+          githubUsername,
+          walletAddress,
+        )
+      : null,
+  ].filter(Boolean) as string[];
+
+  // Delete cache entries
+  if (cacheKeys.length > 0) {
+    await this.prisma.cachedResult.deleteMany({
+      where: {
+        cacheKey: {
+          in: cacheKeys,
+        },
+      },
+    });
+  }
+
+  // Delete user (cascade wipes everything else)
+  await this.prisma.user.delete({
+    where: { id: userId },
+  });
+
+  return {
+    message: 'Account deleted successfully',
+  };
+}
 
   async deactivateAccount(userId: string) {
     await this.prisma.user.update({
