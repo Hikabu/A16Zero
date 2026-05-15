@@ -157,7 +157,7 @@ export class ScorecardController {
   })
   async getMyScorecard(@Request() req) {
     const scorecard = await this.scorecardService.getScorecardForUser(
-      req.user.id,
+      {userId: req.user.id},
     );
 
     console.log("scorecard? ", scorecard!!);
@@ -167,131 +167,127 @@ export class ScorecardController {
       );
     }
 
-    const result = await this.scorecardService.mapToUiModel(scorecard, req.user.id);
+    const result = await this.scorecardService.mapToUiModel(scorecard, {userId: req.user.id});
     return result;
   }
+/**
+ * ----------------------------------------
+ * PUBLIC SCORECARD BY APP USERNAME
+ * ----------------------------------------
+ *
+ * Example:
+ * GET /scorecards/user/arturo
+ *
+ * Flow:
+ * app username -> linked github username -> cached scorecard
+ */
+@Get('user/:username')
+@ApiOperation({
+  summary: 'Get public scorecard by app username',
+  description:
+    'Fetch a public scorecard using a registered platform username.',
+})
+@ApiParam({
+  name: 'username',
+  type: String,
+  example: 'arturo',
+  description: 'Registered platform username',
+})
+@ApiOkResponse({
+  description: 'Public scorecard',
+  type: ScorecardUiDto,
+})
+@ApiNotFoundResponse({
+  description: 'User or scorecard not found',
+  type: ScorecardErrorResponseDto,
+})
+async getPublicUserScorecard(
+  @Param('username') username: string,
+) {
+     const scorecard = await this.scorecardService.getScorecardForUser(
+      {username}
+    );
 
-  /**
-   * ----------------------------------------
-   * PUBLIC SCORECARD (UI)
-   * ----------------------------------------
-   */
-  @Get(':username')
-  @ApiOperation({
-    summary: 'Get public scorecard (UI)',
-    description:
-      'Fetch a cached scorecard for a GitHub username. Returns frontend-ready UI model.',
-  })
-  @ApiParam({
-    name: 'username',
-    type: String,
-    example: 'octocat',
-    description: 'GitHub username',
-  })
-  @ApiOkResponse({
-    description: 'Public scorecard',
-    type: ScorecardUiDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'No cached scorecard found. Must trigger analysis first.',
-    type: ScorecardErrorResponseDto,
-  })
-  async getPublicScorecard(@Param('username') username: string) {
-    const scorecard =
-      await this.scorecardService.getScorecardFromCache(username);
-
+    console.log("scorecard? ", scorecard!!);
     if (!scorecard) {
       throw new NotFoundException(
-        `No cached scorecard for ${username}. Trigger via POST /api/analysis`,
+        'No scorecard found. Trigger a sync first via POST /me/github/sync',
       );
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { username },
-      select: {
-        id: true,
-      },
-    });
-    //TODO
-    if (user && user.id){
-      const result =await this.scorecardService.mapToUiModel(scorecard, user.id);
-      return result;
-    }
-
-    const result = await this.scorecardService.mapToUiModel(scorecard);
+    const result = await this.scorecardService.mapToUiModel(scorecard, {username});
     return result;
+}
+
+/**
+ * ----------------------------------------
+ * PUBLIC SCORECARD BY GITHUB USERNAME
+ * ----------------------------------------
+ *
+ * Example:
+ * GET /scorecards/github/octocat
+ *
+ * Flow:
+ * github username -> cached scorecard
+ */
+@Get('github/:githubUsername')
+@ApiOperation({
+  summary: 'Get public scorecard by GitHub username',
+  description:
+    'Fetch a public scorecard directly from a GitHub username.',
+})
+@ApiParam({
+  name: 'githubUsername',
+  type: String,
+  example: 'octocat',
+  description: 'GitHub username',
+})
+@ApiOkResponse({
+  description: 'Public scorecard',
+  type: ScorecardUiDto,
+})
+@ApiNotFoundResponse({
+  description: 'No cached scorecard found',
+  type: ScorecardErrorResponseDto,
+})
+async getPublicScorecardByGithub(
+  @Param('githubUsername') githubUsername: string,
+) {
+  const scorecard =
+    await this.scorecardService.getScorecardFromCache(
+      githubUsername,
+    );
+
+  if (!scorecard) {
+    throw new NotFoundException(
+      `No cached scorecard found for GitHub user "${githubUsername}".`,
+    );
   }
 
   /**
-   * ----------------------------------------
-   * PUBLIC SCORECARD (UI)
-   * ----------------------------------------
+   * Optional:
+   * try finding linked platform user
    */
-  @Get('registered/:username')
-  @ApiOperation({
-    summary: 'Get public scorecard (UI)',
-    description:
-      'Fetch a cached scorecard for a registered username. Returns frontend-ready UI model.',
-  })
-  @ApiParam({
-    name: 'username',
-    type: String,
-    example: 'octocat',
-    description: 'registered username',
-  })
-  @ApiOkResponse({
-    description: 'Public scorecard',
-    type: ScorecardUiDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'No cached scorecard found. Must trigger analysis first.',
-    type: ScorecardErrorResponseDto,
-  })
-  async getPublicRegScorecard(@Param('username') username: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { username },
-      select: {
-        candidate: {
-          select: {
-            devProfile: {
-              select: {
-                 githubProfile: {
-                  select: {
-                    githubUsername: true,
-                  },
-                },
-              },
-            },
+  const linkedUser = await this.prisma.user.findFirst({
+    where: {
+      candidate: {
+        devProfile: {
+          githubProfile: {
+            githubUsername,
           },
         },
-        id: true,
       },
-    });
+    },
+    select: {
+      id: true,
+    },
+  });
 
-    if (!user || !user.candidate || !user.candidate.devProfile || !user.candidate.devProfile.githubProfile || !user.candidate.devProfile.githubProfile.githubUsername) {
-      throw new NotFoundException(
-        `No registered user with username ${username} found.`,
-      );
-    }
-    const scorecard =
-      await this.scorecardService.getScorecardFromCache(user.candidate.devProfile.githubProfile.githubUsername);
-
-    if (!scorecard) {
-      throw new NotFoundException(
-        `No cached scorecard for ${username}. Trigger via POST /api/analysis`,
-      );
-    }
-
-    if (user && user.id){
-      const result =await this.scorecardService.mapToUiModel(scorecard, user.id);
-      return result;
-    }
-
-    const result = await this.scorecardService.mapToUiModel(scorecard);
-    return result;
-  }
-
-
+  return this.scorecardService.mapToUiModel(
+    scorecard,
+    {userId: linkedUser?.id},
+  );
+}
   /**
    * ----------------------------------------
    * AUTHENTICATED USER SCORECARD (RAW)

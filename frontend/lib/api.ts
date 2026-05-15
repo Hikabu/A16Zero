@@ -1005,8 +1005,9 @@ export async function getPublicScorecard(
   username: string,
 ): Promise<ScorecardController_getPublicScorecardResponse | null> {
   try {
+    console.log("username: ", username);
     return await apiFetch<ScorecardController_getPublicScorecardResponse>(
-      `/api/scorecard/registered/${username}`,
+      `/api/scorecard/user/${username}`,
       { method: "GET", skipAuth: true },
     );
   } catch (err) {

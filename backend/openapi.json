@@ -878,13 +878,57 @@
         ]
       }
     },
-    "/api/scorecard/{username}": {
+    "/api/scorecard/user/{username}": {
       "get": {
-        "description": "Fetch a cached scorecard for a GitHub username. Returns frontend-ready UI model.",
-        "operationId": "ScorecardController_getPublicScorecard",
+        "description": "Fetch a public scorecard using a registered platform username.",
+        "operationId": "ScorecardController_getPublicUserScorecard",
         "parameters": [
           {
             "name": "username",
+            "required": true,
+            "in": "path",
+            "description": "Registered platform username",
+            "schema": {
+              "example": "arturo",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public scorecard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardUiDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User or scorecard not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get public scorecard by app username",
+        "tags": [
+          "Scorecard"
+        ]
+      }
+    },
+    "/api/scorecard/github/{githubUsername}": {
+      "get": {
+        "description": "Fetch a public scorecard directly from a GitHub username.",
+        "operationId": "ScorecardController_getPublicScorecardByGithub",
+        "parameters": [
+          {
+            "name": "githubUsername",
             "required": true,
             "in": "path",
             "description": "GitHub username",
@@ -906,7 +950,7 @@
             }
           },
           "404": {
-            "description": "No cached scorecard found. Must trigger analysis first.",
+            "description": "No cached scorecard found",
             "content": {
               "application/json": {
                 "schema": {
@@ -916,51 +960,7 @@
             }
           }
         },
-        "summary": "Get public scorecard (UI)",
-        "tags": [
-          "Scorecard"
-        ]
-      }
-    },
-    "/api/scorecard/registered/{username}": {
-      "get": {
-        "description": "Fetch a cached scorecard for a registered username. Returns frontend-ready UI model.",
-        "operationId": "ScorecardController_getPublicRegScorecard",
-        "parameters": [
-          {
-            "name": "username",
-            "required": true,
-            "in": "path",
-            "description": "registered username",
-            "schema": {
-              "example": "octocat",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Public scorecard",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScorecardUiDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No cached scorecard found. Must trigger analysis first.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScorecardErrorResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Get public scorecard (UI)",
+        "summary": "Get public scorecard by GitHub username",
         "tags": [
           "Scorecard"
         ]

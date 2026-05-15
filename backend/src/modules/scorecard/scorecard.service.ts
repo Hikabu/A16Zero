@@ -49,9 +49,31 @@ export class ScorecardService {
     return this.buildPlaceholderResult();
   }
 
-  async getScorecardForUser(userId: string): Promise<RawScorecard | null> {
-    const candidate = await this.prisma.candidate.findFirst({
-      where: { userId },
+async getScorecardForUser({
+  userId,
+  username,
+}: {
+  userId?: string
+  username?: string
+}): Promise<RawScorecard | null> {
+
+  const candidate = await this.prisma.candidate.findFirst({
+    where: {
+      OR: [
+        userId
+          ? { userId }
+          : undefined,
+
+        username
+          ? {
+              user: {
+                username: username.toLowerCase(),
+              },
+            }
+          : undefined,
+      ].filter(Boolean) as any,
+    },
+
       select: {
         id: true,
         scorecard: true,
@@ -75,16 +97,16 @@ export class ScorecardService {
       return candidate.scorecard as RawScorecard;
     }
 
-    const username = candidate.devProfile?.githubProfile?.githubUsername;
+    const githubUsername = candidate.devProfile?.githubProfile?.githubUsername;
     
-  if (!username) return null;
+  if (!githubUsername) return null;
 
   this.logger.warn(
     `DB scorecard missing for user ${userId}, attempting recovery from cache`,
   );
 
     // 2. Redis fallback
-  const cached = await this.getScorecardFromCache(username);
+  const cached = await this.getScorecardFromCache(githubUsername);
 
   if (cached) {
     await this.persistRecoveredScorecard(candidate.id, cached);
@@ -92,7 +114,7 @@ export class ScorecardService {
   }
 
   // 3. FINAL fallback: reconstruct from analysis cache
-  const rebuilt = await this.rebuildScorecardFromAnalysis(username);
+  const rebuilt = await this.rebuildScorecardFromAnalysis(githubUsername);
 
   if (rebuilt) {
     await this.persistRecoveredScorecard(candidate.id, rebuilt);
@@ -149,7 +171,16 @@ private async rebuildScorecardFromAnalysis(
   // UI MAPPER (FIXED)
   // ─────────────────────────────────────────────────────────────
 
-  async mapToUiModel(raw: RawScorecard | ScorecardResult, userId?: string): Promise<ScorecardUiDto> {
+async mapToUiModel(
+  raw: RawScorecard | ScorecardResult,
+  {
+    userId,
+    username,
+  }: {
+    userId?: string
+    username?: string
+  } = {},
+): Promise<ScorecardUiDto> {
     const isRaw = (r: any): r is RawScorecard => 'ownership' in r;
 
     // ── Fallback / placeholder UI ─────────────────────────────
@@ -206,8 +237,22 @@ private async rebuildScorecardFromAnalysis(
       this.mapCapability('devops', real.capabilities.devops),
     ];
 
-      const candidate = await this.prisma.candidate.findUnique({
-    where: { userId },
+      const candidate = await this.prisma.candidate.findFirst({
+     where: {
+      OR: [
+        userId
+          ? { userId }
+          : undefined,
+
+        username
+          ? {
+              user: {
+                username: username.toLowerCase(),
+              },
+            }
+          : undefined,
+      ].filter(Boolean) as any,
+    },
     select: {
       id: true,
       devProfile: {
