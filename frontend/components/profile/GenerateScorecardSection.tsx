@@ -176,16 +176,45 @@ export function GenerateScorecardSection({
       </button>
 
       {/* ── Animated collapsible body ── */}
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            key="body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            style={{ overflow: 'hidden' }}
-          >
+     <AnimatePresence initial={false} mode="sync">
+  {isOpen && (
+    <motion.div
+      key="body"
+      layout
+      initial={{
+        height: 0,
+        opacity: 0,
+        scaleY: 0.98,
+      }}
+      animate={{
+        height: 'auto',
+        opacity: 1,
+        scaleY: 1,
+      }}
+      exit={{
+        height: 0,
+        opacity: 0,
+        scaleY: 0.985,
+      }}
+      transition={{
+        height: {
+          type: 'spring',
+          stiffness: 240,
+          damping: 30,
+        },
+        opacity: {
+          duration: 0.22,
+        },
+        scaleY: {
+          duration: 0.28,
+          ease: [0.22, 1, 0.36, 1],
+        },
+      }}
+      style={{
+        overflow: 'hidden',
+        transformOrigin: 'top',
+      }}
+    >
             <CardContent className="flex flex-col gap-0 px-6 pt-0 pb-5">
 
               {/* ── ROW: GitHub ── */}

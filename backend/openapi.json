@@ -2610,6 +2610,75 @@
         ]
       }
     },
+    "/auth/candidate/me/security": {
+      "get": {
+        "description": "Returns mfaEnabled status, hasPassword, and linkedProviders for the authenticated user.",
+        "operationId": "AuthCandidateController_getSecurityInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Security info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "mfaEnabled": false,
+                    "hasPassword": true,
+                    "linkedProviders": [
+                      "LOCAL",
+                      "GITHUB"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get security settings",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/me/change-password": {
+      "post": {
+        "description": "If the user already has a local password, currentPassword is required. If not (OAuth-only user), sets a password without requiring currentPassword.",
+        "operationId": "AuthCandidateController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "currentPassword": "old-pass (only if hasPassword is true)",
+                  "newPassword": "new-pass"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change or set password",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
     "/me/company": {
       "get": {
         "description": "Returns the authenticated company profile including job post statistics.",

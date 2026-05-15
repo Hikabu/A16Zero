@@ -11,13 +11,15 @@ import {
   getCandidateProfile,
   updateUser,
   updateCandidateProfile,
-  apiFetch
+  apiFetch,
+  getMyScorecard
 } from '@/lib/api'
 import { useToast } from '@/components/ui/use-toast'
 import { GenerateScorecardSection } from '@/components/profile/GenerateScorecardSection'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { ScorecardSection } from '@/components/profile/ScorecardSection'
 import { SettingsAccordion } from '@/components/profile/SettingsAccordion'
+import { AnimatePresence, motion } from 'framer-motion'
 
 const SYNC_PERIOD = new Set([
   'CONNECT_REQUEST',
@@ -41,7 +43,20 @@ export default function ProfileClient() {
   const [isEditing, setIsEditing] = useState(false)
   // Controls whether GenerateScorecardSection is expanded.
   // Starts open; auto-collapses when analysis is triggered.
-  const [generateOpen, setGenerateOpen] = useState(true)
+const { data: scorecard } = useQuery({
+  queryKey: ['scorecard'],
+  queryFn: getMyScorecard,
+  retry: false,
+})
+
+const [generateOpen, setGenerateOpen] = useState(false)
+
+useEffect(() => {
+  // only auto-open if user has no scorecard
+  if (scorecard === null) {
+    setGenerateOpen(true)
+  }
+}, [scorecard])
 
   const fetchGithubStatus = async () => {
   // console.log('FETCH GITHUB STATUS CALLED')
@@ -205,18 +220,27 @@ const githubStatusMapped = {
         onSave={handleSaveProfile}
         isSaving={updateUserMut.isPending || updateCandMut.isPending}
       />
-
+<motion.div
+  layout
+  initial={false}
+  transition={{
+    type: 'spring',
+    stiffness: 260,
+    damping: 24,
+  }}
+>
+  <GenerateScorecardSection
+    githubStatus={githubStatusMapped}
+    walletStatus={walletStatus}
+    generateCooldownUntil={cooldown?.generate?.cooldownUntil ?? undefined}
+    onSyncGithub={handleSyncGithub}
+    onGenerate={() => generateMut.mutate()}
+    isGenerating={generateMut.isPending}
+    isOpen={generateOpen}
+    onToggle={() => setGenerateOpen(o => !o)}
+  />
+</motion.div>
       {/* S1b: Generate Scorecard Section */}
-      <GenerateScorecardSection
-        githubStatus={githubStatusMapped}
-        walletStatus={walletStatus}
-        generateCooldownUntil={cooldown?.generate?.cooldownUntil ?? undefined}
-        onSyncGithub={handleSyncGithub}
-        onGenerate={() => generateMut.mutate()}
-        isGenerating={generateMut.isPending}
-        isOpen={generateOpen}
-        onToggle={() => setGenerateOpen(o => !o)}
-      />
 
       {/* S2: Scorecard Section */}
       <ScorecardSection />

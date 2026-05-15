@@ -129,12 +129,39 @@ export function ScorecardSection() {
           />
         </motion.div>
       ) : showScorecard ? (
-        <motion.div
-          key="scorecard"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 2.6, ease: [0.16, 1, 0.3, 1] }}
-        >
+     <motion.div
+  key="scorecard"
+  layout
+  initial={{
+    opacity: 0,
+    clipPath: 'inset(0 0 100% 0)',
+  }}
+  animate={{
+    opacity: 1,
+    clipPath: 'inset(0 0 0% 0)',
+  }}
+  exit={{
+    opacity: 0,
+    clipPath: 'inset(0 0 100% 0)',
+  }}
+  transition={{
+    clipPath: {
+      duration: 0.9,
+      ease: [0.16, 1, 0.3, 1],
+    },
+    opacity: {
+      duration: 0.25,
+    },
+    layout: {
+      type: 'spring',
+      stiffness: 140,
+      damping: 24,
+    },
+  }}
+  style={{
+    willChange: 'clip-path, opacity',
+  }}
+>
           <ScorecardView
             scorecard={normalized!}
             isPublic={false}

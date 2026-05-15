@@ -640,4 +640,80 @@ export class AuthCandidateService {
 
     return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;
   }
+
+  // --- Security Info ---
+
+  async getSecurityInfo(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        mfaEnabled: true,
+        authAccounts: { select: { provider: true } },
+      } as any,
+    });
+
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const providers: string[] = (user as any).authAccounts.map(
+      (a: any) => a.provider as string,
+    );
+
+    return {
+      mfaEnabled: (user as any).mfaEnabled ?? false,
+      hasPassword: providers.includes('LOCAL'),
+      linkedProviders: providers,
+    };
+  }
+
+  // --- Change / Set Password (authenticated) ---
+
+  async changePassword(
+    userId: string,
+    dto: { currentPassword?: string; newPassword: string },
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { authAccounts: true },
+    });
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const localAccount = (user as any).authAccounts.find(
+      (a: any) => a.provider === 'LOCAL',
+    );
+
+    if (localAccount) {
+      // Existing password — require currentPassword verification
+      if (!dto.currentPassword) {
+        throw new BadRequestException(
+          'currentPassword is required to change an existing password',
+        );
+      }
+      const isValid = await bcrypt.compare(
+        dto.currentPassword,
+        localAccount.passwordHash,
+      );
+      if (!isValid) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+      const hash = await bcrypt.hash(dto.newPassword, this.passwordHashRounds);
+      await this.prisma.authAccount.update({
+        where: { id: localAccount.id },
+        data: { passwordHash: hash },
+      });
+    } else {
+      // No local account — create one (set password for the first time)
+      const hash = await bcrypt.hash(dto.newPassword, this.passwordHashRounds);
+      await this.prisma.authAccount.create({
+        data: {
+          userId,
+          provider: 'LOCAL',
+          providerId: user.email!,
+          passwordHash: hash,
+        },
+      });
+    }
+
+    this.logger.log(`PASSWORD_CHANGE: User ${userId} changed/set password`);
+  }
 }
+

@@ -202,6 +202,33 @@ export function ScorecardView({
   const [summaryExpanded, setSummaryExpanded] = useState(false)
   const [rawOpen, setRawOpen] = useState(false)
 
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.08,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: {
+    opacity: 0,
+    y: 18,
+    filter: 'blur(4px)',
+  },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.55,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+}
+
   const {
     profile = {},
     score = {},
@@ -237,9 +264,15 @@ export function ScorecardView({
 
   const achievements = web3?.achievements ?? []
   // console.log("profile: ", profile);
-  return (
+ return (
+  <motion.div
+    variants={containerVariants}
+    initial="hidden"
+    animate="show"
+  >
     <Card className="w-full overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm">
       {/* ── HEADER: Identity & Composite Score ──────────────── */}
+      <motion.div variants={itemVariants}>
       <CardHeader className="space-y-0 border-b border-border/40 p-0">
         <div className="flex flex-col md:flex-row md:items-stretch">
           {/* Identity Info */}
@@ -260,7 +293,6 @@ export function ScorecardView({
                 </h2>
               </div>
             </div>
-
             {/* Metrics Snapshot */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <MetricItem 
@@ -322,6 +354,8 @@ export function ScorecardView({
           </div>
         </div>
       </CardHeader>
+</motion.div>
+<motion.div variants={itemVariants}>
 
       <CardContent className="grid grid-cols-1 lg:grid-cols-12 gap-8 p-6">
         {/* Left Column: Summary & Insights */}
@@ -488,6 +522,8 @@ export function ScorecardView({
           </section>
         </div>
       </CardContent>
+</motion.div>
+<motion.div variants={itemVariants}>
 
       {/* ── FOOTER: Metadata & Admin Actions ────────────────── */}
       <CardHeader className="border-t border-border/40 bg-muted/5 py-4">
@@ -536,8 +572,11 @@ export function ScorecardView({
           </Collapsible>
         )}
       </CardHeader>
-    </Card>
-  )
+      </motion.div>
+<motion.div variants={itemVariants}></motion.div>
+        </Card>
+  </motion.div>
+)
 }
 
 export default ScorecardView

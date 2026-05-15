@@ -446,4 +446,50 @@ export class AuthCandidateController {
     );
     return this.handleAuthResponse(req, res, result);
   }
+
+  // ---------------- SECURITY INFO ----------------
+
+  @VerifiedAuth()
+  @Get('me/security')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get security settings',
+    description: 'Returns mfaEnabled status, hasPassword, and linkedProviders for the authenticated user.',
+  })
+  @ApiOkResponse({
+    description: 'Security info',
+    schema: {
+      example: {
+        mfaEnabled: false,
+        hasPassword: true,
+        linkedProviders: ['LOCAL', 'GITHUB'],
+      },
+    },
+  })
+  getSecurityInfo(@Req() req: any) {
+    return this.authService.getSecurityInfo(req.user.id);
+  }
+
+  // ---------------- CHANGE / SET PASSWORD ----------------
+
+  @VerifiedAuth()
+  @Post('me/change-password')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Change or set password',
+    description: 'If the user already has a local password, currentPassword is required. If not (OAuth-only user), sets a password without requiring currentPassword.',
+  })
+  @ApiBody({
+    schema: {
+      example: {
+        currentPassword: 'old-pass (only if hasPassword is true)',
+        newPassword: 'new-pass',
+      },
+    },
+  })
+  async changePassword(@Req() req: any, @Body() dto: any) {
+    await this.authService.changePassword(req.user.id, dto);
+    return { success: true };
+  }
 }
+

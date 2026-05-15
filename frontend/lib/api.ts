@@ -2638,6 +2638,25 @@ export const getMfaSetup = () => AuthCandidateController_setupMfa();
 export const activateMfa = (body: any) => AuthCandidateController_activateMfa({ body });
 export const deleteAccount = () => ProfileController_deactivateAccount();
 
+export const getSecurityInfo = (): Promise<{
+  mfaEnabled: boolean;
+  hasPassword: boolean;
+  linkedProviders: string[];
+}> => apiFetch('/auth/candidate/me/security');
+
+export const changePassword = (body: {
+  currentPassword?: string;
+  newPassword: string;
+}): Promise<{ success: boolean }> =>
+  apiFetch('/auth/candidate/me/change-password', { method: 'POST', body });
+
+
+/** Opens the Google OAuth link flow (redirect-based, same as GitHub) */
+export const linkGoogleAccount = () => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  window.location.href = `${apiUrl}/auth/candidate/google/link`;
+};
+
 export const getMyApplications = () => ApplicantsController_getMyApplications();
 
 export const listJobs = (params: {
