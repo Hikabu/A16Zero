@@ -311,6 +311,7 @@ export class AuthCandidateController {
   })
   async linkGithubCallback(
     @Req() req: any,
+    @Res() res: Response,
     @Query() query: OAuthCallbackQueryDto,
   ) {
     await this.authService.linkOAuth(
@@ -319,7 +320,7 @@ export class AuthCandidateController {
       'GITHUB',
       query.state,
     );
-    return { success: true };
+    return res.redirect(`${this.getFrontendUrl()}/profile?linked=github`);
   }
 
   // ---------------- GOOGLE LINK ----------------
@@ -347,6 +348,7 @@ export class AuthCandidateController {
   })
   async linkGoogleCallback(
     @Req() req: any,
+    @Res() res: Response,
     @Query() query: OAuthCallbackQueryDto,
   ) {
     await this.authService.linkOAuth(
@@ -355,7 +357,7 @@ export class AuthCandidateController {
       'GOOGLE',
       query.state,
     );
-    return { success: true };
+    return res.redirect(`${this.getFrontendUrl()}/profile?linked=google`);
   }
 
   // ---------------- REFRESH ----------------

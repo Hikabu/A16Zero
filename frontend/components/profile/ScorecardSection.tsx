@@ -51,14 +51,7 @@ export function ScorecardSection() {
     },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   })
-
-  const { data: rawData } = useQuery({
-    queryKey: ['scorecard', 'raw'],
-    queryFn: getMyRawScorecard,
-    enabled: scorecardState === 'done' && isScorecardReady(scorecardData ? normalizeScorecard(scorecardData) : null),
-    staleTime: Infinity,
-  })
-
+  
   const generateMut = useMutation({
     mutationFn: startAnalysis,
     onSuccess: (data: any) => {

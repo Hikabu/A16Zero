@@ -48,7 +48,6 @@ import { SolanaLinkButton } from './SolanaLinkButton'
 
 import {
   getLinkedGithub,
-  getGithubConnectUrl,
   triggerGithubSync,
   getGithubSyncStatus,
   getLinkedWallet,
@@ -57,6 +56,7 @@ import {
   deleteAccount,
   getSecurityInfo,
   changePassword,
+  linkGithubAccount,
   linkGoogleAccount,
 } from '@/lib/api'
 
@@ -304,16 +304,10 @@ export function SettingsAccordion() {
   })
 
   // --- GITHUB ---
+  // Used only for displaying the GitHub username as a hint (sync profile)
   const { data: githubData } = useQuery({
     queryKey: ['linkedGithub'],
     queryFn: getLinkedGithub,
-  })
-
-  const githubConnectMut = useMutation({
-    mutationFn: getGithubConnectUrl,
-    onSuccess: (data: any) => {
-      window.location.href = data.url
-    },
   })
 
   const [isGithubSyncing, setIsGithubSyncing] = useState(false)
@@ -350,10 +344,28 @@ export function SettingsAccordion() {
   const walletLinked = (walletData as any)?.connected === true
 
   // --- SECURITY INFO (mfaEnabled, hasPassword, linkedProviders) ---
-  const { data: securityInfo } = useQuery({
+  // This is the single source of truth for which auth providers are linked.
+  const { data: securityInfo, refetch: refetchSecurity } = useQuery({
     queryKey: ['security'],
     queryFn: getSecurityInfo,
   })
+
+  // Invalidate security info on return from OAuth linking
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('linked')) {
+      queryClient.invalidateQueries({ queryKey: ['security'] })
+      // Clean up the URL param without a page reload
+      const url = new URL(window.location.href)
+      url.searchParams.delete('linked')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [queryClient])
+
+  const githubLinked = securityInfo?.linkedProviders?.includes('GITHUB') ?? false
+  const googleLinked = securityInfo?.linkedProviders?.includes('GOOGLE') ?? false
+  // GitHub username from sync profile — shown as a display hint when available
+  const githubUsername = (githubData as any)?.username as string | undefined
 
   const mfaEnabled = securityInfo?.mfaEnabled ?? false
   const hasPassword = securityInfo?.hasPassword ?? false
@@ -421,22 +433,25 @@ export function SettingsAccordion() {
         </AccordionTrigger>
         <AccordionContent>
           <div className="flex flex-col divide-y divide-border/60">
+            {/* GitHub */}
             <AccountRow
               icon={<Github className="h-4 w-4" />}
               label="GitHub"
-              username={(githubData as any)?.username}
-              onLink={() => githubConnectMut.mutate()}
-              onSync={() => githubSyncMut.mutate()}
-              isLinking={githubConnectMut.isPending}
+              username={
+                githubLinked
+                  ? (githubUsername ?? 'GitHub linked')
+                  : undefined
+              }
+              onLink={() => linkGithubAccount()}
+              onSync={githubLinked ? () => githubSyncMut.mutate() : undefined}
               isSyncing={isGithubSyncing}
             />
+            {/* Google */}
             <AccountRow
               icon={<Mail className="h-4 w-4" />}
               label="Google"
               username={
-                securityInfo?.linkedProviders?.includes('GOOGLE')
-                  ? 'Google account linked'
-                  : undefined
+                googleLinked ? 'Google linked' : undefined
               }
               onLink={() => linkGoogleAccount()}
             />

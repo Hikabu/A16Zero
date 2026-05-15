@@ -2653,7 +2653,13 @@ export const changePassword = (body: {
   apiFetch('/auth/candidate/me/change-password', { method: 'POST', body });
 
 
-/** Opens the Google OAuth link flow (redirect-based, same as GitHub) */
+/** Opens the GitHub OAuth link flow — links GitHub as a login provider */
+export const linkGithubAccount = () => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  window.location.href = `${apiUrl}/auth/candidate/github/link`;
+};
+
+/** Opens the Google OAuth link flow — links Google as a login provider */
 export const linkGoogleAccount = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   window.location.href = `${apiUrl}/auth/candidate/google/link`;
