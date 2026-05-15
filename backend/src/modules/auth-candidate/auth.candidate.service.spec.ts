@@ -22,6 +22,9 @@ const mockPrismaService = {
     create: jest.fn(),
     findUnique: jest.fn(),
   },
+  candidate: {
+    create: jest.fn(),
+  },
 };
 
 const mockJwtService = {
@@ -135,7 +138,7 @@ describe('AuthCandidateService', () => {
 
       expect(result).toEqual({
         type: 'MFA_REQUIRED',
-        data: { mfaToken: 'mock_token' },
+        data: { mfaToken: 'mock_token', userId: 'user_1' },
       });
     });
   });

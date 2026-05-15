@@ -77,7 +77,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     // await prisma.$executeRawUnsafe(`TRUNCATE TABLE "User" CASCADE;`);
     await prisma.cachedResult.deleteMany();
     await prisma.githubProfile.deleteMany();
-    await prisma.developerCandidate.deleteMany();
+    await prisma.developerProfile.deleteMany();
     await prisma.candidate.deleteMany();
     await prisma.user.deleteMany();
 

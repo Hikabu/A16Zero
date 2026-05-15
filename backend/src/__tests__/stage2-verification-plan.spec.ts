@@ -91,7 +91,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     // Clean up
     await prisma.cachedResult.deleteMany();
     await prisma.githubProfile.deleteMany();
-    await prisma.developerCandidate.deleteMany();
+    await prisma.developerProfile.deleteMany();
     await prisma.candidate.deleteMany();
     await prisma.user.deleteMany();
     const redis = app.get('REDIS');
@@ -263,13 +263,13 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
         data: { userId: user.id },
       });
 
-      const devProfile = await prisma.developerCandidate.create({
+      const devProfile = await prisma.developerProfile.create({
         data: { candidateId: candidate.id },
       });
 
       await prisma.githubProfile.create({
         data: {
-          devCandidateId: devProfile.id,
+          developerProfileId: devProfile.id,
           githubUsername: username,
           githubUserId: 'id_torvalds',
           encryptedToken: 'mock:mock',

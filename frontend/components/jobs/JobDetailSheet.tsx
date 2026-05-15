@@ -26,7 +26,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthStore } from '@/lib/auth-store'
 import { type Job } from '@/components/jobs/JobCard'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
-import { SheetTitle } from "@/components/ui/sheet"
 
 // ---------------------------------------------------------------------------
 // Extended Job type for sheet detail
