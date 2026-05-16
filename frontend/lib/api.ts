@@ -1,5 +1,6 @@
 import type { paths } from "@/src/api/schema";
 import {useAuthStore } from "./auth-store";
+import { AUTH_COOKIE_NAMES } from "./access-control";
 
 type HttpMethod = "get" | "post" | "put" | "patch" | "delete";
 type ApiOperation<
@@ -69,7 +70,7 @@ type ApiRequestParts = {
   body?: unknown;
 };
 
-type AuthStoreSnapshot = { token?: string | null };
+type AuthStoreSnapshot = { token?: string | null; role?: AuthRole | null };
 type AuthStoreHook = {
   getState?: () => AuthStoreSnapshot;
 };
@@ -102,6 +103,11 @@ export type ApiFetchOptions = Omit<RequestInit, "body" | "headers"> & {
   skipAuth?: boolean;
   /** Internal flag to prevent infinite loops during token refresh */
   retried?: boolean;
+  /**
+   * Selects role-specific auth behavior for shared-cookie endpoints. Candidate
+   * sessions can refresh; employer sessions currently cannot.
+   */
+  authRole?: AuthRole;
 };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -113,6 +119,12 @@ function getAuthToken(): string | null {
   const useAuthStore = globalThis.useAuthStore;
 
   return useAuthStore?.getState?.().token ?? null;
+}
+
+function getAuthRole(): AuthRole | null {
+  const useAuthStore = globalThis.useAuthStore;
+
+  return useAuthStore?.getState?.().role ?? null;
 }
 
 export function getApiUrl(path: string): string {
@@ -232,6 +244,7 @@ export async function apiFetch<ResponseBody>(
     query,
     skipAuth,
     retried,
+    authRole,
     ...fetchOptions
   } = options;
 
@@ -280,6 +293,13 @@ export async function apiFetch<ResponseBody>(
     !retried &&
     !skipAuth
   ) {
+    const refreshRole = authRole ?? getAuthRole() ?? "candidate";
+
+    if (refreshRole === "employer") {
+      useAuthStore.getState().clearAuth();
+      throw new Error("Session expired");
+    }
+
     if (!refreshingPromise) {
       refreshingPromise = fetch(
         API_BASE_URL + "/auth/candidate/refresh",
@@ -656,6 +676,7 @@ export type EmployerProfileResponse = {
 export async function getEmployerProfile(): Promise<EmployerProfileResponse> {
   const body = await apiFetch<Record<string, unknown>>("/me/company", {
     method: "GET",
+    authRole: "employer",
   });
   
   if (body.data && typeof body.data === "object") {
@@ -2784,18 +2805,53 @@ export const updateDecision = async (data: { applicationId: string, decision: st
 };
 
 export async function rehydrateAuth(): Promise<void> {
+  const storedRole = getClientStoredRole();
+
   try {
-    const user = await apiFetch<any>("/me/user");
+    if (storedRole === "employer") {
+      const employer = await getEmployerProfile();
+      useAuthStore.getState().setAuth({
+        token: COOKIE_AUTH_TOKEN,
+        role: "employer",
+        username: employer.name,
+        email: employer.email,
+        walletAddress: employer.walletAddress,
+        id: employer.id,
+      });
+      return;
+    }
+
+    const user = await apiFetch<any>("/me/user", { authRole: "candidate" });
     if (user && user.id) {
       useAuthStore.getState().setAuth({
         token: COOKIE_AUTH_TOKEN,
-        role: user.role ?? "candidate",
+        role: "candidate",
         username: user.username,
+        email: user.email,
+        id: user.id,
       });
     }
   } catch (error) {
     useAuthStore.getState().clearAuth();
   }
+}
+
+function getClientStoredRole(): AuthRole | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const roleCookie = document.cookie
+    .split("; ")
+    .find((cookie) => cookie.startsWith(`${AUTH_COOKIE_NAMES.clientRole}=`))
+    ?.split("=")[1];
+
+  if (!roleCookie) {
+    return null;
+  }
+
+  const role = decodeURIComponent(roleCookie).toLowerCase();
+  return role === "candidate" || role === "employer" ? role : null;
 }
 
 

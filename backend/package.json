@@ -35,8 +35,8 @@
     "preload:cache": "ts-node -r tsconfig-paths/register src/scripts/preload-cache.ts"
   },
   "dependencies": {
-    "@alchemy/aa-accounts": "^3.19.0",
-    "@alchemy/aa-core": "^3.19.0",
+    "@alchemy/aa-accounts": "^3.6.1",
+    "@alchemy/aa-core": "^3.6.1",
     "@anthropic-ai/sdk": "^0.91.1",
     "@google/genai": "^1.51.0",
     "@google/generative-ai": "^0.24.1",
@@ -70,7 +70,7 @@
     "multer": "^2.1.1",
     "nestjs-pino": "^4.6.1",
     "nestjs-zod": "^5.3.0",
-    "octokit": "^2.1.0",
+    "octokit": "^5.0.5",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",

@@ -1,9 +1,22 @@
-// middleware.ts - UPDATED
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+import {
+  AUTH_COOKIE_NAMES,
+  AUTH_ROUTES,
+  getRouteAccess,
+  isProtectedRoute,
+  type AccessRole,
+} from './lib/access-control'
+
 export const config = {
-  matcher: ['/profile/:path*', '/jobs/:path*', '/hr/:path*'],
+  matcher: [
+    /*
+     * Run for app routes only. Static assets, Next internals, and common
+     * metadata files stay out of the auth path.
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|icon.svg|.*\\..*).*)',
+  ],
 }
 
 function decodeJwt(token: string) {
@@ -28,32 +41,32 @@ function decodeJwt(token: string) {
 export default async function middleware(request: NextRequest) {
   try {
     const { pathname } = request.nextUrl
+    const requiredAccess = getRouteAccess(pathname)
 
-    const isCandidateRoute = pathname.startsWith('/profile') || pathname.startsWith('/jobs')
-    const isEmployerRoute = pathname.startsWith('/hr')
-
-    if (!isCandidateRoute && !isEmployerRoute) {
+    if (!isProtectedRoute(pathname)) {
       return NextResponse.next()
     }
 
-    const accessToken = request.cookies.get('access_token')?.value
-    const refreshToken = request.cookies.get('refresh_token')?.value
+    const accessToken = request.cookies.get(AUTH_COOKIE_NAMES.accessToken)?.value
+    const refreshToken = request.cookies.get(AUTH_COOKIE_NAMES.refreshToken)?.value
+    const clientRole = normalizeAccessRole(
+      request.cookies.get(AUTH_COOKIE_NAMES.clientRole)?.value,
+    )
 
     let payload = accessToken ? decodeJwt(accessToken) : null
     const now = Math.floor(Date.now() / 1000)
 
-    let isTokenValid = payload && payload.exp && payload.exp > now
+    const isTokenValid = payload && payload.exp && payload.exp > now
     let newCookies: string[] = []
 
     if (!isTokenValid) {
-      if (!refreshToken) {
-        return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
+      if (requiredAccess === 'employer' || !refreshToken) {
+        return redirectForInvalidAccess(request, requiredAccess)
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      const refreshEndpoint = isEmployerRoute ? '/auth/employer/refresh' : '/auth/candidate/refresh'
 
-      const refreshRes = await fetch(`${apiUrl}${refreshEndpoint}`, {
+      const refreshRes = await fetch(`${apiUrl}/auth/candidate/refresh`, {
         method: 'POST',
         headers: {
           Cookie: `refresh_token=${refreshToken}`,
@@ -61,7 +74,7 @@ export default async function middleware(request: NextRequest) {
       })
 
       if (!refreshRes.ok) {
-        return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
+        return redirectForInvalidAccess(request, requiredAccess)
       }
 
       const setCookies = refreshRes.headers.getSetCookie ? refreshRes.headers.getSetCookie() : []
@@ -86,22 +99,9 @@ export default async function middleware(request: NextRequest) {
       }
     }
 
-    if (!payload || !payload.role) {
-      return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-    }
-
-    const role = String(payload.role).toLowerCase()
-
-    if (isCandidateRoute) {
-      if (role !== 'candidate') {
-        return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
-      }
-    }
-
-    if (isEmployerRoute) {
-      if (!['employer', 'hr', 'hr_admin'].includes(role)) {
-        return NextResponse.redirect(new URL('/profile', request.url))
-      }
+    const role = resolveTokenRole(payload, clientRole)
+    if (!role || !isRoleAllowed(role, requiredAccess)) {
+      return redirectForInvalidAccess(request, requiredAccess, role)
     }
 
     const requestHeaders = new Headers(request.headers)
@@ -119,6 +119,70 @@ export default async function middleware(request: NextRequest) {
 
     return response
   } catch (error) {
-    return NextResponse.redirect(new URL('/auth?clear_session=true', request.url))
+    return redirectForInvalidAccess(request, 'candidate')
   }
+}
+
+function normalizeAccessRole(role: unknown): AccessRole | null {
+  if (typeof role !== 'string') {
+    return null
+  }
+
+  const normalized = role.toLowerCase()
+  if (normalized === 'candidate' || normalized === 'employer') {
+    return normalized
+  }
+  if (normalized === 'recruiter' || normalized === 'hr' || normalized === 'hr_admin') {
+    return 'employer'
+  }
+
+  return null
+}
+
+function resolveTokenRole(
+  payload: Record<string, unknown> | null,
+  clientRole: AccessRole | null,
+): AccessRole | null {
+  const tokenRole = normalizeAccessRole(payload?.role)
+
+  if (tokenRole) {
+    return tokenRole
+  }
+
+  /*
+   * Employer JWTs currently identify the company but do not include a role
+   * claim. Use the non-HttpOnly role cookie only as a fallback for that shape;
+   * candidate tokens always carry `role`, so a tampered role cookie cannot turn
+   * a candidate JWT into an employer session.
+   */
+  if (clientRole === 'employer' && payload?.sub) {
+    return 'employer'
+  }
+
+  return null
+}
+
+function isRoleAllowed(role: AccessRole, requiredAccess: AccessRole): boolean {
+  if (requiredAccess === 'public') {
+    return true
+  }
+  return role === requiredAccess
+}
+
+function redirectForInvalidAccess(
+  request: NextRequest,
+  requiredAccess: AccessRole,
+  actualRole?: AccessRole | null,
+) {
+  if (actualRole === 'candidate') {
+    return NextResponse.redirect(new URL(AUTH_ROUTES.candidateHome, request.url))
+  }
+
+  if (actualRole === 'employer') {
+    return NextResponse.redirect(new URL(AUTH_ROUTES.employerHome, request.url))
+  }
+
+  const redirectUrl = new URL(AUTH_ROUTES.login, request.url)
+  redirectUrl.searchParams.set('clear_session', 'true')
+  return NextResponse.redirect(redirectUrl)
 }

@@ -5,10 +5,12 @@ import { persist } from "zustand/middleware";
 
 import Cookies from "js-cookie";
 
+import { AUTH_COOKIE_NAMES } from "./access-control";
+
 export type AuthRole = "candidate" | "employer";
 
 const TOKEN_COOKIE_NAME = "16signals-token";
-const ROLE_COOKIE_NAME = "16signals-role";
+const ROLE_COOKIE_NAME = AUTH_COOKIE_NAMES.clientRole;
 const PERSIST_KEY = "16signals-auth";
 
 type AuthState = {
