@@ -17,6 +17,7 @@ import { verifyPrivyToken } from './verify-privy-token';
 
 class LoginResponseDto {
   token: string;
+  accessToken: string;
   role: 'employer';
   username: string;
   user: {
@@ -49,6 +50,14 @@ export class AuthEmployerController extends BaseController {
     sameSite: 'lax',
   };
 
+  private setAuthCookies(
+    res: Response,
+    result: { accessToken: string; refreshToken: string },
+  ) {
+    res.cookie('access_token', result.accessToken, this.authCookieOptions);
+    res.cookie('refresh_token', result.refreshToken, this.authCookieOptions);
+  }
+
   // ---------------- LOGIN ----------------
 
   @Public()
@@ -76,14 +85,15 @@ export class AuthEmployerController extends BaseController {
       const privyUser = await verifyPrivyToken(req);
       this.logger.log(`Privy user verified: ${privyUser.privyUserId}`);
       const result = await this.authService.login(privyUser);
-      res.cookie('access_token', result.token, this.authCookieOptions);
+      this.setAuthCookies(res, result);
       return res.json({
         success: true,
         message: 'Logged in successfully',
         data: result,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Employer Privy login failed: ${errorMessage}`);
       throw error;
     }
@@ -94,15 +104,35 @@ export class AuthEmployerController extends BaseController {
   @UseGuards(AuthGuard('jwt-employer'))
   @ApiOperation({
     summary: 'Logout user',
-    description: 'Invalidates the user session or JWT token.',
+    description: 'Invalidates the refresh token and clears session cookies.',
   })
-  logout(@Res() res: Response) {
+  async logout(@Req() req: any, @Res() res: Response) {
+    await this.authService.logout(req.user.id);
+
     res.clearCookie('access_token');
     res.clearCookie('refresh_token');
     return res.json({
       success: true,
       message: 'Logged out successfully',
       data: null,
+    });
+  }
+
+  @Post('refresh')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('refresh-employer'))
+  @ApiOperation({
+    summary: 'Refresh employer tokens',
+    description:
+      'Rotates the employer refresh token and issues a new access token.',
+  })
+  async refresh(@Req() req: any, @Res() res: Response) {
+    const result = await this.authService.refresh(req.user);
+    this.setAuthCookies(res, result);
+    return res.json({
+      success: true,
+      message: 'Token refreshed successfully',
+      data: result,
     });
   }
 }

@@ -20,10 +20,11 @@ import { listJobs, getJob, getGapPreview, getMe, getCandidateProfile, applyToJob
 // ---------------------------------------------------------------------------
 
 interface Candidate {
-  id: string;
   username: string;
-  displayName?: string;
-  skills?: string[];
+  bio?: string;
+  location?: string;
+  avatarUrl?: string;
+  careerPath?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +54,7 @@ function getInitials(name: string): string {
 // ---------------------------------------------------------------------------
 
 function CandidateCard({ candidate }: { candidate: Candidate }) {
-  const display = candidate.displayName || candidate.username;
+const display = candidate.username;
   const initials = getInitials(display);
 
   return (
@@ -76,7 +77,7 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
         </div>
 
         {/* Skill chips */}
-        {candidate.skills && candidate.skills.length > 0 && (
+        {/* {candidate.skills && candidate.skills.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {candidate.skills.slice(0, 3).map((skill) => (
               <span
@@ -92,7 +93,7 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
               </span>
             )}
           </div>
-        )}
+        )} */}
 
         <div className="mt-4">
           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
@@ -194,18 +195,27 @@ const hasMoreJobs = allJobs.length < jobsTotal;
   // ── Talent state ──────────────────────────────────────────────────────────
   const [talentSearch, setTalentSearch] = useState("");
   const debouncedTalentSearch = useDebounce(talentSearch, 300);
+const [talentSort, setTalentSort] = useState("recent");
 
   const { data: talentData, isLoading: talentLoading } = useQuery({
-    queryKey: ["public-profiles", debouncedTalentSearch],
-    queryFn: () =>
-      fetch(
-        (process.env.NEXT_PUBLIC_API_URL || "") +
-          "/api/profiles?q=" +
-          debouncedTalentSearch
-      ).then((r) => r.json()),
-    enabled: debouncedTalentSearch.length > 2,
-  });
+  queryKey: ["public-profiles", debouncedTalentSearch, talentSort],
+  queryFn: async () => {
+    const params = new URLSearchParams();
 
+    if (debouncedTalentSearch) {
+      params.append("q", debouncedTalentSearch);
+    }
+
+    params.append("sort", talentSort);
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/profile/public?${params.toString()}`
+    );
+
+    return res.json();
+  },
+  enabled: true,
+});
   const candidates: Candidate[] = talentData?.profiles || [];
 
   // ── Sync tab with URL ─────────────────────────────────────────────────────
@@ -316,18 +326,31 @@ const isApplied = !!myApps?.applications?.some(
 
               {/* Talent search bar */}
               {tab === "people" && (
-                <div className="py-3">
-                  <div className="relative w-full max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={talentSearch}
-                      onChange={(e) => setTalentSearch(e.target.value)}
-                      placeholder="Search by name or skill"
-                      className="h-8 rounded-lg border-border bg-transparent pl-8 text-xs placeholder:text-muted-foreground focus-visible:ring-primary/40"
-                    />
-                  </div>
-                </div>
-              )}
+  <div className="py-3 flex items-center gap-2">
+    
+    {/* Search */}
+    <div className="relative w-full max-w-sm">
+      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={talentSearch}
+        onChange={(e) => setTalentSearch(e.target.value)}
+placeholder="Search people by username or location"        className="h-8 rounded-lg border-border bg-transparent pl-8 text-xs placeholder:text-muted-foreground focus-visible:ring-primary/40"
+      />
+    </div>
+
+    {/* Sort */}
+    <select
+      value={talentSort}
+      onChange={(e) => setTalentSort(e.target.value)}
+      className="h-8 rounded-lg border border-border bg-transparent px-2 text-xs text-muted-foreground focus:outline-none"
+    >
+      <option value="recent">Newest members</option>
+<option value="name">A → Z</option>
+<option value="career">Career level</option>
+    </select>
+
+  </div>
+)}
             </div>
 
             {/* ── Content area ─────────────────────────────────────────── */}
@@ -389,7 +412,7 @@ const isApplied = !!myApps?.applications?.some(
                       ))
                     : candidates.length > 0
                     ? candidates.map((c) => (
-                        <CandidateCard key={c.id} candidate={c} />
+                        <CandidateCard key={c.username} candidate={c} />
                       ))
                     : !talentLoading && (
                         <div className="col-span-full flex flex-col items-center gap-2 py-20 text-center">

@@ -24,7 +24,7 @@ export const AUTH_ROUTES = {
 export const ROUTE_ACCESS_RULES: RouteAccessRule[] = [
   { prefix: "/profile", access: "candidate" },
 
-  // Employer pages are not active yet, but this is the intended opt-in point.
+  // Employer pages can be developed under /hr and are protected by default.
   { prefix: "/hr", access: "employer" },
 ] as const;
 

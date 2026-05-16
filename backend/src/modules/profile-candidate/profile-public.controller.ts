@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  Query
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,5 +24,10 @@ export class PublicProfileController {
     return this.profileService.getPublicProfile(
       username,
     );
+  }
+
+    @Get('public')
+  searchPublicProfiles(@Query('q') q?: string) {
+    return this.profileService.searchPublicProfiles(q || '');
   }
 }

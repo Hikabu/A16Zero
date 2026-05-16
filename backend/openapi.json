@@ -2123,7 +2123,7 @@
     },
     "/auth/employer/logout": {
       "post": {
-        "description": "Invalidates the user session or JWT token.",
+        "description": "Invalidates the refresh token and clears session cookies.",
         "operationId": "AuthEmployerController_logout",
         "parameters": [],
         "responses": {
@@ -2137,6 +2137,27 @@
           }
         ],
         "summary": "Logout user",
+        "tags": [
+          "Auth (Employer)"
+        ]
+      }
+    },
+    "/auth/employer/refresh": {
+      "post": {
+        "description": "Rotates the employer refresh token and issues a new access token.",
+        "operationId": "AuthEmployerController_refresh",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refresh employer tokens",
         "tags": [
           "Auth (Employer)"
         ]
@@ -3161,6 +3182,29 @@
             "name": "username",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/profile/public": {
+      "get": {
+        "operationId": "PublicProfileController_searchPublicProfiles",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
             "schema": {
               "type": "string"
             }

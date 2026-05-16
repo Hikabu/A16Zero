@@ -1,5 +1,5 @@
 import type { paths } from "@/src/api/schema";
-import {useAuthStore } from "./auth-store";
+import { useAuthStore } from "./auth-store";
 import { AUTH_COOKIE_NAMES } from "./access-control";
 
 type HttpMethod = "get" | "post" | "put" | "patch" | "delete";
@@ -94,7 +94,6 @@ export class ApiError extends Error {
   }
 }
 
-
 export type ApiFetchOptions = Omit<RequestInit, "body" | "headers"> & {
   body?: unknown;
   headers?: Record<string, string>;
@@ -143,7 +142,9 @@ function getRequestParts(request: unknown): ApiRequestParts {
  * Use before calling job-scoped APIs (`/jobs/:id`, `/applications/hr/jobs/:jobId`, `/escrow/status/:jobPostId`).
  * Sidebar links like `/hr/jobs/active` are handled by `[id]` and must not hit the network as IDs.
  */
-export function isValidJobPostPathId(id: string | undefined | null): id is string {
+export function isValidJobPostPathId(
+  id: string | undefined | null,
+): id is string {
   if (id == null || id === "") return false;
   if (id === "draft" || id === "active") return false;
   return true;
@@ -264,8 +265,7 @@ export async function apiFetch<ResponseBody>(
     };
 
     if (requestBody !== undefined) {
-      headers["Content-Type"] =
-        headers["Content-Type"] ?? "application/json";
+      headers["Content-Type"] = headers["Content-Type"] ?? "application/json";
 
       init.body = JSON.stringify(requestBody);
     }
@@ -288,26 +288,19 @@ export async function apiFetch<ResponseBody>(
   // ─────────────────────────────
   // 2. Handle 401 refresh
   // ─────────────────────────────
-  if (
-    response.status === 401 &&
-    !retried &&
-    !skipAuth
-  ) {
+  if (response.status === 401 && !retried && !skipAuth) {
     const refreshRole = authRole ?? getAuthRole() ?? "candidate";
 
-    if (refreshRole === "employer") {
-      useAuthStore.getState().clearAuth();
-      throw new Error("Session expired");
-    }
-
     if (!refreshingPromise) {
-      refreshingPromise = fetch(
-        API_BASE_URL + "/auth/candidate/refresh",
-        {
-          method: "POST",
-          credentials: "include",
-        },
-      )
+      const refreshPath =
+        refreshRole === "employer"
+          ? "/auth/employer/refresh"
+          : "/auth/candidate/refresh";
+
+      refreshingPromise = fetch(API_BASE_URL + refreshPath, {
+        method: "POST",
+        credentials: "include",
+      })
         .then(async (r) => {
           console.log("REFRESH STATUS", r.status);
 
@@ -537,7 +530,8 @@ function normalizeAuthResponse(
     role: normalizeRole(nested.role, fallbackRole),
     username: typeof nested.username === "string" ? nested.username : null,
     email: typeof nested.email === "string" ? nested.email : null,
-    walletAddress: typeof nested.walletAddress === "string" ? nested.walletAddress : null,
+    walletAddress:
+      typeof nested.walletAddress === "string" ? nested.walletAddress : null,
     id: typeof nested.id === "string" ? nested.id : null,
   };
 }
@@ -678,11 +672,11 @@ export async function getEmployerProfile(): Promise<EmployerProfileResponse> {
     method: "GET",
     authRole: "employer",
   });
-  
+
   if (body.data && typeof body.data === "object") {
     return body.data as EmployerProfileResponse;
   }
-  
+
   return body as unknown as EmployerProfileResponse;
 }
 
@@ -802,13 +796,21 @@ export async function ApplicantsController_getJobApplications(
 // Fallback: Count applications from jobs endpoint
 export async function getEmployerCandidateCount(): Promise<number> {
   const jobsResponse = await JobsController_getMyJobs();
-  const jobs = (jobsResponse as any)?.data ?? (jobsResponse as any)?.items ?? jobsResponse ?? [];
-  
+  const jobs =
+    (jobsResponse as any)?.data ??
+    (jobsResponse as any)?.items ??
+    jobsResponse ??
+    [];
+
   if (!Array.isArray(jobs)) return 0;
-  
+
   return jobs.reduce((total, job: any) => {
-    const count = job.applicationsCount ?? job.applicantsCount ?? job.candidates?.length ?? 0;
-    return total + (typeof count === 'number' ? count : 0);
+    const count =
+      job.applicationsCount ??
+      job.applicantsCount ??
+      job.candidates?.length ??
+      0;
+    return total + (typeof count === "number" ? count : 0);
   }, 0);
 }
 type ApplicantsController_getApplicationDetailOperation = ApiOperation<
@@ -994,7 +996,6 @@ export async function ScorecardController_getMyScorecard(
     },
   );
 }
-
 
 type ScorecardController_getPublicScorecardOperation = ApiOperation<
   "/api/scorecard/{username}",
@@ -1451,8 +1452,10 @@ export async function JobsController_getPublicJobById(
 }
 
 type JobsController_createOperation = ApiOperation<"/jobs/draft", "post">;
-export type JobsController_createRequest = ApiRequest<JobsController_createOperation>;
-export type JobsController_createResponse = ApiResponse<JobsController_createOperation>;
+export type JobsController_createRequest =
+  ApiRequest<JobsController_createOperation>;
+export type JobsController_createResponse =
+  ApiResponse<JobsController_createOperation>;
 
 export async function JobsController_create(
   request: JobsController_createRequest,
@@ -2174,9 +2177,7 @@ type PublicProfile = {
   location?: string | null;
   website?: string | null;
   careerPath?: number;
-}
-
-
+};
 
 type ProfileController_updateProfileOperation = ApiOperation<
   "/me/user",
@@ -2626,18 +2627,24 @@ export const getLinkedGithub = () => ProfileController_getConnectedGithub();
 export const getLinkedWallet = () => ProfileController_getConnectedWallet();
 export const triggerGithubSync = () => GithubSyncController_triggerSync();
 export const startAnalysis = () => AnalysisController_createAnalysis();
-export const getAnalysisCooldown = () => apiFetch<{
-  github: { cooldownUntil: string | null },
-  wallet: { cooldownUntil: string | null },
-  generate: { cooldownUntil: string | null }
-}>('/me/user/cooldown');
+export const getAnalysisCooldown = () =>
+  apiFetch<{
+    github: { cooldownUntil: string | null };
+    wallet: { cooldownUntil: string | null };
+    generate: { cooldownUntil: string | null };
+  }>("/me/user/cooldown");
 export const getMe = () => ProfileController_getProfile();
-export const getCandidateProfile = () => ProfileController_getCandidateProfile();
-export const updateUser = (body: any) => ProfileController_updateProfile({ body });
-export const updateCandidateProfile = (body: any) => ProfileController_updateCandidateProfile({ body });
+export const getCandidateProfile = () =>
+  ProfileController_getCandidateProfile();
+export const updateUser = (body: any) =>
+  ProfileController_updateProfile({ body });
+export const updateCandidateProfile = (body: any) =>
+  ProfileController_updateCandidateProfile({ body });
 
-export const getAnalysisStatus = (jobId: string) => AnalysisController_getStatus({ path: { jobId } });
-export const getAnalysisResult = (jobId: string) => AnalysisController_getResult({ path: { jobId } });
+export const getAnalysisStatus = (jobId: string) =>
+  AnalysisController_getStatus({ path: { jobId } });
+export const getAnalysisResult = (jobId: string) =>
+  AnalysisController_getResult({ path: { jobId } });
 // export const getMyScorecard = () => ScorecardController_getMyScorecard();
 export const getMyRawScorecard = () => ScorecardController_getMyScorecardRaw();
 export const getMyScorecard = async () => {
@@ -2646,7 +2653,7 @@ export const getMyScorecard = async () => {
     return await ScorecardController_getMyScorecard();
   } catch (err: any) {
     if (err?.status === 404) {
-      console.log("got a 404")
+      console.log("got a 404");
       return null; // THIS IS KEY
     }
     throw err;
@@ -2656,23 +2663,24 @@ export const getMyScorecard = async () => {
 export const getGithubConnectUrl = () => AuthCandidateController_linkGithub();
 export const getGithubSyncStatus = () => GithubSyncController_getSyncStatus();
 export const getWalletChallenge = () => WalletSyncController_getChallenge();
-export const submitWalletSignature = (body: any) => WalletSyncController_linkWallet({ body });
+export const submitWalletSignature = (body: any) =>
+  WalletSyncController_linkWallet({ body });
 export const getMfaSetup = () => AuthCandidateController_setupMfa();
-export const activateMfa = (body: any) => AuthCandidateController_activateMfa({ body });
+export const activateMfa = (body: any) =>
+  AuthCandidateController_activateMfa({ body });
 export const deleteAccount = () => ProfileController_deactivateAccount();
 
 export const getSecurityInfo = (): Promise<{
   mfaEnabled: boolean;
   hasPassword: boolean;
   linkedProviders: string[];
-}> => apiFetch('/auth/candidate/me/security');
+}> => apiFetch("/auth/candidate/me/security");
 
 export const changePassword = (body: {
   currentPassword?: string;
   newPassword: string;
 }): Promise<{ success: boolean }> =>
-  apiFetch('/auth/candidate/me/change-password', { method: 'POST', body });
-
+  apiFetch("/auth/candidate/me/change-password", { method: "POST", body });
 
 /** Opens the GitHub OAuth link flow — links GitHub as a login provider */
 export const linkGithubAccount = () => {
@@ -2697,9 +2705,11 @@ export const listJobs = (params: {
   isVerifiedPayer?: boolean;
   page?: number;
   limit?: number;
-}): Promise<{ jobs: any[], total: number }> => apiFetch("/jobs", { method: "GET", query: params as any, skipAuth: true });
+}): Promise<{ jobs: any[]; total: number }> =>
+  apiFetch("/jobs", { method: "GET", query: params as any, skipAuth: true });
 
-export const getJob = (id: string) => JobsController_getPublicJobById({ path: { id } } as any);
+export const getJob = (id: string) =>
+  JobsController_getPublicJobById({ path: { id } } as any);
 export const getGapPreview = (params: { jobId: string }) => {
   if (!isValidJobPostPathId(params.jobId)) {
     return Promise.reject(new Error("Invalid job id"));
@@ -2716,30 +2726,30 @@ export const applyToJob = (jobId: string) => {
 export const initiateVouch = async (
   username: string,
   data: { message?: string },
-  account: string
+  account: string,
 ) => {
   return apiFetch<any>(`/api/actions/vouch/${username}`, {
     method: "POST",
     body: {
       account,
-      data: data.message
-        ? { message: data.message }
-        : undefined,
+      data: data.message ? { message: data.message } : undefined,
     },
     skipAuth: true,
-  })
-}
-
-export const confirmVouch = async (
-  data: {
-    candidateIdentifier: string
-    message: string
-    txSignature: string
-  }
-) => {  return (VouchesController_confirmVouch as any)({ body: data });
+  });
 };
 
-export const confirmEscrowFunded = async (data: { jobPostId: string, txSignature: string }) => {
+export const confirmVouch = async (data: {
+  candidateIdentifier: string;
+  message: string;
+  txSignature: string;
+}) => {
+  return (VouchesController_confirmVouch as any)({ body: data });
+};
+
+export const confirmEscrowFunded = async (data: {
+  jobPostId: string;
+  txSignature: string;
+}) => {
   if (!isValidJobPostPathId(data.jobPostId)) {
     return Promise.reject(new Error("Invalid job id"));
   }
@@ -2753,7 +2763,11 @@ export const getEscrowStatus = async (jobPostId: string) => {
   return (EscrowController_status as any)({ path: { jobPostId } });
 };
 
-export const setEscrowCandidate = async (data: { jobPostId: string, candidateId: string, walletAddress: string }) => {
+export const setEscrowCandidate = async (data: {
+  jobPostId: string;
+  candidateId: string;
+  walletAddress: string;
+}) => {
   if (!isValidJobPostPathId(data.jobPostId)) {
     return Promise.reject(new Error("Invalid job id"));
   }
@@ -2785,23 +2799,41 @@ export const getJobApplications = async (jobId: string) => {
 };
 
 export const getApplication = async (applicationId: string) => {
-  return (ApplicantsController_getApplicationDetail as any)({ path: { id: applicationId } });
+  return (ApplicantsController_getApplicationDetail as any)({
+    path: { id: applicationId },
+  });
 };
 
 export const getApplicationScorecard = async (applicationId: string) => {
-  return (ApplicantsController_getScorecard as any)({ path: { id: applicationId } });
+  return (ApplicantsController_getScorecard as any)({
+    path: { id: applicationId },
+  });
 };
 
 export const getInterviewQuestions = async (applicationId: string) => {
-  return (ApplicantsController_getInterviewQuestions as any)({ path: { id: applicationId } });
+  return (ApplicantsController_getInterviewQuestions as any)({
+    path: { id: applicationId },
+  });
 };
 
-export const updateStage = async (data: { applicationId: string, stage: string }) => {
-  return (ApplicantsController_advanceApplicationStage as any)({ path: { id: data.applicationId }, body: { stage: data.stage } });
+export const updateStage = async (data: {
+  applicationId: string;
+  stage: string;
+}) => {
+  return (ApplicantsController_advanceApplicationStage as any)({
+    path: { id: data.applicationId },
+    body: { stage: data.stage },
+  });
 };
 
-export const updateDecision = async (data: { applicationId: string, decision: string }) => {
-  return (ApplicantsController_applyDecision as any)({ path: { id: data.applicationId }, body: { decision: data.decision } });
+export const updateDecision = async (data: {
+  applicationId: string;
+  decision: string;
+}) => {
+  return (ApplicantsController_applyDecision as any)({
+    path: { id: data.applicationId },
+    body: { decision: data.decision },
+  });
 };
 
 export async function rehydrateAuth(): Promise<void> {
@@ -2854,7 +2886,6 @@ function getClientStoredRole(): AuthRole | null {
   return role === "candidate" || role === "employer" ? role : null;
 }
 
-
 export type PublicVouchDto = {
   id: string;
   message: string;
@@ -2876,17 +2907,11 @@ export async function getPublicProfile(
   username: string,
 ): Promise<PublicProfileDto | null> {
   try {
-    return await apiFetch<PublicProfileDto>(
-      `/profile/public/${username}`,
-      {
-        skipAuth: true,
-      },
-    );
+    return await apiFetch<PublicProfileDto>(`/profile/public/${username}`, {
+      skipAuth: true,
+    });
   } catch (error) {
-    if (
-      error instanceof ApiError &&
-      error.status === 404
-    ) {
+    if (error instanceof ApiError && error.status === 404) {
       return null;
     }
 

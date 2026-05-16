@@ -455,4 +455,69 @@ async updateCandidateProfile(userId: string, dto: UpdateCandidateDto) {
 });
   return { url: avatarUrl };
 }
+
+async searchPublicProfiles(query: string, sort: string = 'recent') {
+  const orderBy = (() => {
+    switch (sort) {
+      case 'name':
+        return { username: 'asc' };
+
+      case 'career':
+        return {
+          candidate: {
+            careerPath: 'asc',
+          },
+        };
+
+      case 'recent':
+      default:
+        return { createdAt: 'desc' };
+    }
+  })();
+
+  const users = await this.prisma.user.findMany({
+    where: {
+      accountStatus: AccountStatus.ACTIVE,
+      candidate: {
+        isNot: null,
+      },
+      ...(query.length > 0 && {
+        username: {
+          contains: query,
+          mode: 'insensitive',
+        },
+      }),
+    },
+
+    select: {
+      username: true,
+      createdAt: true, // needed for sorting clarity
+
+      candidate: {
+        select: {
+          bio: true,
+          location: true,
+          avatarUrl: true,
+          careerPath: true,
+        },
+      },
+    },
+
+    orderBy,
+
+    take: 20,
+  });
+
+  return {
+    profiles: users.map((u) => ({
+      username: u.username,
+      bio: u.candidate?.bio ?? null,
+      location: u.candidate?.location ?? null,
+      avatarUrl: u.candidate?.avatarUrl ?? null,
+      careerPath: u.candidate?.careerPath ?? null,
+    })),
+  };
 }
+
+}
+
