@@ -40,13 +40,15 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-function getInitials(name: string): string {
+function getInitials(name?: string | null): string {
+  if (!name) return "?"
+
   return name
+    .trim()
     .split(/\s+/)
     .map((w) => w[0] ?? "")
     .join("")
     .toUpperCase()
-    .slice(0, 2);
 }
 
 function careerLevelLabel(level?: number): string | null {

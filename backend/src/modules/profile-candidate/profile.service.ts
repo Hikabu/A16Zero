@@ -484,20 +484,23 @@ async searchPublicProfiles(
     })();
 
   const users = await this.prisma.user.findMany({
-    where: {
-      accountStatus: AccountStatus.ACTIVE,
+where: {
+  accountStatus: AccountStatus.ACTIVE,
 
-      candidate: {
-        isNot: null,
+  candidate: {
+    isNot: null,
+  },
+
+  username: query.length > 0
+    ? {
+        not: null,
+        contains: query,
+        mode: 'insensitive',
+      }
+    : {
+        not: null,
       },
-
-      ...(query.length > 0 && {
-        username: {
-          contains: query,
-          mode: 'insensitive',
-        },
-      }),
-    },
+},
 
     select: {
       username: true,
