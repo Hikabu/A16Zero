@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
-import { AccountStatus } from '@prisma/client';
+import { AccountStatus, Prisma } from '@prisma/client';
 import {
   Controller,
   Post,
@@ -456,31 +456,41 @@ async updateCandidateProfile(userId: string, dto: UpdateCandidateDto) {
   return { url: avatarUrl };
 }
 
-async searchPublicProfiles(query: string, sort: string = 'recent') {
-  const orderBy = (() => {
-    switch (sort) {
-      case 'name':
-        return { username: 'asc' };
+async searchPublicProfiles(
+  query: string,
+  sort: string = 'recent',
+) {
+  const orderBy: Prisma.UserOrderByWithRelationInput =
+    (() => {
+      switch (sort) {
+        case 'name':
+          return {
+            username: 'asc',
+          };
 
-      case 'career':
-        return {
-          candidate: {
-            careerPath: 'asc',
-          },
-        };
+        case 'career':
+          return {
+            candidate: {
+              careerPath: 'asc',
+            },
+          };
 
-      case 'recent':
-      default:
-        return { createdAt: 'desc' };
-    }
-  })();
+        case 'recent':
+        default:
+          return {
+            createdAt: 'desc',
+          };
+      }
+    })();
 
   const users = await this.prisma.user.findMany({
     where: {
       accountStatus: AccountStatus.ACTIVE,
+
       candidate: {
         isNot: null,
       },
+
       ...(query.length > 0 && {
         username: {
           contains: query,
@@ -491,7 +501,7 @@ async searchPublicProfiles(query: string, sort: string = 'recent') {
 
     select: {
       username: true,
-      createdAt: true, // needed for sorting clarity
+      createdAt: true,
 
       candidate: {
         select: {
