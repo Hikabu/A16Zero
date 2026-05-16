@@ -6,14 +6,14 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FilterBar, FilterState } from "@/components/jobs/FilterBar";
 import { JobCard, JobCardSkeleton, Job } from "@/components/jobs/JobCard";
 import { JobDetailSheet } from "@/components/jobs/JobDetailSheet";
-import { Search } from "lucide-react";
-import {useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { listJobs, getJob, getGapPreview, getMe, getCandidateProfile, applyToJob } from "@/lib/api";
+import { Search, MapPin, Users, Briefcase, ChevronRight } from "lucide-react";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { listJobs, getJob, getGapPreview, getCandidateProfile, applyToJob } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,80 +49,105 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+function careerLevelLabel(level?: number): string | null {
+  if (level === undefined || level === null) return null;
+  if (level <= 1) return "Junior";
+  if (level === 2) return "Mid-level";
+  if (level === 3) return "Senior";
+  if (level === 4) return "Staff";
+  return "Principal";
+}
+
 // ---------------------------------------------------------------------------
-// CandidateCard
+// CandidateCard — full-width horizontal row, one per column
 // ---------------------------------------------------------------------------
 
 function CandidateCard({ candidate }: { candidate: Candidate }) {
-const display = candidate.username;
+  const display = candidate.username;
   const initials = getInitials(display);
+  const levelLabel = careerLevelLabel(candidate.careerPath);
 
   return (
-    <Card className="group relative cursor-default overflow-hidden rounded-2xl border bg-[#151C2E] p-0 shadow-sm transition-colors duration-150 hover:border-primary/60">
-      <CardContent className="p-5">
-        <div className="flex items-start gap-3">
-          <Avatar className="h-9 w-9 shrink-0">
-            <AvatarFallback className="bg-primary/15 text-primary text-xs font-mono font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">
-              {display}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              @{candidate.username}
-            </p>
-          </div>
-        </div>
+    <div className="group relative flex items-center gap-5 rounded-xl border border-border bg-card px-6 py-5 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-[0_0_0_1px_rgba(42,161,152,0.12)]">
+      {/* Avatar */}
+      <Avatar className="h-12 w-12 shrink-0 ring-1 ring-border group-hover:ring-primary/30 transition-all duration-200">
+        <AvatarFallback className="bg-primary/10 text-primary text-sm font-mono font-semibold tracking-wide">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
 
-        {/* Skill chips */}
-        {/* {candidate.skills && candidate.skills.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {candidate.skills.slice(0, 3).map((skill) => (
-              <span
-                key={skill}
-                className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-              >
-                {skill}
-              </span>
-            ))}
-            {candidate.skills.length > 3 && (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                +{candidate.skills.length - 3}
-              </span>
-            )}
-          </div>
-        )} */}
-
-        <div className="mt-4">
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-            <Link href={`/u/${candidate.username}`}>View profile</Link>
-          </Button>
+      {/* Main info */}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-semibold text-foreground">{display}</p>
+          {levelLabel && (
+            <span className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+              {levelLabel}
+            </span>
+          )}
         </div>
-      </CardContent>
-    </Card>
+        <p className="mt-0.5 text-xs text-muted-foreground font-mono">
+          @{candidate.username}
+        </p>
+        {candidate.bio && (
+          <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-muted-foreground line-clamp-2">
+            {candidate.bio}
+          </p>
+        )}
+        {candidate.location && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground/70">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span>{candidate.location}</span>
+          </div>
+        )}
+      </div>
+
+      {/* CTA */}
+      <div className="ml-4 shrink-0">
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 rounded-lg border-border px-4 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-150"
+        >
+          <Link href={`/u/${candidate.username}`}>
+            View profile
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
 }
 
 function CandidateCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-border bg-[#151C2E] p-5">
-      <div className="flex items-start gap-3">
-        <div className="h-9 w-9 shrink-0 rounded-full bg-muted/30" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-1/2 rounded-md bg-muted/40" />
-          <div className="h-3 w-1/3 rounded-md bg-muted/30" />
+    <div className="flex animate-pulse items-center gap-5 rounded-xl border border-border bg-card px-6 py-5">
+      <div className="h-12 w-12 shrink-0 rounded-full bg-muted/30" />
+      <div className="flex-1 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-32 rounded-md bg-muted/40" />
+          <div className="h-4 w-16 rounded-md bg-muted/20" />
         </div>
+        <div className="h-3 w-24 rounded-md bg-muted/30" />
+        <div className="h-3 w-3/4 rounded-md bg-muted/20" />
       </div>
-      <div className="mt-3 flex gap-1.5">
-        <div className="h-5 w-14 rounded-full bg-muted/20" />
-        <div className="h-5 w-16 rounded-full bg-muted/20" />
-        <div className="h-5 w-12 rounded-full bg-muted/20" />
+      <div className="ml-4 shrink-0">
+        <div className="h-8 w-28 rounded-lg bg-muted/20" />
       </div>
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Sort options
+// ---------------------------------------------------------------------------
+
+const SORT_OPTIONS = [
+  { value: "recent", label: "Newest" },
+  { value: "name", label: "A → Z" },
+  { value: "career", label: "Career level" },
+] as const;
 
 // ---------------------------------------------------------------------------
 // Page
@@ -135,87 +160,71 @@ export default function BrowseClient() {
   const initialTab = searchParams.get("tab") === "people" ? "people" : "jobs";
   const [tab, setTab] = useState(initialTab);
 
- // ── Jobs state ────────────────────────────────────────────────────────────
-const [filters, setFilters] = useState<FilterState>({});
-const debouncedFilters = useDebounce(filters, 300);
+  // ── Jobs state ────────────────────────────────────────────────────────────
+  const [filters, setFilters] = useState<FilterState>({});
+  const debouncedFilters = useDebounce(filters, 300);
 
-const [page, setPage] = useState(1);
-const [allJobs, setAllJobs] = useState<Job[]>([]);
-const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
-// API call
-const {
-  data: jobsData,
-  isLoading: jobsLoading,
-  isFetching: jobsFetching,
-} = useQuery({
-  queryKey: ["jobs", debouncedFilters, page],
-  queryFn: async () => {
-    const res = await listJobs({
-      ...debouncedFilters,
-      page,
-      limit: 12,
-    });
-
-    return res.data; // { jobs, total }
-  },
-});
-
-const { data: jobDetailData } = useQuery({
-  queryKey: ["job", selectedJobId],
-  queryFn: () => getJob(selectedJobId!),
-  enabled: !!selectedJobId,
-});
-
-const jobDetail = jobDetailData as any;
-
-// reset pagination when filters change
-useEffect(() => {
-  setPage(1);
-  setAllJobs([]);
-}, [debouncedFilters]);
-
-// merge paginated results
-useEffect(() => {
-  if (!jobsData?.jobs) return;
-
-  setAllJobs((prev) => {
-    if (page === 1) return jobsData.jobs;
-
-    const existingIds = new Set(prev.map((j) => j.id));
-    const newJobs = jobsData.jobs.filter((j: Job) => !existingIds.has(j.id));
-
-    return [...prev, ...newJobs];
+  const {
+    data: jobsData,
+    isLoading: jobsLoading,
+    isFetching: jobsFetching,
+  } = useQuery({
+    queryKey: ["jobs", debouncedFilters, page],
+    queryFn: async () => {
+      const res = await listJobs({ ...debouncedFilters, page, limit: 12 });
+      return res.data;
+    },
   });
-}, [jobsData, page]);
 
-// pagination meta
-const jobsTotal = jobsData?.total ?? 0;
-const hasMoreJobs = allJobs.length < jobsTotal;
+  const { data: jobDetailData } = useQuery({
+    queryKey: ["job", selectedJobId],
+    queryFn: () => getJob(selectedJobId!),
+    enabled: !!selectedJobId,
+  });
+
+  const jobDetail = jobDetailData as any;
+
+  useEffect(() => {
+    setPage(1);
+    setAllJobs([]);
+  }, [debouncedFilters]);
+
+  useEffect(() => {
+    if (!jobsData?.jobs) return;
+    setAllJobs((prev) => {
+      if (page === 1) return jobsData.jobs;
+      const existingIds = new Set(prev.map((j) => j.id));
+      const newJobs = jobsData.jobs.filter((j: Job) => !existingIds.has(j.id));
+      return [...prev, ...newJobs];
+    });
+  }, [jobsData, page]);
+
+  const jobsTotal = jobsData?.total ?? 0;
+  const hasMoreJobs = allJobs.length < jobsTotal;
+
   // ── Talent state ──────────────────────────────────────────────────────────
   const [talentSearch, setTalentSearch] = useState("");
   const debouncedTalentSearch = useDebounce(talentSearch, 300);
-const [talentSort, setTalentSort] = useState("recent");
+  const [talentSort, setTalentSort] = useState("recent");
 
   const { data: talentData, isLoading: talentLoading } = useQuery({
-  queryKey: ["public-profiles", debouncedTalentSearch, talentSort],
-  queryFn: async () => {
-    const params = new URLSearchParams();
+    queryKey: ["public-profiles", debouncedTalentSearch, talentSort],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (debouncedTalentSearch) params.append("q", debouncedTalentSearch);
+      params.append("sort", talentSort);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/profile/public?${params.toString()}`
+      );
+      return res.json();
+    },
+    enabled: true,
+  });
 
-    if (debouncedTalentSearch) {
-      params.append("q", debouncedTalentSearch);
-    }
-
-    params.append("sort", talentSort);
-
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/profile/public?${params.toString()}`
-    );
-
-    return res.json();
-  },
-  enabled: true,
-});
   const candidates: Candidate[] = talentData?.profiles || [];
 
   // ── Sync tab with URL ─────────────────────────────────────────────────────
@@ -230,132 +239,141 @@ const [talentSort, setTalentSort] = useState("recent");
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  // -- user state----
-  
+  // ── User / scorecard state ────────────────────────────────────────────────
   const { data: me } = useQuery({
-  queryKey: ["me"],
-  queryFn: getCandidateProfile
-});
-const hasScorecard = !!me?.scorecard;
+    queryKey: ["me"],
+    queryFn: getCandidateProfile,
+  });
+  const hasScorecard = !!me?.scorecard;
 
-const { data: gapData, isLoading: gapLoading } = useQuery({
-  queryKey: ["gap", selectedJobId],
-  enabled: !!selectedJobId && !!me?.scorecard,
-  queryFn: async () => {
-    const res = await getGapPreview({ jobId: selectedJobId! });
+  const { data: gapData, isLoading: gapLoading } = useQuery({
+    queryKey: ["gap", selectedJobId],
+    enabled: !!selectedJobId && !!me?.scorecard,
+    queryFn: async () => {
+      const res = await getGapPreview({ jobId: selectedJobId! });
+      const d = res.data;
+      return {
+        fitScore: d.roleFitScore ?? 0,
+        matched: d.matchedTechnologies ?? [],
+        missing: d.missingTechnologies ?? [],
+        raw: d,
+      };
+    },
+  });
 
-    const d = res.data; 
+  // ── Apply mutation ────────────────────────────────────────────────────────
+  const queryClient = useQueryClient();
 
-    return {
-      fitScore: d.roleFitScore ?? 0,
-      matched: d.matchedTechnologies ?? [],
-      missing: d.missingTechnologies ?? [],
-      raw: d, // optional debug
-    };
-  },
-});
+  const applyMut = useMutation({
+    mutationFn: () => applyToJob({ jobId: selectedJobId! }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["job", selectedJobId] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["my-applications"] });
+    },
+  });
 
-//------------applying-------------
-const queryClient = useQueryClient()
+  const { data: myApps } = useQuery({
+    queryKey: ["my-applications"],
+    queryFn: async () => {
+      const res = await fetch(
+        (process.env.NEXT_PUBLIC_API_URL || "") + "/applications/me"
+      );
+      return res.json();
+    },
+  });
 
-const applyMut = useMutation({
-  mutationFn: () => applyToJob({ jobId: selectedJobId! }),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["job", selectedJobId] });
-    queryClient.invalidateQueries({ queryKey: ["jobs"] });
-    queryClient.invalidateQueries({ queryKey: ["my-applications"] });
-  },
-});
+  const isApplied = !!myApps?.applications?.some(
+    (a: any) => a.jobId === selectedJobId
+  );
 
-const { data: myApps } = useQuery({
-  queryKey: ["my-applications"],
-  queryFn: async () => {
-    const res = await fetch(
-      (process.env.NEXT_PUBLIC_API_URL || "") + "/applications/me"
-    );
-    return res.json();
-  },
-});
-
-const isApplied = !!myApps?.applications?.some(
-  (a: any) => a.jobId === selectedJobId
-);
-
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
-      {/* ── Hero strip ────────────────────────────────────────────────────── */}
-      <div className="flex h-20 items-center border-b border-border bg-background/50">
-        <div className="mx-auto w-full max-w-screen-xl px-4 sm:px-6">
-          <h1 className="text-xl font-semibold text-foreground">
-            Find your next role
-          </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Explore opportunities or discover candidates to vouch for.
+      {/* ── Hero strip ───────────────────────────────────────────────────── */}
+      <div className="border-b border-border bg-background/60 backdrop-blur-sm">
+        <div className="mx-auto w-full max-w-screen-xl px-4 py-8 sm:px-6">
+          <div className="mb-1 flex items-center gap-3">
+            <div className="h-5 w-1 rounded-full bg-primary" />
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Browse
+            </h1>
+          </div>
+          <p className="ml-4 pl-3 text-sm text-muted-foreground">
+            Discover open roles and verified talent across the network.
           </p>
         </div>
       </div>
 
-      {/* ── Tabs row (sticky just below nav h-14) ─────────────────────────── */}
-      <div className="sticky top-14 z-30 border-b border-border bg-background/80 backdrop-blur-md">
+      {/* ── Sticky tab bar ───────────────────────────────────────────────── */}
+      <div className="sticky top-14 z-30 border-b border-border bg-background/90 backdrop-blur-md">
         <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
           <Tabs value={tab} onValueChange={handleTabChange}>
+            {/* Tab triggers */}
             <TabsList className="h-11 w-full rounded-none border-0 bg-transparent p-0 md:w-auto">
               <TabsTrigger
                 value="jobs"
                 className="h-11 rounded-none border-b-2 border-transparent px-5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
               >
+                <Briefcase className="mr-1.5 h-3.5 w-3.5" />
                 Jobs
               </TabsTrigger>
               <TabsTrigger
                 value="people"
                 className="h-11 rounded-none border-b-2 border-transparent px-5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
               >
+                <Users className="mr-1.5 h-3.5 w-3.5" />
                 Talent
               </TabsTrigger>
             </TabsList>
 
-            {/* ── Filter bar lives inside Tabs so it can be tab-specific ── */}
+            {/* Tab-specific filter / search controls */}
             <div className="mx-auto max-w-screen-xl">
-              {/* Jobs filter bar */}
               {tab === "jobs" && (
                 <div className="overflow-x-auto">
                   <FilterBar filters={filters} onChange={setFilters} />
                 </div>
               )}
 
-              {/* Talent search bar */}
               {tab === "people" && (
-  <div className="py-3 flex items-center gap-2">
-    
-    {/* Search */}
-    <div className="relative w-full max-w-sm">
-      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        value={talentSearch}
-        onChange={(e) => setTalentSearch(e.target.value)}
-placeholder="Search people by username or location"        className="h-8 rounded-lg border-border bg-transparent pl-8 text-xs placeholder:text-muted-foreground focus-visible:ring-primary/40"
-      />
-    </div>
+                <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-3">
+                  {/* Search */}
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="talent-search"
+                      value={talentSearch}
+                      onChange={(e) => setTalentSearch(e.target.value)}
+                      placeholder="Search by username or location…"
+                      className="h-10 w-full rounded-lg border-border bg-muted/30 pl-10 pr-4 text-sm placeholder:text-muted-foreground/60 focus-visible:border-primary/50 focus-visible:ring-primary/20"
+                    />
+                  </div>
 
-    {/* Sort */}
-    <select
-      value={talentSort}
-      onChange={(e) => setTalentSort(e.target.value)}
-      className="h-8 rounded-lg border border-border bg-transparent px-2 text-xs text-muted-foreground focus:outline-none"
-    >
-      <option value="recent">Newest members</option>
-<option value="name">A → Z</option>
-<option value="career">Career level</option>
-    </select>
-
-  </div>
-)}
+                  {/* Sort pills */}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {SORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setTalentSort(opt.value)}
+                        className={cn(
+                          "h-10 rounded-lg border px-3.5 text-xs font-medium transition-all duration-150 select-none",
+                          talentSort === opt.value
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-border bg-transparent text-muted-foreground hover:border-border/80 hover:text-foreground"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* ── Content area ─────────────────────────────────────────── */}
+            {/* ── Content area ──────────────────────────────────────────── */}
             <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6">
-              {/* ── JOBS TAB ─────────────────────────────────────────────── */}
+              {/* JOBS TAB */}
               <TabsContent value="jobs" className="mt-0 outline-none">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {jobsLoading && page === 1
@@ -382,14 +400,12 @@ placeholder="Search people by username or location"        className="h-8 rounde
                             No jobs match your filters
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Try adjusting or clearing filters to see more
-                            results.
+                            Try adjusting or clearing filters to see more results.
                           </p>
                         </div>
                       )}
                 </div>
 
-                {/* Load more */}
                 {hasMoreJobs && (
                   <div className="mt-8 flex justify-center">
                     <Button
@@ -403,11 +419,29 @@ placeholder="Search people by username or location"        className="h-8 rounde
                 )}
               </TabsContent>
 
-              {/* ── TALENT TAB ───────────────────────────────────────────── */}
+              {/* TALENT TAB */}
               <TabsContent value="people" className="mt-0 outline-none">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {/* Result count */}
+                {!talentLoading && candidates.length > 0 && (
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    {candidates.length} candidate
+                    {candidates.length !== 1 ? "s" : ""} found
+                    {debouncedTalentSearch && (
+                      <>
+                        {" "}
+                        for{" "}
+                        <span className="font-medium text-foreground">
+                          "{debouncedTalentSearch}"
+                        </span>
+                      </>
+                    )}
+                  </p>
+                )}
+
+                {/* Candidate list — single column */}
+                <div className="flex flex-col gap-3">
                   {talentLoading
-                    ? Array.from({ length: 6 }).map((_, i) => (
+                    ? Array.from({ length: 5 }).map((_, i) => (
                         <CandidateCardSkeleton key={i} />
                       ))
                     : candidates.length > 0
@@ -415,17 +449,22 @@ placeholder="Search people by username or location"        className="h-8 rounde
                         <CandidateCard key={c.username} candidate={c} />
                       ))
                     : !talentLoading && (
-                        <div className="col-span-full flex flex-col items-center gap-2 py-20 text-center">
-                          <p className="text-sm font-medium text-foreground">
-                            {debouncedTalentSearch
-                              ? "No candidates match your search"
-                              : "No talent listed yet"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {debouncedTalentSearch
-                              ? "Try a different name or skill."
-                              : "Check back soon as the community grows."}
-                          </p>
+                        <div className="flex flex-col items-center gap-3 py-24 text-center">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-muted/20">
+                            <Users className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {debouncedTalentSearch
+                                ? "No candidates match your search"
+                                : "No talent listed yet"}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {debouncedTalentSearch
+                                ? "Try a different name or location."
+                                : "Check back soon as the community grows."}
+                            </p>
+                          </div>
                         </div>
                       )}
                 </div>
@@ -435,19 +474,19 @@ placeholder="Search people by username or location"        className="h-8 rounde
         </div>
       </div>
 
-      {/* ── Job detail slide-over (public: read-only, sign-in CTA) ────────── */}
+      {/* ── Job detail slide-over ─────────────────────────────────────────── */}
       <JobDetailSheet
-  job={jobDetail}
-  jobId={selectedJobId}
-  open={!!selectedJobId}
-  onClose={() => setSelectedJobId(null)}
-  hasScorecard={hasScorecard}
-  onApply={() => applyMut.mutate()}
-  isApplying={applyMut.isPending}
-  isApplied={isApplied}
-  gapData={gapData}
-  gapLoading={gapLoading}
-/>
+        job={jobDetail}
+        jobId={selectedJobId}
+        open={!!selectedJobId}
+        onClose={() => setSelectedJobId(null)}
+        hasScorecard={hasScorecard}
+        onApply={() => applyMut.mutate()}
+        isApplying={applyMut.isPending}
+        isApplied={isApplied}
+        gapData={gapData}
+        gapLoading={gapLoading}
+      />
     </div>
   );
 }
