@@ -465,3 +465,16 @@ model CachedResult {
 
   @@map("cached_results")
 }
+
+// ─── EMPLOYER LAUNCH WAITLIST ─────────────────────────────────────────────────
+// Intentionally no FK to User — works for both guests and authenticated users.
+// The userId field links a signup to an account when known (nullable).
+
+model EmployerLaunchWaitlist {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  userId    String?  // nullable — set when signed-in candidate subscribes
+  createdAt DateTime @default(now())
+
+  @@map("employer_launch_waitlist")
+}

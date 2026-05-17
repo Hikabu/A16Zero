@@ -155,6 +155,20 @@ async uploadAvatar(
 ) {
   return this.profileService.uploadAvatar(req.user.id, file);
 }
+
+  // ───────────── EMPLOYER LAUNCH WAITLIST ─────────────
+
+  @Post('waitlist')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Join employer launch waitlist (authenticated)',
+    description:
+      'Reads email from the authenticated user record; no body required. Queues a confirmation email. Idempotent.',
+  })
+  @ApiOkResponse({ type: SimpleMessageResponseDto })
+  registerWaitlistAuth(@Req() req: any) {
+    return this.profileService.registerWaitlistAuth(req.user.id);
+  }
 }
 
 

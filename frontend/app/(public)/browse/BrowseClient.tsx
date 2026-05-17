@@ -10,10 +10,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FilterBar, FilterState } from "@/components/jobs/FilterBar";
 import { JobCard, JobCardSkeleton, Job } from "@/components/jobs/JobCard";
 import { JobDetailSheet } from "@/components/jobs/JobDetailSheet";
-import { Search, MapPin, Users, Briefcase, ChevronRight } from "lucide-react";
+import {
+  Search, MapPin, Users, Briefcase, ChevronRight,
+  Bell, BellRing, CheckCircle2, Loader2, Lock,
+} from "lucide-react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { listJobs, getJob, getGapPreview, getCandidateProfile, applyToJob } from "@/lib/api";
+import {
+  listJobs, getJob, getGapPreview, getCandidateProfile, applyToJob,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+const IS_CANDIDATE_ONLY = process.env.NEXT_PUBLIC_CANDIDATE_ONLY === "true";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,26 +48,18 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 function getInitials(name?: string | null): string {
-  if (!name) return "?"
-
-  return name
-    .trim()
-    .split(/\s+/)
-    .map((w) => w[0] ?? "")
-    .join("")
-    .toUpperCase()
+  if (!name) return "?";
+  return name.trim().split(/\s+/).map((w) => w[0] ?? "").join("").toUpperCase();
 }
 
 function careerPathLabel(path?: number): string | null {
   if (path === undefined || path === null) return null;
-
-  // Bitmask support
   if (path & 1) return "Developer";
-
   return "Unknown";
 }
+
 // ---------------------------------------------------------------------------
-// CandidateCard — full-width horizontal row, one per column
+// CandidateCard
 // ---------------------------------------------------------------------------
 
 function CandidateCard({ candidate }: { candidate: Candidate }) {
@@ -70,14 +69,11 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
 
   return (
     <div className="group relative flex items-center gap-5 rounded-xl border border-border bg-card px-6 py-5 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-[0_0_0_1px_rgba(42,161,152,0.12)]">
-      {/* Avatar */}
       <Avatar className="h-12 w-12 shrink-0 ring-1 ring-border group-hover:ring-primary/30 transition-all duration-200">
         <AvatarFallback className="bg-primary/10 text-primary text-sm font-mono font-semibold tracking-wide">
           {initials}
         </AvatarFallback>
       </Avatar>
-
-      {/* Main info */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{display}</p>
@@ -87,9 +83,7 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground font-mono">
-          @{candidate.username}
-        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground font-mono">@{candidate.username}</p>
         {candidate.bio && (
           <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-muted-foreground line-clamp-2">
             {candidate.bio}
@@ -102,18 +96,13 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
           </div>
         )}
       </div>
-
-      {/* CTA */}
       <div className="ml-4 shrink-0">
         <Button
-          asChild
-          variant="outline"
-          size="sm"
+          asChild variant="outline" size="sm"
           className="h-8 gap-1.5 rounded-lg border-border px-4 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-150"
         >
           <Link href={`/u/${candidate.username}`}>
-            View profile
-            <ChevronRight className="h-3.5 w-3.5" />
+            View profile <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </Button>
       </div>
@@ -141,7 +130,265 @@ function CandidateCardSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Sort options
+// Employer launch waitlist — GUEST flow (email input)
+// ---------------------------------------------------------------------------
+
+function GuestWaitlistForm() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/profile/waitlist`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message ?? "Something went wrong.");
+      }
+      setStatus("done");
+    } catch (err: any) {
+      setErrorMsg(err.message ?? "Failed to join waitlist.");
+      setStatus("error");
+    }
+  }
+
+  if (status === "done") {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        <span>You're on the list — we'll email you when employers go live.</span>
+      </div>
+    );
+  }
+
+  return (
+    <form
+  onSubmit={handleSubmit}
+className="flex w-full max-w-[300px] gap-5"
+>
+      <Input
+        id="waitlist-email-input"
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="your@email.com"
+        className="h-10 flex-1 rounded-lg border-border bg-muted/20 text-sm placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/20"
+      />
+      <Button
+        id="waitlist-submit-btn"
+        type="submit"
+        disabled={status === "loading"}
+className="h-10 shrink-0 w-[120px] rounded-lg bg-primary px-4 text-sm font-medium"      
+>
+        {status === "loading" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Bell className="h-4 w-4" />
+        )}
+        Notify me
+      </Button>
+      {status === "error" && (
+        <p className="text-xs text-destructive sm:col-span-2">{errorMsg}</p>
+      )}
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Employer launch waitlist — AUTH flow (one-click button)
+// ---------------------------------------------------------------------------
+
+function AuthWaitlistButton({ userEmail }: { userEmail?: string | null }) {
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+
+  async function handleClick() {
+    setStatus("loading");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/me/user/waitlist`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!res.ok) throw new Error();
+      setStatus("done");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  if (status === "done") {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        <span>Notification enabled — we'll let you know when roles go live.</span>
+      </div>
+    );
+  }
+
+return (
+  <Button
+    id="auth-waitlist-btn"
+    onClick={handleClick}
+    disabled={status === "loading"}
+className="h-10 rounded-lg border border-border bg-background px-5 text-sm hover:border-primary/40 hover:bg-primary/5">
+    {status === "loading" ? (
+      <Loader2 className="h-4 w-4 animate-spin" />
+    ) : (
+      <BellRing className="h-4 w-4" />
+    )}
+
+    {status === "done"
+      ? "Notifications enabled"
+      : "Notify me"}
+  </Button>
+)
+}
+
+// ---------------------------------------------------------------------------
+// Jobs gated banner (CANDIDATE_ONLY mode)
+// ---------------------------------------------------------------------------
+
+function JobsGatedBanner({ me }: { me?: any }) {
+  const isLoggedIn = !!me;
+  const hasScorecard = !!me?.scorecard;
+return (
+  <div className="col-span-full flex justify-center px-4 py-16">
+    <div className="w-full max-w-2xl">
+
+      {/* Status */}
+      <div className="mb-4 flex justify-center">
+        <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
+          <Lock className="h-3.5 w-3.5" />
+          Employer access in private rollout
+        </div>
+      </div>
+
+      {/* Heading */}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          Job postings are launching soon
+        </h2>
+
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+          We're onboarding verified companies and securing the employer side
+          of 16Signals before opening roles publicly.
+        </p>
+      </div>
+
+      {/* Primary candidate CTA */}
+      <div className="mt-8 rounded-2xl border border-border bg-card p-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              Prepare your candidate profile
+            </p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+Get your scorecard ready before employer access opens.            </p>
+          </div>
+
+          <div className="shrink-0">
+            {isLoggedIn ? (
+              hasScorecard ? (
+                <Button
+                  asChild
+                  className="h-10 rounded-lg px-5"
+                >
+                  <Link href="/profile">
+                    View scorecard
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  className="h-10 rounded-lg px-5"
+                >
+                  <Link href="/profile">
+                    Build scorecard
+                  </Link>
+                </Button>
+              )
+            ) : (
+              <Button
+                asChild
+                className="h-10 w-[120px] rounded-lg px-5"
+              >
+                <Link href="/auth">
+                  Create profile
+                </Link>
+              </Button>
+            )}
+          </div>
+        </div>
+<div className="mt-5 border-t border-border pt-5">
+  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+    <div className="flex-1">
+      <div className="flex items-center gap-2">
+        <BellRing className="h-4 w-4 text-primary" />
+
+        <p className="text-sm text-muted-foreground">
+          Want early access updates?
+        </p>
+      </div>
+    </div>
+
+    <div className="shrink-0">
+      {isLoggedIn ? (
+        <AuthWaitlistButton userEmail={me?.email} />
+      ) : (
+        <GuestWaitlistForm />
+      )}
+    </div>
+
+  </div>
+</div>
+</div>
+
+
+{/* <div className="mt-8 flex flex-col items-center">
+  <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+    <div className="h-px w-8 bg-border" />
+    <span>Stay updated</span>
+    <div className="h-px w-8 bg-border" />
+  </div> */}
+
+ {/* <div className="w-full max-w-[320px] text-center">
+    <div className="mb-3 flex items-center justify-center gap-2">
+      <BellRing className="h-4 w-4 text-primary" />
+      <p className="text-sm font-medium text-foreground">
+        Get notified when roles go live
+      </p>
+    </div> */}
+
+{/* <p className="mx-auto mb-4 max-w-[280px] text-xs leading-relaxed text-muted-foreground">      We’ll let you know once verified employers begin posting jobs.
+    </p> */}
+{/* 
+    <div className="flex justify-center">
+      {isLoggedIn ? (
+        <AuthWaitlistButton userEmail={me?.email} />
+      ) : (
+        <GuestWaitlistForm />
+      )}
+    </div> */}
+  </div>
+</div>
+)
+}
+
+// ---------------------------------------------------------------------------
+// Sort options (talent tab)
 // ---------------------------------------------------------------------------
 
 const SORT_OPTIONS = [
@@ -164,7 +411,6 @@ export default function BrowseClient() {
   // ── Jobs state ────────────────────────────────────────────────────────────
   const [filters, setFilters] = useState<FilterState>({});
   const debouncedFilters = useDebounce(filters, 300);
-
   const [page, setPage] = useState(1);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -177,14 +423,16 @@ export default function BrowseClient() {
     queryKey: ["jobs", debouncedFilters, page],
     queryFn: async () => {
       const res = await listJobs({ ...debouncedFilters, page, limit: 12 });
-      return res.data;
+      return (res as any).data ?? res;
     },
+    // Disable job fetching entirely in candidate-only mode
+    enabled: !IS_CANDIDATE_ONLY,
   });
 
   const { data: jobDetailData } = useQuery({
     queryKey: ["job", selectedJobId],
     queryFn: () => getJob(selectedJobId!),
-    enabled: !!selectedJobId,
+    enabled: !!selectedJobId && !IS_CANDIDATE_ONLY,
   });
 
   const jobDetail = jobDetailData as any;
@@ -223,10 +471,16 @@ export default function BrowseClient() {
       );
       return res.json();
     },
-    enabled: true,
   });
 
   const candidates: Candidate[] = talentData?.profiles || [];
+
+  // ── User / scorecard state ────────────────────────────────────────────────
+  const { data: me } = useQuery({
+    queryKey: ["me"],
+    queryFn: getCandidateProfile,
+  });
+  const hasScorecard = !!me?.scorecard;
 
   // ── Sync tab with URL ─────────────────────────────────────────────────────
   const handleTabChange = (value: string) => {
@@ -240,19 +494,13 @@ export default function BrowseClient() {
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  // ── User / scorecard state ────────────────────────────────────────────────
-  const { data: me } = useQuery({
-    queryKey: ["me"],
-    queryFn: getCandidateProfile,
-  });
-  const hasScorecard = !!me?.scorecard;
-
+  // ── Gap / apply ───────────────────────────────────────────────────────────
   const { data: gapData, isLoading: gapLoading } = useQuery({
     queryKey: ["gap", selectedJobId],
-    enabled: !!selectedJobId && !!me?.scorecard,
+    enabled: !!selectedJobId && !!me?.scorecard && !IS_CANDIDATE_ONLY,
     queryFn: async () => {
       const res = await getGapPreview({ jobId: selectedJobId! });
-      const d = res.data;
+      const d = (res as any).data ?? res as any;
       return {
         fitScore: d.roleFitScore ?? 0,
         matched: d.matchedTechnologies ?? [],
@@ -262,11 +510,9 @@ export default function BrowseClient() {
     },
   });
 
-  // ── Apply mutation ────────────────────────────────────────────────────────
   const queryClient = useQueryClient();
-
   const applyMut = useMutation({
-    mutationFn: () => applyToJob({ jobId: selectedJobId! }),
+    mutationFn: () => applyToJob({ jobId: selectedJobId! } as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["job", selectedJobId] });
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
@@ -282,6 +528,7 @@ export default function BrowseClient() {
       );
       return res.json();
     },
+    enabled: !IS_CANDIDATE_ONLY,
   });
 
   const isApplied = !!myApps?.applications?.some(
@@ -291,26 +538,24 @@ export default function BrowseClient() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
-      {/* ── Hero strip ───────────────────────────────────────────────────── */}
+      {/* Hero strip */}
       <div className="border-b border-border bg-background/60 backdrop-blur-sm">
         <div className="mx-auto w-full max-w-screen-xl px-4 py-8 sm:px-6">
           <div className="mb-1 flex items-center gap-3">
             <div className="h-5 w-1 rounded-full bg-primary" />
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Browse
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Browse</h1>
           </div>
           <p className="ml-4 pl-3 text-sm text-muted-foreground">
-            Discover open roles and verified talent across the network.
+            Discover verified talent across the network.
+            {!IS_CANDIDATE_ONLY && " Open roles posted by verified employers."}
           </p>
         </div>
       </div>
 
-      {/* ── Sticky tab bar ───────────────────────────────────────────────── */}
+      {/* Sticky tab bar */}
       <div className="sticky top-14 z-30 border-b border-border bg-background/90 backdrop-blur-md">
         <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
           <Tabs value={tab} onValueChange={handleTabChange}>
-            {/* Tab triggers */}
             <TabsList className="h-11 w-full rounded-none border-0 bg-transparent p-0 md:w-auto">
               <TabsTrigger
                 value="jobs"
@@ -318,6 +563,11 @@ export default function BrowseClient() {
               >
                 <Briefcase className="mr-1.5 h-3.5 w-3.5" />
                 Jobs
+                {IS_CANDIDATE_ONLY && (
+                  <span className="ml-1.5 inline-flex items-center rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-400">
+                    Coming soon
+                  </span>
+                )}
               </TabsTrigger>
               <TabsTrigger
                 value="people"
@@ -328,9 +578,9 @@ export default function BrowseClient() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Tab-specific filter / search controls */}
+            {/* Tab-specific controls */}
             <div className="mx-auto max-w-screen-xl">
-              {tab === "jobs" && (
+              {tab === "jobs" && !IS_CANDIDATE_ONLY && (
                 <div className="overflow-x-auto">
                   <FilterBar filters={filters} onChange={setFilters} />
                 </div>
@@ -338,7 +588,6 @@ export default function BrowseClient() {
 
               {tab === "people" && (
                 <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-3">
-                  {/* Search */}
                   <div className="relative flex-1">
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -349,8 +598,6 @@ export default function BrowseClient() {
                       className="h-10 w-full rounded-lg border-border bg-muted/30 pl-10 pr-4 text-sm placeholder:text-muted-foreground/60 focus-visible:border-primary/50 focus-visible:ring-primary/20"
                     />
                   </div>
-
-                  {/* Sort pills */}
                   <div className="flex shrink-0 items-center gap-1">
                     {SORT_OPTIONS.map((opt) => (
                       <button
@@ -358,7 +605,7 @@ export default function BrowseClient() {
                         type="button"
                         onClick={() => setTalentSort(opt.value)}
                         className={cn(
-                          "h-10 rounded-lg border px-3.5 text-xs font-medium transition-all duration-150 select-none",
+                          "h-10 cursor-pointer rounded-lg border px-3.5 text-xs font-medium transition-all duration-150 select-none",
                           talentSort === opt.value
                             ? "border-primary/50 bg-primary/10 text-primary"
                             : "border-border bg-transparent text-muted-foreground hover:border-border/80 hover:text-foreground"
@@ -372,65 +619,68 @@ export default function BrowseClient() {
               )}
             </div>
 
-            {/* ── Content area ──────────────────────────────────────────── */}
+            {/* Content area */}
             <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6">
               {/* JOBS TAB */}
               <TabsContent value="jobs" className="mt-0 outline-none">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {jobsLoading && page === 1
-                    ? Array.from({ length: 6 }).map((_, i) => (
-                        <JobCardSkeleton key={i} />
-                      ))
-                    : allJobs.length > 0
-                    ? allJobs.map((job) => (
-                        <JobCard
-                          key={job.id}
-                          job={job}
-                          isApplied={false}
-                          isSelected={selectedJobId === job.id}
-                          onClick={() =>
-                            setSelectedJobId((prev) =>
-                              prev === job.id ? null : job.id
-                            )
-                          }
-                        />
-                      ))
-                    : !jobsLoading && (
-                        <div className="col-span-full flex flex-col items-center gap-2 py-20 text-center">
-                          <p className="text-sm font-medium text-foreground">
-                            No jobs match your filters
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Try adjusting or clearing filters to see more results.
-                          </p>
-                        </div>
-                      )}
-                </div>
+                {IS_CANDIDATE_ONLY ? (
+                  <JobsGatedBanner me={me} />
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {jobsLoading && page === 1
+                        ? Array.from({ length: 6 }).map((_, i) => (
+                            <JobCardSkeleton key={i} />
+                          ))
+                        : allJobs.length > 0
+                        ? allJobs.map((job) => (
+                            <JobCard
+                              key={job.id}
+                              job={job}
+                              isApplied={false}
+                              isSelected={selectedJobId === job.id}
+                              onClick={() =>
+                                setSelectedJobId((prev) =>
+                                  prev === job.id ? null : job.id
+                                )
+                              }
+                            />
+                          ))
+                        : !jobsLoading && (
+                            <div className="col-span-full flex flex-col items-center gap-2 py-20 text-center">
+                              <p className="text-sm font-medium text-foreground">
+                                No jobs match your filters
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Try adjusting or clearing filters to see more results.
+                              </p>
+                            </div>
+                          )}
+                    </div>
 
-                {hasMoreJobs && (
-                  <div className="mt-8 flex justify-center">
-                    <Button
-                      variant="outline"
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={jobsFetching}
-                    >
-                      {jobsFetching ? "Loading…" : "Load more"}
-                    </Button>
-                  </div>
+                    {hasMoreJobs && (
+                      <div className="mt-8 flex justify-center">
+                        <Button
+                          variant="outline"
+                          onClick={() => setPage((p) => p + 1)}
+                          disabled={jobsFetching}
+                        >
+                          {jobsFetching ? "Loading…" : "Load more"}
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </TabsContent>
 
               {/* TALENT TAB */}
               <TabsContent value="people" className="mt-0 outline-none">
-                {/* Result count */}
                 {!talentLoading && candidates.length > 0 && (
                   <p className="mb-4 text-xs text-muted-foreground">
-                    {candidates.length} candidate
-                    {candidates.length !== 1 ? "s" : ""} found
+                    {candidates.length} candidate{candidates.length !== 1 ? "s" : ""} found
                     {debouncedTalentSearch && (
                       <>
-                        {" "}
-                        for{" "}
+                        {" "}for{" "}
                         <span className="font-medium text-foreground">
                           "{debouncedTalentSearch}"
                         </span>
@@ -439,7 +689,6 @@ export default function BrowseClient() {
                   </p>
                 )}
 
-                {/* Candidate list — single column */}
                 <div className="flex flex-col gap-3">
                   {talentLoading
                     ? Array.from({ length: 5 }).map((_, i) => (
@@ -475,19 +724,21 @@ export default function BrowseClient() {
         </div>
       </div>
 
-      {/* ── Job detail slide-over ─────────────────────────────────────────── */}
-      <JobDetailSheet
-        job={jobDetail}
-        jobId={selectedJobId}
-        open={!!selectedJobId}
-        onClose={() => setSelectedJobId(null)}
-        hasScorecard={hasScorecard}
-        onApply={() => applyMut.mutate()}
-        isApplying={applyMut.isPending}
-        isApplied={isApplied}
-        gapData={gapData}
-        gapLoading={gapLoading}
-      />
+      {/* Job detail slide-over */}
+      {!IS_CANDIDATE_ONLY && (
+        <JobDetailSheet
+          job={jobDetail}
+          jobId={selectedJobId}
+          open={!!selectedJobId}
+          onClose={() => setSelectedJobId(null)}
+          hasScorecard={hasScorecard}
+          onApply={() => applyMut.mutate()}
+          isApplying={applyMut.isPending}
+          isApplied={isApplied}
+          gapData={gapData}
+          gapLoading={gapLoading}
+        />
+      )}
     </div>
   );
 }

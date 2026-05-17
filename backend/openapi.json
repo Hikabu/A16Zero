@@ -3174,6 +3174,34 @@
         ]
       }
     },
+    "/me/user/waitlist": {
+      "post": {
+        "description": "Reads email from the authenticated user record; no body required. Queues a confirmation email. Idempotent.",
+        "operationId": "ProfileController_registerWaitlistAuth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleMessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join employer launch waitlist (authenticated)",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      }
+    },
     "/profile/public/{username}": {
       "get": {
         "operationId": "PublicProfileController_getPublicProfile",
@@ -3215,6 +3243,35 @@
             "description": ""
           }
         },
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/profile/waitlist": {
+      "post": {
+        "description": "Stores the email and sends a confirmation email. Idempotent — calling twice with the same email is a no-op.",
+        "operationId": "PublicProfileController_registerWaitlist",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterWaitlistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Joined the waitlist"
+          },
+          "400": {
+            "description": "Invalid email address"
+          }
+        },
+        "summary": "Join employer launch waitlist (guest)",
         "tags": [
           "Public Profiles"
         ]
@@ -5777,6 +5834,18 @@
         "required": [
           "connected",
           "web3"
+        ]
+      },
+      "RegisterWaitlistDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "candidate@example.com"
+          }
+        },
+        "required": [
+          "email"
         ]
       },
       "ConfirmVouchDto": {
