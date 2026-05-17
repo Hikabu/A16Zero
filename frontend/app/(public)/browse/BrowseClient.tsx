@@ -51,15 +51,14 @@ function getInitials(name?: string | null): string {
     .toUpperCase()
 }
 
-function careerLevelLabel(level?: number): string | null {
-  if (level === undefined || level === null) return null;
-  if (level <= 1) return "Junior";
-  if (level === 2) return "Mid-level";
-  if (level === 3) return "Senior";
-  if (level === 4) return "Staff";
-  return "Principal";
-}
+function careerPathLabel(path?: number): string | null {
+  if (path === undefined || path === null) return null;
 
+  // Bitmask support
+  if (path & 1) return "Developer";
+
+  return "Unknown";
+}
 // ---------------------------------------------------------------------------
 // CandidateCard — full-width horizontal row, one per column
 // ---------------------------------------------------------------------------
@@ -67,7 +66,7 @@ function careerLevelLabel(level?: number): string | null {
 function CandidateCard({ candidate }: { candidate: Candidate }) {
   const display = candidate.username;
   const initials = getInitials(display);
-  const levelLabel = careerLevelLabel(candidate.careerPath);
+  const pathLabel = careerPathLabel(candidate.careerPath);
 
   return (
     <div className="group relative flex items-center gap-5 rounded-xl border border-border bg-card px-6 py-5 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-[0_0_0_1px_rgba(42,161,152,0.12)]">
@@ -82,9 +81,9 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{display}</p>
-          {levelLabel && (
+          {pathLabel && (
             <span className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-              {levelLabel}
+              {pathLabel}
             </span>
           )}
         </div>

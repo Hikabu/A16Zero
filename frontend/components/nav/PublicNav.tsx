@@ -36,10 +36,17 @@ useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  const isActive = (href: string) =>
-    href === "/browse"
-      ? pathname === "/browse"
-      : pathname + (typeof window !== "undefined" ? window.location.search : "") === href;
+const currentUrl = mounted
+  ? pathname + window.location.search
+  : pathname;
+
+const isActive = (href: string) => {
+  if (href === "/browse") {
+    return currentUrl === "/browse";
+  }
+
+  return currentUrl === href;
+};
 
   return (
     <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-md">
@@ -124,7 +131,7 @@ useEffect(() => {
               ))}
             </nav>
             <div className="flex flex-col gap-2 mt-auto">
-              <WalletMultiButton />
+{mounted && <WalletMultiButton />}
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/auth">Sign in</Link>
               </Button>
