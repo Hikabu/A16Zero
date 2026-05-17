@@ -133,7 +133,11 @@ function CandidateCardSkeleton() {
 // Employer launch waitlist — GUEST flow (email input)
 // ---------------------------------------------------------------------------
 
-function GuestWaitlistForm() {
+function GuestWaitlistForm({
+  onSuccess,
+}: {
+  onSuccess?: () => void;
+}) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -156,20 +160,25 @@ function GuestWaitlistForm() {
         throw new Error(body?.message ?? "Something went wrong.");
       }
       setStatus("done");
+      onSuccess?.();
     } catch (err: any) {
       setErrorMsg(err.message ?? "Failed to join waitlist.");
       setStatus("error");
     }
   }
 
-  if (status === "done") {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
-        <span>You're on the list — we'll email you when employers go live.</span>
-      </div>
-    );
-  }
+//  if (status === "done") {
+//   return (
+//     <div className="flex justify-center">
+//       <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
+//         <CheckCircle2 className="h-4 w-4 shrink-0" />
+//         <span>
+//           You're on the list — we'll email you when employers go live.
+//         </span>
+//       </div>
+//     </div>
+//   );
+// }
 
   return (
     <form
@@ -209,8 +218,14 @@ className="h-10 shrink-0 w-[120px] rounded-lg bg-primary px-4 text-sm font-mediu
 // Employer launch waitlist — AUTH flow (one-click button)
 // ---------------------------------------------------------------------------
 
-function AuthWaitlistButton({ userEmail }: { userEmail?: string | null }) {
-  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+function AuthWaitlistButton({
+  userEmail,
+  onSuccess,
+}: {
+  userEmail?: string | null;
+  onSuccess?: () => void;
+}) {
+    const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 
   async function handleClick() {
     setStatus("loading");
@@ -221,18 +236,10 @@ function AuthWaitlistButton({ userEmail }: { userEmail?: string | null }) {
       );
       if (!res.ok) throw new Error();
       setStatus("done");
+      onSuccess?.();
     } catch {
       setStatus("error");
     }
-  }
-
-  if (status === "done") {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
-        <span>Notification enabled — we'll let you know when roles go live.</span>
-      </div>
-    );
   }
 
 return (
@@ -240,8 +247,16 @@ return (
     id="auth-waitlist-btn"
     onClick={handleClick}
     disabled={status === "loading"}
-className="h-10 rounded-lg border border-border bg-background px-5 text-sm hover:border-primary/40 hover:bg-primary/5">
-    {status === "loading" ? (
+className="
+  h-10
+  rounded-lg
+  bg-primary
+  px-5
+  text-sm
+  font-medium
+  text-primary-foreground
+  hover:bg-primary/90
+">    {status === "loading" ? (
       <Loader2 className="h-4 w-4 animate-spin" />
     ) : (
       <BellRing className="h-4 w-4" />
@@ -261,6 +276,7 @@ className="h-10 rounded-lg border border-border bg-background px-5 text-sm hover
 function JobsGatedBanner({ me }: { me?: any }) {
   const isLoggedIn = !!me;
   const hasScorecard = !!me?.scorecard;
+  const [waitlistDone, setWaitlistDone] = useState(false);
 return (
   <div className="col-span-full flex justify-center px-4 py-16">
     <div className="w-full max-w-2xl">
@@ -331,58 +347,69 @@ Get your scorecard ready before employer access opens.            </p>
             )}
           </div>
         </div>
-<div className="mt-5 border-t border-border pt-5">
-  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-
-    <div className="flex-1">
-      <div className="flex items-center gap-2">
-        <BellRing className="h-4 w-4 text-primary" />
-
-        <p className="text-sm text-muted-foreground">
-          Want early access updates?
-        </p>
+        <div className="mt-5 border-t border-border pt-5">
+  {waitlistDone ? (
+    <div className="flex justify-center">
+      <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        <span>
+          You're on the list — we'll email you when employers go live.
+        </span>
       </div>
     </div>
+) : (
+  <>
+    {isLoggedIn ? (
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+            <BellRing className="h-4 w-4 text-primary" />
+          </div>
 
-    <div className="shrink-0">
-      {isLoggedIn ? (
-        <AuthWaitlistButton userEmail={me?.email} />
-      ) : (
-        <GuestWaitlistForm />
-      )}
-    </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Get notified when employer access opens
+            </p>
 
-  </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              We’ll email you as soon as companies post roles.
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0">
+          <AuthWaitlistButton
+            userEmail={me?.email}
+            onSuccess={() => setWaitlistDone(true)}
+          />
+        </div>
+      </div>
+    ) : (
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <BellRing className="h-4 w-4 text-primary" />
+
+            <p className="text-sm text-muted-foreground">
+              Want early access updates?
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0">
+          <GuestWaitlistForm
+            onSuccess={() => setWaitlistDone(true)}
+          />
+        </div>
+
+      </div>
+    )}
+  </>
+)}
 </div>
 </div>
-
-
-{/* <div className="mt-8 flex flex-col items-center">
-  <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-    <div className="h-px w-8 bg-border" />
-    <span>Stay updated</span>
-    <div className="h-px w-8 bg-border" />
-  </div> */}
-
- {/* <div className="w-full max-w-[320px] text-center">
-    <div className="mb-3 flex items-center justify-center gap-2">
-      <BellRing className="h-4 w-4 text-primary" />
-      <p className="text-sm font-medium text-foreground">
-        Get notified when roles go live
-      </p>
-    </div> */}
-
-{/* <p className="mx-auto mb-4 max-w-[280px] text-xs leading-relaxed text-muted-foreground">      We’ll let you know once verified employers begin posting jobs.
-    </p> */}
-{/* 
-    <div className="flex justify-center">
-      {isLoggedIn ? (
-        <AuthWaitlistButton userEmail={me?.email} />
-      ) : (
-        <GuestWaitlistForm />
-      )}
-    </div> */}
-  </div>
+</div>
 </div>
 )
 }
@@ -394,7 +421,7 @@ Get your scorecard ready before employer access opens.            </p>
 const SORT_OPTIONS = [
   { value: "recent", label: "Newest" },
   { value: "name", label: "A → Z" },
-  { value: "career", label: "Career level" },
+  // { value: "career", label: "Career Path" },
 ] as const;
 
 // ---------------------------------------------------------------------------

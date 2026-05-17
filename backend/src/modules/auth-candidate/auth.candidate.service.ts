@@ -334,7 +334,19 @@ export class AuthCandidateService {
       include: { user: true },
     });
 
-    if (account) return this.handleLoginResponse(account.user);
+    if (account) {
+      if (!account.user.email && profile.email) {
+        const emailTaken = await this.prisma.user.findUnique({ where: { email: profile.email } });
+        if (!emailTaken) {
+          await this.prisma.user.update({
+            where: { id: account.user.id },
+            data: { email: profile.email },
+          });
+          account.user.email = profile.email;
+        }
+      }
+      return this.handleLoginResponse(account.user);
+    }
 
     // 2. No email → cannot link → onboarding
     if (!profile.email) {
@@ -405,6 +417,19 @@ export class AuthCandidateService {
     await this.prisma.authAccount.create({
       data: { userId, provider, providerId: id },
     });
+
+    if (profile.email) {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user && !user.email) {
+        const emailTaken = await this.prisma.user.findUnique({ where: { email: profile.email } });
+        if (!emailTaken) {
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: { email: profile.email },
+          });
+        }
+      }
+    }
 
     this.logger.log(
       `ACCOUNT_LINKED: User ${userId} successfully linked ${provider}`,
