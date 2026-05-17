@@ -32,7 +32,8 @@ jobs:
     env:
       NODE_ENV: test
       PORT: "8080"
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/signalsSix_test?schema=public&connection_limit=5
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/16signals_test?schema=public&connection_limit=5
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/16signals_test?schema=public&connection_limit=5
       SERVER_URL: http://localhost:8080
       FRONTEND_URL: http://localhost:3001
       REDIS_URL: redis://localhost:6379
@@ -101,6 +102,9 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/placeholder?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/placeholder?schema=public
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -196,6 +200,7 @@ jobs:
               GITHUB_APP_ID=GITHUB_APP_ID:latest,\
               GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,\
               REDIS_HOST=REDIS_HOST:latest,\
+              DIRECT_URL=DIRECT_URL:latest,\
               PRIVY_JWKS_URL=PRIVY_JWKS_URL:latest" \
             --set-env-vars="\
               GITHUB_AUTH_ENABLED=true,\
