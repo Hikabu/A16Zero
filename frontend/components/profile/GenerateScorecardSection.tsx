@@ -143,9 +143,10 @@ export function GenerateScorecardSection({
       ? `Available in ${formatCountdown(generateCooldownUntil) ?? ''}`
       : undefined
 
-  const githubOnCooldown =
-    !!githubStatus.cooldownUntil &&
-    Date.now() < new Date(githubStatus.cooldownUntil).getTime()
+ const githubOnCooldown =
+  githubHasSynced &&
+  !!githubStatus.cooldownUntil &&
+  Date.now() < new Date(githubStatus.cooldownUntil).getTime()
 
   return (
     <Card className="w-full overflow-hidden border-l-2 border-l-[hsl(var(--accent))] rounded-xl">
@@ -245,8 +246,7 @@ export function GenerateScorecardSection({
                   <Button
                     variant="outline" size="sm"
                     onClick={onSyncGithub}
-                    disabled={githubSyncing || githubOnCooldown}
-                    className="h-7 px-2.5 text-xs shrink-0 cursor-pointer"
+disabled={githubSyncing || (githubOnCooldown && !githubFailed)}                    className="h-7 px-2.5 text-xs shrink-0 cursor-pointer"
                   >
                     {githubSyncing ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Syncing…</> : githubConnected ? 'Sync now' : 'Connect GitHub'}
                   </Button>

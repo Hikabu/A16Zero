@@ -131,11 +131,11 @@ export class GithubSyncService {
     }
 
     // Set new cooldown (24 hours from now)
-    const cooldownUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await this.prisma.developerProfile.update({
-      where: { id: devProfile.id },
-      data: { githubCooldownUntil: cooldownUntil },
-    });
+    // const cooldownUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // await this.prisma.developerProfile.update({
+    //   where: { id: devProfile.id },
+    //   data: { githubCooldownUntil: cooldownUntil },
+    // });
 
     const updated = await this.prisma.githubProfile.update({
       where: { id: githubProfile.id },

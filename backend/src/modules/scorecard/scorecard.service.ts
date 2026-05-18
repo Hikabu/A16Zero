@@ -35,14 +35,22 @@ export class ScorecardService {
       throw new Error('GITHUB_SYSTEM_TOKEN not configured');
     }
 
+    // const octokit = new Octokit({
+    //   request: {
+    //     headers: {
+    //       authorization: `token ${githubToken}`,
+    //       'X-GitHub-Api-Version': '2022-11-28',
+    //     },
+    //   },
+    // });
     const octokit = new Octokit({
-      request: {
-        headers: {
-          authorization: `token ${githubToken}`,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      },
-    });
+  auth: githubToken,
+  request: {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  },
+})
 
     await this.githubAdapter.fetchRawData(octokit, githubUsername);
 

@@ -212,8 +212,9 @@ export class GithubAdapterService {
 
   async fetchOrgs(
     username: string,
-    octokit: Octokit = new Octokit(),
-    rateLimitGuard?: RateLimitGuard,
+// octokit: Octokit = new Octokit(),
+    octokit: Octokit,
+        rateLimitGuard?: RateLimitGuard,
   ): Promise<OrgSummary[]> {
     try {
       const res = await this.withRetry(
@@ -247,8 +248,9 @@ export class GithubAdapterService {
 
   async fetchOrgPublicRepos(
     orgLogin: string,
-    octokit: Octokit = new Octokit(),
-    rateLimitGuard?: RateLimitGuard,
+// octokit: Octokit = new Octokit(),
+    octokit: Octokit,
+        rateLimitGuard?: RateLimitGuard,
     username?: string,
   ): Promise<OrgRepoSummary[]> {
     if (rateLimitGuard?.shouldAbort(50)) {
@@ -304,7 +306,8 @@ export class GithubAdapterService {
   async fetchStarred(
     username: string,
     options: { pages?: number } = { pages: 1 },
-    octokit: Octokit = new Octokit(),
+    // octokit: Octokit = new Octokit(),
+    octokit: Octokit,
     rateLimitGuard?: RateLimitGuard,
   ): Promise<StarredRepoSummary[]> {
     const pages = Math.max(1, Math.min(options.pages ?? 1, MAX_STARRED_PAGES));

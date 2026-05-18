@@ -39,8 +39,13 @@ export class GithubSyncProcessor extends WorkerHost {
 
     // (a) Load GithubProfile
     const profile = await this.prisma.githubProfile.findUnique({
-      where: { id: githubProfileId },
-    });
+  where: { id: githubProfileId },
+  select: {
+    id: true,
+    githubUsername: true,
+    developerProfileId: true,
+  },
+});
 
     if (!profile) {
       throw new Error(`GithubProfile ${githubProfileId} not found`);
@@ -64,46 +69,28 @@ export class GithubSyncProcessor extends WorkerHost {
         profile.githubUsername,
         jobId,
       );
+await this.prisma.$transaction([
+  this.prisma.developerProfile.update({
+    where: { id: profile.developerProfileId },
+    data: {
+      githubCooldownUntil: new Date(
+        Date.now() + 24 * 60 * 60 * 1000,
+      ),
+    },
+  }),
 
-      // (d) Set syncProgress = analyzing_projects (40% - interim)
-      // Note: We'll jump to 60% in signal-compute processor
-      await this.prisma.githubProfile.update({
-        where: { id: githubProfileId },
-        data: {
-          syncProgress: 40,
-        },
-      });
-
-      // console.log(
-      //   'Fetched raw data for profile ',
-      //   githubProfileId,
-      //   ': ',
-      //   JSON.stringify(rawData, null, 2),
-      // );
-
-      // (e) Save raw data, set status = SYNC_SUCCESS, syncProgress = 100
-      await this.prisma.githubProfile.update({
-        where: { id: githubProfileId },
-        data: {
-          rawDataSnapshot: rawData as any,
-          lastSyncAt: new Date(),
-          syncError: null,
-          syncStatus: SyncStatus.SYNC_SUCCESS,
-          syncProgress: 100,
-        },
-      });
-
-      // (f) Enqueue signal-compute NOT ANYMORE!
-      //     await this.signalQueue.add('compute-signals', {
-      //         candidateId,
-      // githubProfileId,
-      // githubUsername: profile.githubUsername,
-      // cached: false,
-      //      },
-      //     {
-      //       attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
-      //     });
-
+  this.prisma.githubProfile.update({
+    where: { id: githubProfileId },
+    data: {
+      rawDataSnapshot: rawData as any,
+      lastSyncAt: new Date(),
+      syncError: null,
+      syncStatus: SyncStatus.SYNC_SUCCESS,
+      syncProgress: 100,
+    },
+  }),
+]);
+     
       this.logger.log(
         {
           jobId,
